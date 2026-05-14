@@ -25,7 +25,7 @@ dependencies = [
 [project.scripts]
 simplex = "simplex.cli.commands:app"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest>=8",
     "pytest-xdist>=3.5",
@@ -34,6 +34,8 @@ dev = [
     "basedpyright>=1.13",
     "pre-commit>=3.7",
 ]
+
+[project.optional-dependencies]
 geometry = [
     "scipy>=1.13",
     "networkx>=3.2",
