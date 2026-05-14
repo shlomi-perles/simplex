@@ -28,7 +28,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from simplex.deck.config import DeckConfig
 from simplex.deck.registry import Section, SectionedRegistry, discover
 from simplex.render import cache, html, manifest, pdf, runner, thumbnail
-from simplex.web import notes
+from simplex.web import notes, vendor
 from simplex.web.site_config import SiteConfig
 
 
@@ -52,12 +52,18 @@ def _jinja(site_cfg: SiteConfig) -> Environment:
 
 
 def _copy_static(site_dir: Path) -> None:
-    """Copy bundled static assets into `site/static/`."""
+    """Copy bundled static assets into `site/static/`.
+
+    Vendored runtime assets (tailwind, katex, reveal.js) are fetched on demand
+    so the build is self-bootstrapping on machines without `scripts/vendor.sh`.
+    """
     src = Path(__file__).parent / "static"
+    src.mkdir(parents=True, exist_ok=True)
+    vendor.ensure(src)
     dst = site_dir / "static"
     dst.mkdir(parents=True, exist_ok=True)
     for entry in src.iterdir():
-        if entry.name == "README.md":
+        if entry.name in {"README.md", ".gitkeep"}:
             continue
         target = dst / entry.name
         if entry.is_dir():
