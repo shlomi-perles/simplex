@@ -8,7 +8,7 @@ carries deployment concerns and is never committed.
 import os
 import tomllib
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict
 
@@ -47,7 +47,7 @@ class SiteConfig(BaseModel):
     @classmethod
     def load(cls, repo_root: Path | None = None) -> Self:
         repo_root = repo_root or Path.cwd()
-        committed: dict[str, object] = {}
+        committed: dict[str, Any] = {}
         toml_path = repo_root / "site.toml"
         if toml_path.exists():
             committed = dict(tomllib.loads(toml_path.read_text(encoding="utf-8")))
@@ -58,7 +58,7 @@ class SiteConfig(BaseModel):
             if isinstance(dso, list):
                 committed["default_section_order"] = tuple(dso)
 
-        env_overrides: dict[str, object] = {}
+        env_overrides: dict[str, Any] = {}
         if (ga := os.environ.get("SIMPLEX_GA_TAG")) is not None:
             env_overrides["ga_tag"] = ga
         if (base := os.environ.get("SIMPLEX_BASE_URL")) is not None:
@@ -68,4 +68,4 @@ class SiteConfig(BaseModel):
         if (preview := os.environ.get("SIMPLEX_PREVIEW")) is not None:
             env_overrides["preview"] = preview.lower() in {"1", "true", "yes", "on"}
 
-        return cls(**(committed | env_overrides))
+        return cls.model_validate(committed | env_overrides)
