@@ -12,11 +12,11 @@ from manim import (
     LEFT,
     RIGHT,
     UP,
-    Mobject,
     Polygon,
     Rectangle,
     SurroundingRectangle,
     Text,
+    VMobject,
     VGroup,
 )
 
@@ -43,8 +43,8 @@ def get_convex_hull_polygon(
 
 
 def get_surrounding_rectangle(
-    a: Mobject,
-    b: Mobject,
+    a: VMobject,
+    b: VMobject,
     **kwargs: Any,
 ) -> Rectangle:
     """A rotated `SurroundingRectangle` whose long edge spans the segment a -> b."""

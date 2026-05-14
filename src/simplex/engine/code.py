@@ -97,7 +97,8 @@ def register_darcula(style_name: str = "darcula") -> None:
     setattr(module, cls_name, DarculaStyle)
     setattr(pygments.styles, style_name, module)
     sys.modules[f"pygments.styles.{style_name}"] = module
-    pygments.styles.STYLE_MAP[style_name] = f"{style_name}::{cls_name}"
+    STYLE_MAP: dict[str, str] = pygments.styles.STYLE_MAP  # type: ignore[assignment]
+    STYLE_MAP[style_name] = f"{style_name}::{cls_name}"
 
 
 def code_block(
@@ -124,7 +125,7 @@ def code_block(
         code_string=code,
         language=language,
         formatter_style=formatter_style,
-        background=background,
+        background=background,  # type: ignore[arg-type]
         paragraph_config=paragraph_kwargs,
         background_config=background_config,
         **kwargs,
@@ -181,7 +182,7 @@ def code_explain(
     theme = get_active_theme()
     color = color or theme.palette.accent
     code_lines = code.code_lines
-    target = VGroup(*[code_lines[ln - 1] for ln in lines])
+    target = VGroup(*[code_lines[ln - 1] for ln in lines])  # type: ignore[arg-type]
     brace = Brace(target, RIGHT, buff=buff, color=color)
     label = Text(explanation, color=color).scale(scale).next_to(brace, RIGHT, buff=buff)
 
@@ -219,7 +220,7 @@ def transform_code_lines(
 
     anims = [
         TransformMatchingShapes(
-            VGroup(*[src_lines[s - 1] for s in srcs]),
+            VGroup(*[src_lines[s - 1] for s in srcs]),  # type: ignore[arg-type]
             dst_lines[dst_no - 1],
         )
         for dst_no, srcs in grouped.items()
