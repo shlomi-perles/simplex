@@ -17,8 +17,8 @@ from manim import (
     Rectangle,
     SurroundingRectangle,
     Text,
-    VMobject,
     VGroup,
+    VMobject,
 )
 
 
