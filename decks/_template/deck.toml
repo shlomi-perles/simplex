@@ -1,0 +1,8 @@
+slug = "__SLUG__"
+title = "New deck"
+summary = "Replace with a one-line description."
+tags = []
+theme = "dastimator_dark"
+quality = "high_quality"
+scenes = ["Intro"]
+voiceover = false

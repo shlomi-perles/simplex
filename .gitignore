@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# uv
+.venv/
+
+# Tool caches
+.ruff_cache/
+.pytest_cache/
+.basedpyright/
+.simplex_cache/
+.mypy_cache/
+
+# Manim output
+media/
+
+# Generated site
+site/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+.DS_Store

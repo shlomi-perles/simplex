@@ -1,0 +1,60 @@
+[project]
+name = "simplex"
+version = "0.1.0"
+description = "Manim-slides presentation framework with a generated web portal."
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT" }
+authors = [{ name = "Shlomi Perles" }]
+dependencies = [
+    "manim>=0.18.1",
+    "manim-slides>=5.1.7",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "typer>=0.12",
+    "rich>=13.7",
+    "structlog>=24.1",
+    "jinja2>=3.1",
+    "markdown-it-py>=3.0",
+    "mdit-py-plugins>=0.4",
+    "pygments>=2.18",
+    "platformdirs>=4.2",
+    "tomli-w>=1.0",
+]
+
+[project.scripts]
+simplex = "simplex.cli.commands:app"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-xdist>=3.5",
+    "syrupy>=4.6",
+    "ruff>=0.6",
+    "basedpyright>=1.13",
+    "pre-commit>=3.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/simplex"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+"src/simplex/web/templates" = "simplex/web/templates"
+"src/simplex/web/static" = "simplex/web/static"
+
+[tool.basedpyright]
+include = ["src", "tests"]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
