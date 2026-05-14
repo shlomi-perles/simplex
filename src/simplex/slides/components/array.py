@@ -390,7 +390,9 @@ class ArrayPointer(Vector):
             new_entry = self.array.get_entry(index)
             reset_color = self.array.reference_entry.value_mob.get_color()
             anims.append(
-                cast(Animation, prev_entry.animate.set_color(reset_color).set_z_index(self._base_z)),
+                cast(
+                    Animation, prev_entry.animate.set_color(reset_color).set_z_index(self._base_z)
+                ),
             )
             anims.append(
                 cast(
