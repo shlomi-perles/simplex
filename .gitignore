@@ -25,6 +25,12 @@ media/
 # Generated site
 site/
 
+# Vendored web runtime assets (fetched on demand by simplex.web.vendor)
+src/simplex/web/static/tailwind.js
+src/simplex/web/static/htmx.min.js
+src/simplex/web/static/katex/
+src/simplex/web/static/reveal.js/
+
 # Editors
 .idea/
 .vscode/

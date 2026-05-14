@@ -6,34 +6,60 @@
   <title>{{ deck.title }} -- slides</title>
   <link rel="stylesheet" href="{{ static_prefix }}/reveal.js/reset.css" />
   <link rel="stylesheet" href="{{ static_prefix }}/reveal.js/reveal.css" />
-  <link rel="stylesheet" href="{{ static_prefix }}/reveal.js/theme/simplex.css" />
   <style>
-    html, body, .reveal, .slides {
+    html, body {
       background: #242424;
       color: #f8f8f8;
       height: 100%;
+      width: 100%;
       margin: 0;
       padding: 0;
       overflow: hidden;
       touch-action: manipulation;
     }
+    .reveal, .reveal .slides {
+      background: #242424;
+      width: 100% !important;
+      height: 100% !important;
+      inset: 0;
+    }
+    /* Override reveal's transform-based scaling: we want the video to fill
+       the viewer box natively. Reveal still drives slide changes; only the
+       layout math is ours. */
+    .reveal .slides {
+      top: 0 !important;
+      left: 0 !important;
+      transform: none !important;
+      zoom: 1 !important;
+    }
     .reveal .slides > section,
     .reveal .slides > section > section {
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
       padding: 0;
-      height: 100%;
+      margin: 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: #242424;
     }
     .reveal video {
       max-width: 100%;
       max-height: 100%;
-      width: auto;
-      height: auto;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
       background: #242424;
+      display: block;
     }
     .reveal .controls { display: none !important; }
-    .reveal .progress { background: rgba(255,255,255,.08); height: 3px; }
+    .reveal .progress {
+      background: rgba(255,255,255,.08);
+      height: 3px;
+      color: #ffd700;
+    }
     .reveal .progress span { background: #ffd700; }
     .tap-zone {
       position: fixed;
@@ -116,8 +142,10 @@
         autoPlayMedia: true,
         slideNumber: false,
         loop: false,
-        center: true,
-        disableLayout: false,
+        center: false,
+        // Reveal's scale-to-fit math fights us when the video already knows
+        // its aspect; disableLayout: true means our CSS sizes every slide.
+        disableLayout: true,
         viewDistance: 2,
       }).then(function () {
         // ---- Outbound: tell the parent which slide we're on. ----
@@ -148,9 +176,58 @@
             const v = document.querySelector(
               '.reveal .slides .present video'
             );
-            if (v) { v.paused ? v.play() : v.pause(); }
+            if (v) {
+              if (v.paused) { v.play(); } else { v.pause(); }
+              try {
+                window.parent.postMessage(
+                  { type: 'simplex.play-state', playing: !v.paused },
+                  parentOrigin
+                );
+              } catch (_) { /* parent gone */ }
+            }
+          } else if (data.type === 'simplex.fullscreen') {
+            const el = document.documentElement;
+            const fn =
+              el.requestFullscreen ||
+              el.webkitRequestFullscreen ||
+              el.mozRequestFullScreen;
+            const exit =
+              document.exitFullscreen ||
+              document.webkitExitFullscreen ||
+              document.mozCancelFullScreen;
+            const inFs =
+              document.fullscreenElement ||
+              document.webkitFullscreenElement ||
+              document.mozFullScreenElement;
+            try {
+              if (inFs) {
+                if (exit) { exit.call(document); }
+              } else if (fn) {
+                fn.call(el);
+              }
+            } catch (_) { /* user gesture missing or blocked */ }
           }
         });
+
+        // Surface play/pause state changes (video events trigger naturally).
+        document.addEventListener('play', function (e) {
+          if (!e.target || e.target.tagName !== 'VIDEO') return;
+          try {
+            window.parent.postMessage(
+              { type: 'simplex.play-state', playing: true },
+              parentOrigin
+            );
+          } catch (_) { /* */ }
+        }, true);
+        document.addEventListener('pause', function (e) {
+          if (!e.target || e.target.tagName !== 'VIDEO') return;
+          try {
+            window.parent.postMessage(
+              { type: 'simplex.play-state', playing: false },
+              parentOrigin
+            );
+          } catch (_) { /* */ }
+        }, true);
 
         // ---- Tap zones (touch only). On desktop, RevealJS handles clicks. ----
         if (isTouch) {
