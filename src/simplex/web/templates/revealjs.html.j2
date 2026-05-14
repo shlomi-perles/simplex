@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  <title>{{ deck.title }} -- slides</title>
+  <link rel="stylesheet" href="{{ static_prefix }}/reveal.js/reset.css" />
+  <link rel="stylesheet" href="{{ static_prefix }}/reveal.js/reveal.css" />
+  <link rel="stylesheet" href="{{ static_prefix }}/reveal.js/theme/simplex.css" />
+  <style>
+    html, body, .reveal, .slides {
+      background: #242424;
+      color: #f8f8f8;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+    .reveal .slides > section,
+    .reveal .slides > section > section {
+      padding: 0;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .reveal video {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      background: #242424;
+    }
+    .reveal .controls { display: none !important; }
+    .reveal .progress { background: rgba(255,255,255,.08); height: 3px; }
+    .reveal .progress span { background: #ffd700; }
+    .tap-zone {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      width: 33vw;
+      z-index: 30;
+      background: transparent;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tap-zone.next { right: 0; width: 67vw; }
+    .tap-zone.prev { left: 0; }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal .slides section { transition: none !important; }
+    }
+    .empty-slide {
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 1.25rem;
+      color: rgba(255,255,255,.65);
+      padding: 2rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="reveal" role="region" aria-label="{{ deck.title }} slide viewer">
+    <div class="slides">
+      {% for slide in slides %}
+      <section
+        data-slide-index="{{ slide.index }}"
+        data-scene="{{ slide.scene }}"
+        {% if slide.title %}data-title="{{ slide.title }}"{% endif %}
+      >
+        {% if slide.video %}
+        <video
+          data-autoplay
+          muted
+          playsinline
+          preload="metadata"
+          aria-label="{{ slide.title or slide.scene }} animation"
+        >
+          <source src="{{ slide.video }}" type="video/mp4" />
+        </video>
+        {% else %}
+        <div class="empty-slide">
+          <p>{{ slide.title or slide.scene }}</p>
+          <p style="font-size:.85rem;opacity:.6">no video segment available</p>
+        </div>
+        {% endif %}
+      </section>
+      {% endfor %}
+    </div>
+  </div>
+
+  <button class="tap-zone prev" aria-hidden="true" tabindex="-1"
+          data-tap="prev"></button>
+  <button class="tap-zone next" aria-hidden="true" tabindex="-1"
+          data-tap="next"></button>
+
+  <script src="{{ static_prefix }}/reveal.js/reveal.js"></script>
+  <script>
+    (function () {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+      const parentOrigin = (function () {
+        try { return window.parent.location.origin || '*'; } catch (_) { return '*'; }
+      })();
+
+      Reveal.initialize({
+        embedded: true,
+        controls: false,
+        controlsTutorial: false,
+        progress: true,
+        hash: false,
+        keyboard: true,
+        touch: true,
+        transition: reduce ? 'none' : 'fade',
+        backgroundTransition: 'none',
+        autoPlayMedia: true,
+        slideNumber: false,
+        loop: false,
+        center: true,
+        disableLayout: false,
+        viewDistance: 2,
+      }).then(function () {
+        // ---- Outbound: tell the parent which slide we're on. ----
+        function emit() {
+          const idx = Reveal.getIndices().h;
+          const total = {{ slide_count }};
+          try {
+            window.parent.postMessage(
+              { type: 'simplex.slide', idx: idx, total: total },
+              parentOrigin
+            );
+          } catch (_) { /* parent gone or different origin */ }
+        }
+        Reveal.on('slidechanged', emit);
+        Reveal.on('ready', emit);
+
+        // ---- Inbound: parent asks us to jump / step / play. ----
+        window.addEventListener('message', function (e) {
+          const data = e.data || {};
+          if (typeof data !== 'object') return;
+          if (data.type === 'simplex.goto' && Number.isInteger(data.idx)) {
+            Reveal.slide(data.idx);
+          } else if (data.type === 'simplex.next') {
+            Reveal.next();
+          } else if (data.type === 'simplex.prev') {
+            Reveal.prev();
+          } else if (data.type === 'simplex.toggle-play') {
+            const v = document.querySelector(
+              '.reveal .slides .present video'
+            );
+            if (v) { v.paused ? v.play() : v.pause(); }
+          }
+        });
+
+        // ---- Tap zones (touch only). On desktop, RevealJS handles clicks. ----
+        if (isTouch) {
+          document.querySelectorAll('.tap-zone').forEach(function (z) {
+            z.addEventListener('click', function (ev) {
+              ev.preventDefault();
+              if (z.dataset.tap === 'next') {
+                Reveal.next();
+              } else {
+                Reveal.prev();
+              }
+            }, { passive: false });
+          });
+        } else {
+          document.querySelectorAll('.tap-zone').forEach(function (z) {
+            z.style.display = 'none';
+          });
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

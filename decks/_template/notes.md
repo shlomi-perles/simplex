@@ -1,6 +1,8 @@
 # Notes
 
-This deck is a starting point. Replace the contents of `slides.py` and fill these notes.
+This deck is a starting point. Replace the contents of `slides/` and fill these notes.
+
+Refer to a slide inline with `[slide:1]` to add a clickable jump link.
 
 Inline math: $a^2 + b^2 = c^2$. Display math:
 

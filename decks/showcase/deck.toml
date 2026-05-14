@@ -4,14 +4,14 @@ summary = "Demonstrates every helper Simplex adds on top of vanilla Manim."
 tags = ["reference", "showcase"]
 theme = "dastimator_dark"
 quality = "medium_quality"
-scenes = [
-    "Title",
-    "TextHelpers",
-    "CodeHelpers",
-    "GraphAndArray",
-    "RegionAnchors",
-    "ExitAnimations",
-    "GeometryHelpers",
-    "Outro",
+category = "Reference"
+order = 0
+entrypoints = [
+    "slides:TextHelpers",
+    "slides:CodeHelpers",
+    "slides:GraphAndArray",
+    "slides:RegionAnchors",
+    "slides:ExitAnimations",
+    "slides:GeometryHelpers",
 ]
 voiceover = false

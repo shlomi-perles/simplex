@@ -33,11 +33,8 @@ def get_convex_hull_polygon(
     """
     try:
         from scipy.spatial import ConvexHull
-    except ImportError as exc:  # noqa: F841 -- re-raised below
-        msg = (
-            "get_convex_hull_polygon requires scipy. "
-            "Install with: pip install simplex[geometry]"
-        )
+    except ImportError as exc:
+        msg = "get_convex_hull_polygon requires scipy. Install with: pip install simplex[geometry]"
         raise ImportError(msg) from exc
 
     hull = ConvexHull(points[:, :2])
