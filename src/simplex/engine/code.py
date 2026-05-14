@@ -144,9 +144,7 @@ def highlight_code_lines(
     Line numbers are **1-based** to match what users see on screen.
     """
     code_lines = code.code_lines
-    selected = (
-        set(range(1, len(code_lines) + 1)) if lines is None else set(lines)
-    )
+    selected = set(range(1, len(code_lines) + 1)) if lines is None else set(lines)
 
     fade_anims = []
     indicated = []
@@ -188,7 +186,10 @@ def code_explain(
     label = Text(explanation, color=color).scale(scale).next_to(brace, RIGHT, buff=buff)
 
     fade = highlight_code_lines(
-        code, lines=lines, off_opacity=off_opacity, indicate=False,
+        code,
+        lines=lines,
+        off_opacity=off_opacity,
+        indicate=False,
     )
     return VGroup(brace, label), AnimationGroup(
         fade,

@@ -1,6 +1,16 @@
 # web/templates/
 
-Jinja2 templates: `base.html` (chrome), `index.html` (deck grid), `deck.html` (slides + notes + PDF).
+Jinja2 templates.
+
+## Files
+
+- `base.html` -- chrome (skip-link, header/nav, GA snippet, footer).
+- `index.html` -- home page: one carousel per section.
+- `_carousel.html` -- partial used by the home page.
+- `section.html` -- "view all" grid for one section.
+- `deck.html` -- viewer + sidebar + controls + notes.
+- `revealjs.html.j2` -- the iframe payload; loaded into `slides.html`
+  with the postMessage bridge.
 
 ## Don't
 

@@ -27,6 +27,7 @@ from simplex.engine.text import BodyText, Caption, Definition, color_tex
 from simplex.slides import ContentSlide
 from simplex.slides.components import ArrayMob, ArrayPointer, Edge, Node
 
+
 class TextHelpers(ContentSlide):
     header = "engine/text.py -- BodyText, Caption, Definition, color\\_tex"
     page_number = 1
@@ -87,7 +88,9 @@ class CodeHelpers(ContentSlide):
         self.next_slide()
 
         mob, anim = code_explain(
-            code, lines=[5, 6], explanation="Dequeue + expand neighbours",
+            code,
+            lines=[5, 6],
+            explanation="Dequeue + expand neighbours",
         )
         self.add(mob)
         self.play(anim)
@@ -114,8 +117,15 @@ class GraphAndArray(ContentSlide):
         self.next_slide()
 
         arr = ArrayMob(
-            "A:", "-", "8", "1", "3", "9",
-            show_indices=True, starting_index=1, name_scale=0.18,
+            "A:",
+            "-",
+            "8",
+            "1",
+            "3",
+            "9",
+            show_indices=True,
+            starting_index=1,
+            name_scale=0.18,
         )
         arr.scale(0.8)
         self.region.place(arr, "bottom", buff=0.6)
