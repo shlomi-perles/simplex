@@ -21,6 +21,7 @@ import contextlib
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any, cast
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
@@ -42,8 +43,11 @@ def _jinja(site_cfg: SiteConfig) -> Environment:
     def static(path: str) -> str:
         return site_cfg.url("static/" + path.lstrip("/"))
 
-    env.globals["static"] = static
-    env.globals["site"] = site_cfg
+    # Jinja2's stub types `globals` against the built-in defaults; widen so we
+    # can register a callable and a SiteConfig as template-level names.
+    globals_: dict[str, Any] = cast(dict[str, Any], env.globals)
+    globals_["static"] = static
+    globals_["site"] = site_cfg
     return env
 
 

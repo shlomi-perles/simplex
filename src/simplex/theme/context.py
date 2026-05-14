@@ -1,6 +1,6 @@
 """ContextVar-backed active theme."""
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 
@@ -10,7 +10,7 @@ _active: ContextVar[Theme | None] = ContextVar("simplex_active_theme", default=N
 
 
 @contextmanager
-def active_theme(theme: Theme) -> Iterator[Theme]:
+def active_theme(theme: Theme) -> Generator[Theme]:
     """Push `theme` onto the active stack for the duration of the with-block."""
     token = _active.set(theme)
     try:
