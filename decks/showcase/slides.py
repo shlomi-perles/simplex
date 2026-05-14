@@ -1,7 +1,7 @@
 """Showcase deck -- exercises every Simplex-specific helper end-to-end.
 
 Each scene targets one module so a reader can correlate the output with the
-source. Imports are vanilla Manim + simplex.* -- no factories, no wrappers.
+source.
 """
 
 import numpy as np
@@ -24,14 +24,8 @@ from simplex.engine.geometry import (
     get_surrounding_rectangle,
 )
 from simplex.engine.text import BodyText, Caption, Definition, color_tex
-from simplex.slides import ContentSlide, SectionDivider, TitleSlide
+from simplex.slides import ContentSlide
 from simplex.slides.components import ArrayMob, ArrayPointer, Edge, Node
-
-
-class Title(TitleSlide):
-    title = "Simplex"
-    subtitle = "Showcase of helpers Simplex adds on top of vanilla Manim"
-
 
 class TextHelpers(ContentSlide):
     header = "engine/text.py -- BodyText, Caption, Definition, color\\_tex"
@@ -225,7 +219,3 @@ class GeometryHelpers(ContentSlide):
         rect = get_surrounding_rectangle(a, b, buff=0.3)
         self.play(FadeIn(a, b), Write(rect))
         self.next_slide()
-
-
-class Outro(SectionDivider):
-    label = "End of showcase"

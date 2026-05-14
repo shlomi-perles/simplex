@@ -46,7 +46,6 @@ simplex/
 |   |   `-- animations.py      # Remove(mob), set_exit_animation(mob, cls)
 |   |-- slides/                # slide base classes (manim-slides)
 |   |   |-- base.py            # BaseSlide(manim_slides.Slide)
-|   |   |-- title.py           # TitleSlide, SectionDivider
 |   |   |-- content.py         # ContentSlide
 |   |   `-- components/        # higher-level domain mobjects
 |   |       |-- graph.py       # Node, Edge

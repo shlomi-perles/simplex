@@ -5,7 +5,6 @@ Slide base classes built on `manim_slides.Slide`. Each base wires the active the
 ## Public surface
 
 - `BaseSlide` -- theme push + `clear_scene(exclude=...)`
-- `TitleSlide`, `SectionDivider` -- single-mobject hero slides
 - `ContentSlide` -- header / footer / page number; shrinks `self.region` accordingly
 - `slides.components` -- `Node`, `Edge`, `ArrayMob`
 
