@@ -10,7 +10,7 @@ Vanilla Manim mobjects. No factories; no wrapping. Authors construct directly::
     self.play(arr.swap(1, 3))
 """
 
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from manim import (
@@ -184,15 +184,15 @@ class ArrayMob(VGroup):
 
         self.entries: VGroup = VGroup()
         self.name_mob: Tex
-        self._reference_entry: ArrayEntry
+        self.reference_entry: ArrayEntry
         self._build()
         self.center()
 
     def _build(self) -> None:
         name_font = 3.5 * DEFAULT_FONT_SIZE * self.name_scale
         self.name_mob = Tex(self.array_name, font_size=name_font, **self.name_config)
-        self._reference_entry = ArrayEntry(0, 0, **self._entry_kwargs).set_opacity(0)
-        self.add(VGroup(self.name_mob, self._reference_entry))
+        self.reference_entry = ArrayEntry(0, 0, **self._entry_kwargs).set_opacity(0)
+        self.add(VGroup(self.name_mob, self.reference_entry))
 
         for idx, val in enumerate(self.values, start=self.starting_index):
             self.entries += ArrayEntry(
@@ -207,10 +207,10 @@ class ArrayMob(VGroup):
 
         self.name_mob.next_to(self.align_point, LEFT, buff=0)
         self.entries.next_to(self.name_mob, RIGHT, buff=0.5)
-        self._reference_entry.move_to(self.entries[0])
+        self.reference_entry.move_to(self.entries[0])
 
     def get_entry(self, index: int) -> ArrayEntry:
-        return self.entries[index - self.starting_index]
+        return cast(ArrayEntry, self.entries[index - self.starting_index])
 
     def at(self, index: int, value: float | str) -> ArrayEntry:
         """Synchronously update one cell's value (returns the entry; not an animation)."""
@@ -246,19 +246,20 @@ class ArrayMob(VGroup):
             index_scale=self.indices_scale,
             index_pos=self.indices_pos,
             **self._entry_kwargs,
-        ).match_height(self._reference_entry)
+        ).match_height(self.reference_entry)
 
         if len(self.entries) == 0 or np.allclose(side, LEFT):
-            new_entry.move_to(self._reference_entry)
+            new_entry.move_to(self.reference_entry)
         else:
             new_entry.next_to(self.entries[-1], side, buff=0)
 
         if np.allclose(side, LEFT):
             self.entries.insert(0, new_entry)
             self.add(new_entry)
+            tail = cast(VGroup, self.entries[1:])
             return AnimationGroup(
                 FadeIn(new_entry, shift=-side, **kwargs),
-                self.entries[1:].animate.next_to(self._reference_entry, RIGHT, buff=0),
+                cast(Animation, tail.animate.next_to(self.reference_entry, RIGHT, buff=0)),
             )
         self.entries.add(new_entry)
         self.add(new_entry)
@@ -282,12 +283,13 @@ class ArrayMob(VGroup):
         if len(self.entries) == 0:
             return AnimationGroup(*anims, **kwargs)
 
-        remaining = VGroup(*self.entries[index - self.starting_index :])
+        tail = cast(VGroup, self.entries[index - self.starting_index :])
+        remaining = VGroup(*tail)
         if len(remaining) > 0:
             anchor: Mobject = (
-                self.get_entry(index - 1) if index != self.starting_index else self._reference_entry
+                self.get_entry(index - 1) if index != self.starting_index else self.reference_entry
             )
-            anims.append(remaining.animate.next_to(anchor, RIGHT, buff=0))
+            anims.append(cast(Animation, remaining.animate.next_to(anchor, RIGHT, buff=0)))
         return AnimationGroup(*anims, **kwargs)
 
     def swap(
@@ -318,7 +320,8 @@ class ArrayMob(VGroup):
             **kwargs,
         )
         a, b = i - self.starting_index, j - self.starting_index
-        self.entries[a], self.entries[b] = self.entries[b], self.entries[a]
+        subs = self.entries.submobjects
+        subs[a], subs[b] = subs[b], subs[a]
         return anim
 
 
@@ -385,12 +388,17 @@ class ArrayPointer(Vector):
         if self.change_value_color:
             prev_entry = self.array.get_entry(self.index)
             new_entry = self.array.get_entry(index)
-            reset_color = self.array._reference_entry.value_mob.get_color()
-            anims.append(prev_entry.animate.set_color(reset_color).set_z_index(self._base_z))
+            reset_color = self.array.reference_entry.value_mob.get_color()
             anims.append(
-                new_entry.animate.set_color(self.value_color).set_z_index(self._base_z + 1),
+                cast(Animation, prev_entry.animate.set_color(reset_color).set_z_index(self._base_z)),
+            )
+            anims.append(
+                cast(
+                    Animation,
+                    new_entry.animate.set_color(self.value_color).set_z_index(self._base_z + 1),
+                ),
             )
         self.index = index
         if text is not None:
-            anims.append(self.text_mob.animate.become(self._make_text(text)))
-        return AnimationGroup(*anims, self.animate._position_arrow(), **kwargs)
+            anims.append(cast(Animation, self.text_mob.animate.become(self._make_text(text))))
+        return AnimationGroup(*anims, cast(Animation, self.animate._position_arrow()), **kwargs)

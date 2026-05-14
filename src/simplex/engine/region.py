@@ -3,6 +3,7 @@
 from typing import Literal, Self
 
 import numpy as np
+from manim import Mobject
 from pydantic import BaseModel, ConfigDict
 
 Anchor = Literal[
@@ -71,7 +72,7 @@ class Region(BaseModel):
             case "bottom-right":
                 return np.array([self.right, self.bottom, 0.0])
 
-    def place(self, mob, anchor: Anchor = "center", buff: float = 0.0):
+    def place(self, mob: Mobject, anchor: Anchor = "center", buff: float = 0.0) -> Mobject:
         """Move `mob` so its anchor sits at the matching point of this region."""
         target = self._anchor_point(anchor)
         mob.move_to(target)
