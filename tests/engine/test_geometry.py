@@ -1,11 +1,14 @@
-"""Geometry helpers: frame center math, convex hull when scipy is present."""
+"""Geometry helpers: frame center math and built-in convex hull wrapper."""
 
 import pytest
 
 np = pytest.importorskip("numpy")
 pytest.importorskip("manim")
 
-from simplex.engine.geometry import get_frame_center  # noqa: E402
+from simplex.engine.geometry import (  # noqa: E402
+    get_convex_hull_polygon,
+    get_frame_center,
+)
 
 
 def test_frame_center_defaults_to_origin() -> None:
@@ -25,10 +28,7 @@ def test_frame_center_uses_explicit_coordinates() -> None:
     assert center[1] == pytest.approx(0.0)
 
 
-def test_convex_hull_requires_scipy() -> None:
-    pytest.importorskip("scipy")
-    from simplex.engine.geometry import get_convex_hull_polygon
-
+def test_convex_hull_wraps_manim_native() -> None:
     pts = np.array(
         [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.5, 0.5, 0.0]],
     )

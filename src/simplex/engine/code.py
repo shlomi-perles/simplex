@@ -1,12 +1,7 @@
 """Code helpers: Darcula Pygments style, code_block factory, highlight + explain.
 
-Targets the modern (post-2024) ``manim.Code`` API:
-``Code(code_string=..., language=..., formatter_style=..., paragraph_config=...)``
-and the ``code_lines`` attribute. The old ``.code`` / ``.code_json`` /
-``.tab_spaces`` plumbing is gone in upstream Manim, so the LaTeX-in-code
-rendering from Dastimator's ``compile_code_tex`` is intentionally **not**
-ported here -- it would require a re-implementation against Tree-sitter
-output, which is out of scope for the framework's first cut.
+Wraps :class:`manim.Code` (the Pygments-backed listing) and exposes its
+``code_lines`` attribute through small animation helpers.
 """
 
 import sys
@@ -133,7 +128,7 @@ def code_explain(
     theme = get_active_theme()
     color = color or theme.palette.accent
     code_lines = code.code_lines
-    target = VGroup(*[code_lines[ln - 1] for ln in lines])  # type: ignore[arg-type]
+    target = VGroup(code_lines[ln - 1] for ln in lines)  # type: ignore[arg-type]
     brace = Brace(target, RIGHT, buff=buff, color=color)
     label = Text(explanation, color=color).scale(scale).next_to(brace, RIGHT, buff=buff)
 
@@ -171,7 +166,7 @@ def transform_code_lines(
 
     anims = [
         TransformMatchingShapes(
-            VGroup(*[src_lines[s - 1] for s in srcs]),  # type: ignore[arg-type]
+            VGroup(src_lines[s - 1] for s in srcs),  # type: ignore[arg-type]
             dst_lines[dst_no - 1],
         )
         for dst_no, srcs in grouped.items()

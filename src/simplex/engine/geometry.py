@@ -1,8 +1,4 @@
-"""Geometry helpers: convex hull, surrounding rectangle, frame center.
-
-The convex-hull helper requires SciPy -- install with
-``pip install simplex[geometry]``. Everything else is numpy + Manim only.
-"""
+"""Geometry helpers: convex hull, surrounding rectangle, frame center."""
 
 from typing import Any
 
@@ -12,13 +8,13 @@ from manim import (
     LEFT,
     RIGHT,
     UP,
+    ConvexHull,
     Mobject,
-    Polygon,
     Rectangle,
     SurroundingRectangle,
-    Text,
     VGroup,
     VMobject,
+    config,
 )
 
 
@@ -27,20 +23,15 @@ def get_convex_hull_polygon(
     *,
     round_radius: float = 0.2,
     **kwargs: Any,
-) -> Polygon:
-    """Convex hull of 2D points (z is ignored) as a Manim `Polygon` with rounded corners.
+) -> ConvexHull:
+    """Convex hull of 2D points (z is ignored) with rounded corners.
 
-    Requires SciPy.
+    Uses Manim's built-in :class:`~.ConvexHull` (added in 0.19.0), so no scipy.
     """
-    try:
-        from scipy.spatial import ConvexHull
-    except ImportError as exc:
-        msg = "get_convex_hull_polygon requires scipy. Install with: pip install simplex[geometry]"
-        raise ImportError(msg) from exc
-
-    hull = ConvexHull(points[:, :2])
-    vertices = [points[i] for i in hull.vertices]
-    return Polygon(*vertices, **kwargs).round_corners(radius=round_radius)
+    flat = [(float(p[0]), float(p[1]), 0.0) for p in points]
+    hull = ConvexHull(*flat, **kwargs)
+    hull.round_corners(radius=round_radius)
+    return hull
 
 
 def get_surrounding_rectangle(
@@ -66,8 +57,20 @@ def _edge_point(
     getter_name: str,
 ) -> np.ndarray:
     if obj is None:
-        probe = Text(".").scale(0.01).to_edge(fallback_dir, buff=0)
-        return getattr(probe, getter_name)()
+        half_w = config.frame_width / 2
+        half_h = config.frame_height / 2
+        # Manim getters return the *outer* edge of the mobject in that
+        # direction. For the frame, the analogous point is the frame edge
+        # opposite to `fallback_dir` (the edge facing inwards).
+        if np.array_equal(fallback_dir, LEFT):
+            return np.array([-half_w, 0.0, 0.0])
+        if np.array_equal(fallback_dir, RIGHT):
+            return np.array([half_w, 0.0, 0.0])
+        if np.array_equal(fallback_dir, UP):
+            return np.array([0.0, half_h, 0.0])
+        if np.array_equal(fallback_dir, DOWN):
+            return np.array([0.0, -half_h, 0.0])
+        return np.array([0.0, 0.0, 0.0])
     if isinstance(obj, Mobject):
         return getattr(obj, getter_name)()
     return np.asarray(obj, dtype=float)

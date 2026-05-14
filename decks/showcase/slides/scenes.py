@@ -214,14 +214,9 @@ class GeometryHelpers(ContentSlide):
         dots = [Dot(p) for p in points]
         self.play(*(FadeIn(d) for d in dots))
 
-        try:
-            hull = get_convex_hull_polygon(points, round_radius=0.15)
-            hull.set_stroke(width=4)
-            self.play(Write(hull))
-        except ImportError:
-            note = Caption("Install simplex[geometry] for scipy-backed convex hull.")
-            note.shift(DOWN * 2.5)
-            self.add(note)
+        hull = get_convex_hull_polygon(points, round_radius=0.15)
+        hull.set_stroke(width=4)
+        self.play(Write(hull))
         self.next_slide()
 
         a = Dot(LEFT * 3 + DOWN)
