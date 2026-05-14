@@ -1,6 +1,6 @@
 """Region -- mutable rectangular sub-area of the frame."""
 
-from typing import Literal
+from typing import Literal, Self
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -28,7 +28,7 @@ class Region(BaseModel):
     right: float
 
     @classmethod
-    def full_frame(cls) -> "Region":
+    def full_frame(cls) -> Self:
         from manim import config
 
         half_w = config.frame_width / 2

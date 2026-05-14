@@ -2,19 +2,44 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>{% block title %}Simplex{% endblock %}</title>
-<link rel="stylesheet" href="/static/tailwind.min.css" />
-<link rel="stylesheet" href="/static/katex/katex.min.css" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+<title>{% block title %}{{ site.brand }}{% endblock %}</title>
+<meta name="description" content="{{ site.tagline or (site.brand + ' decks') }}" />
+{% block head_meta %}{% endblock %}
+<link rel="stylesheet" href="{{ static('tailwind.min.css') }}" />
+<link rel="stylesheet" href="{{ static('katex/katex.min.css') }}" />
+<link rel="stylesheet" href="{{ static('simplex.css') }}" />
+{% if site.ga_enabled %}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ site.ga_tag }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{ site.ga_tag }}', { anonymize_ip: true });
+</script>
+{% endif %}
 </head>
-<body class="bg-neutral-950 text-neutral-100 min-h-screen">
-<header class="px-6 py-4 border-b border-neutral-800 flex items-center gap-4">
-  <a href="/" class="text-2xl font-bold tracking-tight">Simplex</a>
-  <span class="text-neutral-500">decks</span>
+<body class="bg-[#242424] text-neutral-100 min-h-screen antialiased">
+<a href="#main" class="skip-link">Skip to content</a>
+<header class="px-6 py-4 border-b border-neutral-800 flex items-center gap-6">
+  <a href="{{ site.url('/') }}" class="text-2xl font-semibold tracking-tight">
+    {{ site.brand }}
+  </a>
+  {% if site.tagline %}
+  <span class="hidden md:inline text-neutral-500 text-sm">{{ site.tagline }}</span>
+  {% endif %}
+  <nav class="ml-auto flex items-center gap-4 text-sm text-neutral-300">
+    {% for link in site.nav %}
+    <a href="{{ link.href }}" class="hover:text-white transition">{{ link.label }}</a>
+    {% endfor %}
+  </nav>
 </header>
-<main class="px-6 py-8 max-w-6xl mx-auto">
+<main id="main" class="{% block main_class %}px-6 py-8 max-w-7xl mx-auto{% endblock %}">
   {% block content %}{% endblock %}
 </main>
-<script src="/static/htmx.min.js" defer></script>
+<footer class="mt-16 px-6 py-6 border-t border-neutral-900 text-xs text-neutral-500">
+  Built with Simplex &middot; <a href="https://manim-slides.eertmans.be/" class="hover:text-neutral-300">manim-slides</a>
+</footer>
+<script src="{{ static('viewer.js') }}" defer></script>
 </body>
 </html>
