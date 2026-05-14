@@ -21,6 +21,14 @@ HTMX_VER = "1.9.12"
 _UNPKG = "https://unpkg.com"
 _TAILWIND_CDN = "https://cdn.tailwindcss.com"
 
+_STALE_PATHS = (
+    # Reveal's `black.css` theme used to live here; it `@import`s
+    # `fonts/source-sans-pro/source-sans-pro.css` which we don't vendor,
+    # producing a 404. The inline <style> block in revealjs.html.j2 supplies
+    # every visual we need, so we no longer ship a theme file at all.
+    "reveal.js/theme/simplex.css",
+)
+
 _KATEX_FONTS = (
     "KaTeX_Main-Regular.woff2",
     "KaTeX_Main-Bold.woff2",
@@ -38,13 +46,14 @@ def _assets() -> tuple[tuple[str, str], ...]:
     items: list[tuple[str, str]] = [
         (f"{_TAILWIND_CDN}/{TAILWIND_VER}", "tailwind.js"),
         (f"{_UNPKG}/katex@{KATEX_VER}/dist/katex.min.css", "katex/katex.min.css"),
+        (f"{_UNPKG}/katex@{KATEX_VER}/dist/katex.min.js", "katex/katex.min.js"),
+        (
+            f"{_UNPKG}/katex@{KATEX_VER}/dist/contrib/auto-render.min.js",
+            "katex/auto-render.min.js",
+        ),
         (f"{_UNPKG}/reveal.js@{REVEAL_VER}/dist/reveal.js", "reveal.js/reveal.js"),
         (f"{_UNPKG}/reveal.js@{REVEAL_VER}/dist/reveal.css", "reveal.js/reveal.css"),
         (f"{_UNPKG}/reveal.js@{REVEAL_VER}/dist/reset.css", "reveal.js/reset.css"),
-        (
-            f"{_UNPKG}/reveal.js@{REVEAL_VER}/dist/theme/black.css",
-            "reveal.js/theme/simplex.css",
-        ),
         (f"{_UNPKG}/htmx.org@{HTMX_VER}/dist/htmx.min.js", "htmx.min.js"),
     ]
     items.extend(
@@ -68,6 +77,10 @@ def ensure(static_dir: Path) -> list[Path]:
     Network failures are reported as warnings rather than raised, so an
     offline build still produces HTML (just without those assets).
     """
+    for rel in _STALE_PATHS:
+        stale = static_dir / rel
+        if stale.exists():
+            stale.unlink()
     fetched: list[Path] = []
     failed: list[str] = []
     for url, rel in _assets():

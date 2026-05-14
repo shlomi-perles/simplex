@@ -49,7 +49,9 @@
     var deck = document.querySelector("[data-deck-slug]");
     if (!deck) return;
     var iframe = deck.querySelector("iframe.deck-iframe");
+    var frame = deck.querySelector(".deck-viewer-frame");
     var counter = deck.querySelector("[data-counter]");
+    var playBtn = deck.querySelector('[data-control="toggle-play"]');
     var slideButtons = deck.querySelectorAll("[data-slide-target]");
     var controls = deck.querySelectorAll("[data-control]");
     var slideRefs = deck.querySelectorAll(".slide-ref[data-slide]");
@@ -82,12 +84,64 @@
       });
     }
 
+    function setPlayState(playing) {
+      if (!playBtn) return;
+      playBtn.dataset.state = playing ? "playing" : "paused";
+      playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+    }
+
     window.addEventListener("message", function (e) {
       var d = e.data || {};
-      if (typeof d !== "object" || d.type !== "simplex.slide") return;
-      if (Number.isInteger(d.total) && d.total > 0) total = d.total;
-      if (Number.isInteger(d.idx)) setActive(d.idx);
+      if (typeof d !== "object") return;
+      if (d.type === "simplex.slide") {
+        if (Number.isInteger(d.total) && d.total > 0) total = d.total;
+        if (Number.isInteger(d.idx)) setActive(d.idx);
+      } else if (d.type === "simplex.play-state") {
+        setPlayState(!!d.playing);
+      }
     });
+
+    function fullscreenTarget() {
+      // Prefer the viewer-frame container so the controls stay visible
+      // around the slide. Fall back to the iframe itself if the container
+      // is missing (older markup) or rejected by the browser.
+      return frame || iframe;
+    }
+    function nativeFullscreen(el) {
+      if (!el) return false;
+      var fn =
+        el.requestFullscreen ||
+        el.webkitRequestFullscreen ||
+        el.mozRequestFullScreen;
+      if (!fn) return false;
+      try {
+        var p = fn.call(el);
+        if (p && typeof p.catch === "function") { p.catch(function () {}); }
+        return true;
+      } catch (_) { return false; }
+    }
+    function exitFullscreen() {
+      var fn =
+        document.exitFullscreen ||
+        document.webkitExitFullscreen ||
+        document.mozCancelFullScreen;
+      if (fn) { try { fn.call(document); } catch (_) {} }
+    }
+    function isFullscreen() {
+      return !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement
+      );
+    }
+    function toggleFullscreen() {
+      if (isFullscreen()) { exitFullscreen(); return; }
+      if (nativeFullscreen(fullscreenTarget())) return;
+      // Parent-side request was blocked or not available -- ask the iframe
+      // to enter fullscreen on its own document (works even when the parent
+      // path is gated by permission policy).
+      send({ type: "simplex.fullscreen" });
+    }
 
     slideButtons.forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -103,10 +157,7 @@
         if (ctl === "next") send({ type: "simplex.next" });
         else if (ctl === "prev") send({ type: "simplex.prev" });
         else if (ctl === "toggle-play") send({ type: "simplex.toggle-play" });
-        else if (ctl === "fullscreen" && iframe) {
-          var fn = iframe.requestFullscreen || iframe.webkitRequestFullscreen;
-          if (fn) fn.call(iframe);
-        }
+        else if (ctl === "fullscreen") toggleFullscreen();
       });
     });
 
