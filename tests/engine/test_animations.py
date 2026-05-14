@@ -14,9 +14,9 @@ class _FakeAnim:
 
 
 def test_remove_falls_back_to_fadeout() -> None:
-    from manim import FadeOut
+    from manim import FadeOut, Mobject
 
-    anim = Remove(_FakeMob())
+    anim = Remove(Mobject())
     assert isinstance(anim, FadeOut)
 
 

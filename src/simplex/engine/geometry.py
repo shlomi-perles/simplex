@@ -39,7 +39,7 @@ def get_convex_hull_polygon(
         raise ImportError(msg) from exc
 
     hull = ConvexHull(points[:, :2])
-    vertices = [np.append(points[i], 0) for i in hull.vertices]
+    vertices = [points[i] for i in hull.vertices]
     return Polygon(*vertices, **kwargs).round_corners(radius=round_radius)
 
 
