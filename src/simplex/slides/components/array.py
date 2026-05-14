@@ -340,7 +340,7 @@ class ArrayPointer(Vector):
         **kwargs: Any,
     ) -> None:
         theme = get_active_theme()
-        kwargs.setdefault("color", theme.palette.accent)
+        arrow_color: str = kwargs.setdefault("color", theme.palette.accent)
         direction = np.array(DOWN) if direction is None else np.copy(direction)
         super().__init__(direction, **kwargs)
 
@@ -348,7 +348,7 @@ class ArrayPointer(Vector):
         self.index = index
         self.arrow = self[0]
         self.change_value_color = change_value_color
-        self.value_color = value_color or kwargs["color"]
+        self.value_color = value_color or arrow_color
         self.text_scale = text_scale
         self.text_config = text_config or {}
         self._base_z = array.get_z_index()
