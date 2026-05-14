@@ -64,9 +64,12 @@ def _assets() -> tuple[tuple[str, str], ...]:
 
 
 def _download(url: str, dest: Path) -> None:
+    if not url.startswith("https://"):
+        msg = f"Refusing to fetch non-https URL: {url}"
+        raise ValueError(msg)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    req = Request(url, headers={"User-Agent": "simplex-vendor/1.0"})
-    with urlopen(req, timeout=30) as resp:
+    req = Request(url, headers={"User-Agent": "simplex-vendor/1.0"})  # noqa: S310
+    with urlopen(req, timeout=30) as resp:  # noqa: S310
         dest.write_bytes(resp.read())
 
 
