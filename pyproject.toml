@@ -35,12 +35,6 @@ dev = [
     "pre-commit>=3.7",
 ]
 
-[project.optional-dependencies]
-geometry = [
-    "scipy>=1.13",
-    "networkx>=3.2",
-]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -10,8 +10,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
-from manim import MathTex, Tex, VMobject
-from manim.animation.transform_matching_parts import TransformMatchingShapes
+from manim import MathTex, Tex, TransformMatchingShapes, VMobject
 
 from simplex.theme.context import get_active_theme
 
@@ -57,11 +56,6 @@ class Definition(Tex):
         super().__init__(*parts, **kwargs)
 
 
-def _shape_key(mob: VMobject) -> object:
-    """Stable key for shape equality, mirroring TransformMatchingShapes."""
-    return TransformMatchingShapes.get_mobject_key(mob)
-
-
 def _flatten_points(parts: list[VMobject]) -> VMobject:
     out = VMobject()
     out.points = np.concatenate([p.points for p in parts])
@@ -74,15 +68,16 @@ def search_shape_in_text(text: VMobject, shape: VMobject) -> list[list[slice]]:
     Returns one list of slices per line of ``text``. Useful for selective coloring
     where you don't want to re-render the equation.
     """
+    key = TransformMatchingShapes.get_mobject_key
     target_len = len(shape.submobjects[0])
-    shape_key = _shape_key(_flatten_points(list(shape.submobjects[0])))
+    target_key = key(_flatten_points(list(shape.submobjects[0])))
     results: list[list[slice]] = []
     for line in text.submobjects:
         hits: list[slice] = []
         glyphs = list(line)
         for i in range(len(glyphs) - target_len + 1):
             window = _flatten_points(glyphs[i : i + target_len])
-            if _shape_key(window) == shape_key:
+            if key(window) == target_key:
                 hits.append(slice(i, i + target_len))
         results.append(hits)
     return results
