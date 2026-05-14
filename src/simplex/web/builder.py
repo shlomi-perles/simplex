@@ -18,7 +18,18 @@ def _jinja() -> Environment:
     )
 
 
-def build(decks_dir: Path, site_dir: Path, cache_dir: Path) -> None:
+def build(
+    decks_dir: Path,
+    site_dir: Path,
+    cache_dir: Path,
+    *,
+    render: bool = True,
+) -> None:
+    """Discover decks, optionally render them, and write the static site.
+
+    Pass `render=False` to skip `manim-slides render` + PDF export -- useful
+    in tests that need the HTML scaffolding without invoking Manim.
+    """
     decks = discover(decks_dir)
     site_dir.mkdir(parents=True, exist_ok=True)
     env = _jinja()
@@ -26,7 +37,7 @@ def build(decks_dir: Path, site_dir: Path, cache_dir: Path) -> None:
     for deck in decks:
         out = site_dir / "decks" / deck.slug
         out.mkdir(parents=True, exist_ok=True)
-        if not cache.is_fresh(deck, cache_dir):
+        if render and not cache.is_fresh(deck, cache_dir):
             runner.render(deck, output_dir=out)
             pdf.export(deck, output_dir=out)
             cache.mark_fresh(deck, cache_dir)

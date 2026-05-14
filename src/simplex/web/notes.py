@@ -1,4 +1,4 @@
-"""Render a deck's notes.md to HTML with KaTeX-ready math."""
+"""Render a deck's notes.md (or a raw markdown string) to HTML."""
 
 from pathlib import Path
 
@@ -17,5 +17,11 @@ def _make() -> MarkdownIt:
     return md
 
 
+def render_text(markdown: str) -> str:
+    """Render a markdown string to HTML."""
+    return _make().render(markdown)
+
+
 def render(notes_md: Path) -> str:
-    return _make().render(notes_md.read_text(encoding="utf-8"))
+    """Render a notes.md file to HTML."""
+    return render_text(notes_md.read_text(encoding="utf-8"))
