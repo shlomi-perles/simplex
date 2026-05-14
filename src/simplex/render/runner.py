@@ -30,7 +30,7 @@ def render(deck: DeckConfig, *, output_dir: Path) -> None:
         "render",
         "--quality",
         _quality_flag(deck.quality),
-        "--output_dir",
+        "--media_dir",
         str(output_dir),
         str(slides_py),
         *deck.scenes,
