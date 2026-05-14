@@ -1117,12 +1117,6 @@ dependencies = [
     { name = "typer" },
 ]
 
-[package.optional-dependencies]
-geometry = [
-    { name = "networkx" },
-    { name = "scipy" },
-]
-
 [package.dev-dependencies]
 dev = [
     { name = "basedpyright" },
@@ -1140,18 +1134,15 @@ requires-dist = [
     { name = "manim-slides", specifier = ">=5.1.7" },
     { name = "markdown-it-py", specifier = ">=3.0" },
     { name = "mdit-py-plugins", specifier = ">=0.4" },
-    { name = "networkx", marker = "extra == 'geometry'", specifier = ">=3.2" },
     { name = "platformdirs", specifier = ">=4.2" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pydantic-settings", specifier = ">=2.3" },
     { name = "pygments", specifier = ">=2.18" },
     { name = "rich", specifier = ">=13.7" },
-    { name = "scipy", marker = "extra == 'geometry'", specifier = ">=1.13" },
     { name = "structlog", specifier = ">=24.1" },
     { name = "tomli-w", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.12" },
 ]
-provides-extras = ["geometry"]
 
 [package.metadata.requires-dev]
 dev = [

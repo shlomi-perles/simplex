@@ -57,8 +57,7 @@ def _assets() -> tuple[tuple[str, str], ...]:
         (f"{_UNPKG}/htmx.org@{HTMX_VER}/dist/htmx.min.js", "htmx.min.js"),
     ]
     items.extend(
-        (f"{_UNPKG}/katex@{KATEX_VER}/dist/fonts/{f}", f"katex/fonts/{f}")
-        for f in _KATEX_FONTS
+        (f"{_UNPKG}/katex@{KATEX_VER}/dist/fonts/{f}", f"katex/fonts/{f}") for f in _KATEX_FONTS
     )
     return tuple(items)
 
