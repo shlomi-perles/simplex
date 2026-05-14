@@ -29,9 +29,9 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Sync
-        run: uv sync
+        run: uv sync --all-groups
       - name: Run linter
-        run: uvx ruff check .
+        run: uv run ruff check
       - name: Build site
         run: uv run simplex build
       - name: Upload Pages artifact
