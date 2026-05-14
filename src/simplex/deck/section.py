@@ -32,7 +32,7 @@ class SectionConfig(BaseModel):
             data = dict(tomllib.loads(toml_path.read_text(encoding="utf-8")))
         data.setdefault("slug", section_dir.name)
         data.setdefault("title", _humanise(section_dir.name))
-        return cls(**data)
+        return cls(**data)  # type: ignore[arg-type]
 
     @classmethod
     def featured(cls) -> Self:
