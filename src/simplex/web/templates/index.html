@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Simplex -- Decks{% endblock %}
+{% block content %}
+<h1 class="text-3xl mb-6">Decks</h1>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+{% for d in decks %}
+  <a href="/decks/{{ d.slug }}/"
+     class="block p-5 bg-neutral-900 rounded-lg hover:bg-neutral-800 transition">
+    <h2 class="text-xl font-semibold">{{ d.title }}</h2>
+    {% if d.summary %}<p class="text-neutral-400 mt-2">{{ d.summary }}</p>{% endif %}
+    {% if d.tags %}
+      <div class="mt-3 flex flex-wrap gap-2">
+      {% for tag in d.tags %}
+        <span class="text-xs text-neutral-400 bg-neutral-800 px-2 py-0.5 rounded">{{ tag }}</span>
+      {% endfor %}
+      </div>
+    {% endif %}
+  </a>
+{% else %}
+  <p class="text-neutral-400">No decks yet. Run <code>simplex new my-deck</code> to create one.</p>
+{% endfor %}
+</div>
+{% endblock %}

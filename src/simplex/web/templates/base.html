@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{% block title %}Simplex{% endblock %}</title>
+<link rel="stylesheet" href="/static/tailwind.min.css" />
+<link rel="stylesheet" href="/static/katex/katex.min.css" />
+</head>
+<body class="bg-neutral-950 text-neutral-100 min-h-screen">
+<header class="px-6 py-4 border-b border-neutral-800 flex items-center gap-4">
+  <a href="/" class="text-2xl font-bold tracking-tight">Simplex</a>
+  <span class="text-neutral-500">decks</span>
+</header>
+<main class="px-6 py-8 max-w-6xl mx-auto">
+  {% block content %}{% endblock %}
+</main>
+<script src="/static/htmx.min.js" defer></script>
+</body>
+</html>
