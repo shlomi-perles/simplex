@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ deck.title }}{% endblock %}
+{% block content %}
+<a href="/" class="text-sm text-neutral-400 hover:text-neutral-200">&larr; All decks</a>
+<h1 class="text-3xl mt-2">{{ deck.title }}</h1>
+{% if deck.summary %}<p class="text-neutral-400 mt-2">{{ deck.summary }}</p>{% endif %}
+<section class="mt-6">
+  <iframe src="slides.html"
+          class="w-full h-[600px] border border-neutral-800 rounded"
+          allowfullscreen></iframe>
+</section>
+<a href="{{ deck.slug }}.pdf"
+   class="inline-block mt-4 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded">
+  Download PDF
+</a>
+{% if notes_html %}
+<article class="prose prose-invert mt-8 max-w-none">
+{{ notes_html|safe }}
+</article>
+{% endif %}
+{% endblock %}
