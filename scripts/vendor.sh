@@ -31,9 +31,11 @@ fetch() {
 
 echo "Vendoring into $STATIC"
 
-# Tailwind play CDN build (already minified, zero-config).
-fetch "$UNPKG/tailwindcss@$TAILWIND_VER/dist/tailwind.min.css" \
-      "$STATIC/tailwind.min.css"
+# Tailwind Play CDN: a JIT runtime in a single JS file. We use this (rather
+# than a prebuilt CSS) because base.html relies on arbitrary-value utilities
+# (e.g. `bg-[#242424]`) that only exist when classes are compiled on demand.
+fetch "https://cdn.tailwindcss.com/$TAILWIND_VER" \
+      "$STATIC/tailwind.js"
 
 # KaTeX CSS + a curated set of fonts. We do not vendor the auto-render JS
 # because notes are pre-rendered to KaTeX-classed HTML during the build.

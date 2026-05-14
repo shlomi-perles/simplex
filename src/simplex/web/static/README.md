@@ -9,7 +9,7 @@ Vendored runtime assets, copied verbatim to `site/static/` at build time.
 
 ## Vendored at install time (not committed)
 
-- `tailwind.min.css`
+- `tailwind.js` (Tailwind Play CDN -- JIT runtime, required for arbitrary-value classes)
 - `katex/` (CSS + fonts + JS auto-render)
 - `reveal.js/` (`reveal.js`, `reveal.css`, `reset.css`, `theme/simplex.css`)
 - `htmx.min.js` (optional, kept for future progressive enhancement)

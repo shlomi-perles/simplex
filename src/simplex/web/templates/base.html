@@ -6,7 +6,7 @@
 <title>{% block title %}{{ site.brand }}{% endblock %}</title>
 <meta name="description" content="{{ site.tagline or (site.brand + ' decks') }}" />
 {% block head_meta %}{% endblock %}
-<link rel="stylesheet" href="{{ static('tailwind.min.css') }}" />
+<script src="{{ static('tailwind.js') }}"></script>
 <link rel="stylesheet" href="{{ static('katex/katex.min.css') }}" />
 <link rel="stylesheet" href="{{ static('simplex.css') }}" />
 {% if site.ga_enabled %}
