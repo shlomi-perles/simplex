@@ -3,7 +3,7 @@
 from collections.abc import Iterable
 from typing import Any
 
-from manim_slides import Slide
+from manim_slides.slide import Slide
 
 from simplex.engine.animations import Remove
 from simplex.engine.config import configure_manim
