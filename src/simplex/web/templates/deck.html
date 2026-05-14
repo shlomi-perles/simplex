@@ -51,7 +51,7 @@
   data-deck-slug="{{ deck.slug }}"
   data-slide-count="{{ slide_count }}"
 >
-  <article class="deck-viewer">
+  <div class="deck-viewer">
     <div class="deck-viewer-frame">
       <iframe
         src="slides.html"
@@ -64,34 +64,36 @@
     </div>
     <div class="deck-controls" role="toolbar" aria-label="Slide controls">
       <div class="deck-controls-left">
-        <button data-control="prev" aria-label="Previous slide" type="button">
-          &larr;
+        <button data-control="prev" class="deck-ctl-btn" aria-label="Previous slide" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M15.5 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </button>
-        <button data-control="toggle-play" aria-label="Play/pause" type="button">
-          &#9654;&#9616;&#9616;
+        <button data-control="toggle-play" class="deck-ctl-btn deck-ctl-play" aria-label="Play" data-state="paused" type="button">
+          <svg class="deck-ctl-icon-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M7 5v14l12-7L7 5z" fill="currentColor"/>
+          </svg>
+          <svg class="deck-ctl-icon-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="6"  y="5" width="4" height="14" rx="1" fill="currentColor"/>
+            <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/>
+          </svg>
         </button>
-        <button data-control="next" aria-label="Next slide" type="button">
-          &rarr;
+        <button data-control="next" class="deck-ctl-btn" aria-label="Next slide" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M8.5 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </button>
-        <span
-          class="deck-counter"
-          data-counter
-          aria-live="polite"
-        >1 / {{ slide_count }}</span>
+        <span class="deck-counter" data-counter aria-live="polite">1 / {{ slide_count }}</span>
       </div>
       <div class="deck-controls-right">
-        <button data-control="fullscreen" aria-label="Fullscreen" type="button">
-          &#x26F6;
+        <button data-control="fullscreen" class="deck-ctl-btn" aria-label="Fullscreen" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </button>
       </div>
     </div>
-
-    {% if notes_html %}
-    <article class="deck-notes prose prose-invert max-w-none mt-8">
-      {{ notes_html|safe }}
-    </article>
-    {% endif %}
-  </article>
+  </div>
 
   <aside class="deck-sidebar" aria-label="Slide list">
     <h2 class="deck-sidebar-title">Slides</h2>
@@ -104,24 +106,9 @@
           data-slide-target="{{ slide.index }}"
           {% if loop.first %}aria-current="true"{% endif %}
         >
-          <div class="deck-slide-thumb">
-            {% if slide.thumbnail %}
-            <img
-              src="{{ slide.thumbnail }}"
-              alt=""
-              loading="lazy"
-              decoding="async"
-              width="160"
-              height="90"
-            />
-            {% else %}
-            <div class="deck-slide-thumb-empty" aria-hidden="true"></div>
-            {% endif %}
-            <span class="deck-slide-index">{{ "%02d"|format(loop.index) }}</span>
-          </div>
-          <div class="deck-slide-meta">
+          <div class="deck-slide-head">
             <span class="deck-slide-title">
-              {{ slide.title or slide.scene }}
+              {{ "%02d. "|format(loop.index) }}{{ slide.title or slide.scene }}
             </span>
             {% if slide.duration_s %}
             <span class="deck-slide-duration">
@@ -129,10 +116,28 @@
             </span>
             {% endif %}
           </div>
+          <div class="deck-slide-thumb">
+            {% if slide.thumbnail %}
+            <img
+              src="{{ slide.thumbnail }}"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+            {% else %}
+            <div class="deck-slide-thumb-empty" aria-hidden="true"></div>
+            {% endif %}
+          </div>
         </button>
       </li>
       {% endfor %}
     </ol>
   </aside>
+
+  {% if notes_html %}
+  <article class="deck-notes prose prose-invert max-w-none">
+    {{ notes_html|safe }}
+  </article>
+  {% endif %}
 </section>
 {% endblock %}

@@ -33,13 +33,15 @@ $$
 
 ## Code sample
 
-    def bfs(graph, start):
-        queue = [start]
-        visited = {start}
-        while queue:
-            node = queue.pop(0)
-            for nb in graph[node]:
-                if nb not in visited:
-                    visited.add(nb)
-                    queue.append(nb)
-        return visited
+```python
+def bfs(graph, start):
+    queue = [start]
+    visited = {start}
+    while queue:
+        node = queue.pop(0)
+        for nb in graph[node]:
+            if nb not in visited:
+                visited.add(nb)
+                queue.append(nb)
+    return visited
+```
