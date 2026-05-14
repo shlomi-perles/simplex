@@ -29,7 +29,7 @@ simplex/
 |-- src/simplex/
 |   |-- theme/      frozen Pydantic tokens + presets
 |   |-- engine/     configure_manim, apply_theme_defaults, Region, Remove
-|   |-- slides/     BaseSlide / TitleSlide / ContentSlide on manim-slides
+|   |-- slides/     BaseSlide / ContentSlide on manim-slides
 |   |-- deck/       DeckConfig, discovery, scaffolder
 |   |-- render/     manim-slides subprocess + PDF + cache
 |   |-- web/        markdown notes + Jinja portal

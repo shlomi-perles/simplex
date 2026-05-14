@@ -5,7 +5,7 @@ web portal, and CLI.
 
 ## Public surface
 
-- `simplex.slides` -- `BaseSlide`, `TitleSlide`, `SectionDivider`, `ContentSlide`
+- `simplex.slides` -- `BaseSlide`, `ContentSlide`
 - `simplex.theme` -- `Theme`, `active_theme`, `get_active_theme`, `presets`
 - `simplex.engine` -- `configure_manim`, `apply_theme_defaults`, `Region`, `Remove`, `set_exit_animation`
 - `simplex.deck` -- `DeckConfig`, `discover`, `scaffold`
