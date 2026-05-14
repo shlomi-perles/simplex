@@ -23,7 +23,7 @@ DASTIMATOR_DARK: Theme = Theme(
         label="#FFFFFF",
         distance="#FF8000",
     ),
-    typography=Typography(),
+    typography=Typography(mono_family="JetBrains Mono"),
     latex=LatexProfile(
         preamble=_COMPACT_DISPLAY_PREAMBLE,
         environments={"definition": "{minipage}{8cm}"},
