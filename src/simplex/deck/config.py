@@ -73,13 +73,37 @@ class DeckConfig(BaseModel):
         """Bare class names extracted from `scene_specs`."""
         return tuple(spec.rsplit(":", 1)[-1] for spec in self.scene_specs)
 
-    @property
-    def slides_path(self) -> Path:
-        """Filesystem entry-point for `manim-slides render`: prefer slides/ package."""
-        pkg = self.path / "slides"
-        if (pkg / "__init__.py").exists():
-            return pkg / "__init__.py"
-        return self.path / "slides.py"
+    def resolve_entrypoints(self) -> tuple[tuple[Path, tuple[str, ...]], ...]:
+        """Group entrypoints by their source file, in declaration order.
+
+        Each `module:Class` spec is resolved to the file that physically defines
+        the class -- `slides/scenes.py` for `slides.scenes:Foo`, `slides.py` for
+        the legacy single-file layout. Manim's `scene_classes_from_file` filters
+        scene classes by `__module__.startswith(loaded_module_name)`, so a
+        re-exporting `__init__.py` would drop them all; loading each defining
+        file directly is the only layout that survives that check.
+        """
+        groups: dict[Path, list[str]] = {}
+        for spec in self.scene_specs:
+            module, _, class_name = spec.partition(":")
+            file_path = self._module_to_file(module)
+            groups.setdefault(file_path, []).append(class_name)
+        return tuple((file_path, tuple(names)) for file_path, names in groups.items())
+
+    def _module_to_file(self, module: str) -> Path:
+        """Map `slides.foo.bar` to the deck-relative `.py` file that defines it."""
+        parts = module.split(".")
+        module_path = self.path.joinpath(*parts)
+        as_file = module_path.with_suffix(".py")
+        if as_file.exists():
+            return as_file
+        as_pkg = module_path / "__init__.py"
+        if as_pkg.exists():
+            return as_pkg
+        raise FileNotFoundError(
+            f"deck {self.slug!r}: entrypoint module {module!r} resolves to neither "
+            f"{as_file} nor {as_pkg}"
+        )
 
     @classmethod
     def load(cls, deck_dir: Path, *, section_slug: str = "featured") -> Self:

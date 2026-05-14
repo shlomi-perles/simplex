@@ -132,7 +132,7 @@ class GraphAndArray(ContentSlide):
         self.play(Write(arr))
         self.next_slide()
 
-        self.play(arr.at(1, "b"))
+        self.play(arr.animate.at(1, "b"))
         self.play(arr.indicate_at(2))
         self.play(arr.push("5"))
         self.play(arr.swap(2, 4))

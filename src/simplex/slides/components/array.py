@@ -4,7 +4,7 @@ Vanilla Manim mobjects. No factories; no wrapping. Authors construct directly::
 
     arr = ArrayMob(\"A:\", \"-\", \"8\", \"1\", \"3\", show_indices=True, starting_index=1)
     self.play(Write(arr))
-    self.play(arr.at(1, \"b\"))
+    self.play(arr.animate.at(1, \"b\"))  # `.at` is sync; wrap in `.animate` to animate.
     self.play(arr.indicate_at(1))
     self.play(arr.push(\"5\"))
     self.play(arr.swap(1, 3))

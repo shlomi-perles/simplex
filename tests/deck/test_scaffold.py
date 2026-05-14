@@ -12,13 +12,10 @@ def _make_template(decks_dir: Path) -> None:
     template = decks_dir / "_template"
     (template / "slides").mkdir(parents=True)
     (template / "deck.toml").write_text(
-        'slug = "__SLUG__"\ntitle = "__TITLE__"\nentrypoints = ["slides:Intro"]\n',
+        'slug = "__SLUG__"\ntitle = "__TITLE__"\nentrypoints = ["slides.intro:Intro"]\n',
         encoding="utf-8",
     )
-    (template / "slides" / "__init__.py").write_text(
-        'from slides.intro import Intro\n__all__ = ["Intro"]\n',
-        encoding="utf-8",
-    )
+    (template / "slides" / "__init__.py").write_text("", encoding="utf-8")
     (template / "slides" / "intro.py").write_text("class Intro: pass\n", encoding="utf-8")
     (template / "notes.md").write_text("# Notes\n", encoding="utf-8")
 
