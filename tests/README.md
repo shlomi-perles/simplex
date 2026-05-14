@@ -1,10 +1,19 @@
 # tests/
 
-Pytest suite. One subdirectory per `src/simplex/` package mirroring the import path.
+Pytest suites grouped by package. Theme / region / notes / deck tests stay
+stdlib-only. Tests that touch a real Manim install use
+`pytest.importorskip("manim")` and live under `tests/engine/`.
 
-## Conventions
+## Layout
 
-- Pure-Python tests live next to the module they target (`tests/theme/`, `tests/engine/`).
-- Snapshot tests use `syrupy`. Commit `.ambr` files alongside the test.
-- A smoke render of `decks/_template/` runs in CI.
-- No conftest fixtures that pull in `manim` unless the test actually needs it (manim import is slow).
+- `tests/theme/` -- palette / preamble / env values, immutability, context push/pop.
+- `tests/engine/` -- `Region` math, `Remove` / `set_exit_animation`.
+- `tests/deck/` -- `DeckConfig` slug validation, `discover()`, `scaffold()`.
+- `tests/web/` -- markdown -> HTML, `build(render=False)` writes index + per-deck pages.
+- `tests/cli/` -- Typer command smoke (`new`, `--help`).
+
+## Don't
+
+- Don't render real decks in the test suite -- the manim-slides subprocess is too slow.
+- Don't depend on test order. syrupy snapshots may go stale; refresh with `pytest --snapshot-update`.
+- Don't import Manim in `conftest.py`. Keep test discovery fast.
