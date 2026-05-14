@@ -97,8 +97,8 @@ def register_darcula(style_name: str = "darcula") -> None:
     setattr(module, cls_name, DarculaStyle)
     setattr(pygments.styles, style_name, module)
     sys.modules[f"pygments.styles.{style_name}"] = module
-    STYLE_MAP: dict[str, str] = pygments.styles.STYLE_MAP  # type: ignore[assignment]
-    STYLE_MAP[style_name] = f"{style_name}::{cls_name}"
+    style_map: dict[str, str] = pygments.styles.STYLE_MAP  # type: ignore[assignment]
+    style_map[style_name] = f"{style_name}::{cls_name}"
 
 
 def code_block(

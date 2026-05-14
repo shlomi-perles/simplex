@@ -12,6 +12,7 @@ from manim import (
     LEFT,
     RIGHT,
     UP,
+    Mobject,
     Polygon,
     Rectangle,
     SurroundingRectangle,
