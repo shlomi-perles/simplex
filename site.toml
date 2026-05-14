@@ -1,0 +1,15 @@
+# Site-wide configuration. Deployment-only fields (ga_tag, base_url, preview)
+# live in env vars (SIMPLEX_GA_TAG, SIMPLEX_BASE_URL, SIMPLEX_PREVIEW) and
+# are NOT committed here. See src/simplex/web/site_config.py.
+
+brand = "Simplex"
+tagline = "Manim presentations, rendered."
+
+nav = [
+    { label = "Decks", href = "/" },
+    { label = "GitHub", href = "https://github.com/shlomi-perles/simplex" },
+]
+
+# Fallback ordering when a section's _section.toml omits `order`. Sections
+# not listed here come after, sorted by title.
+default_section_order = []

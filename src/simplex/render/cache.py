@@ -1,4 +1,4 @@
-"""Render cache keyed on a hash of slides.py + theme + deck.toml."""
+"""Render cache keyed on a hash of source files + theme + deck.toml."""
 
 import hashlib
 import json
@@ -6,12 +6,30 @@ from pathlib import Path
 
 from simplex.deck.config import DeckConfig
 
+_SOURCE_GLOBS: tuple[str, ...] = ("slides.py", "slides/**/*.py", "deck.toml")
+
+
+def _hash_sources(deck: DeckConfig) -> str:
+    """Stable hash of every Python source file that affects render output."""
+    h = hashlib.sha256()
+    seen: set[Path] = set()
+    for pattern in _SOURCE_GLOBS:
+        for source in sorted(deck.path.glob(pattern)):
+            if source in seen or not source.is_file():
+                continue
+            seen.add(source)
+            rel = source.relative_to(deck.path).as_posix()
+            h.update(rel.encode())
+            h.update(b"\x00")
+            h.update(source.read_bytes())
+            h.update(b"\x00")
+    return h.hexdigest()
+
 
 def cache_key(deck: DeckConfig) -> str:
     """Stable sha256 over inputs that affect render output."""
     parts = {
-        "slides": hashlib.sha256((deck.path / "slides.py").read_bytes()).hexdigest(),
-        "deck_toml": hashlib.sha256((deck.path / "deck.toml").read_bytes()).hexdigest(),
+        "sources": _hash_sources(deck),
         "theme": deck.theme,
         "quality": deck.quality,
     }

@@ -33,9 +33,9 @@ from manim import (
     Square,
     Tex,
     Text,
+    Vector,
     VGroup,
     VMobject,
-    Vector,
 )
 
 from simplex.theme.context import get_active_theme
@@ -98,7 +98,7 @@ class ArrayEntry(VGroup):
     def _make_label(content: Any, config: dict[str, Any]) -> Tex:
         return Tex(_DEFAULT_CHAR if _is_blank(content) else str(content), **config)
 
-    def _place_value(self) -> "ArrayEntry":
+    def _place_value(self) -> ArrayEntry:
         self.value_mob.move_to(self.frame)
         target = self.frame.height * _VALUE_HEIGHT_FRACTION
         if self.value_mob.width < self.value_mob.height:
@@ -109,7 +109,7 @@ class ArrayEntry(VGroup):
             self.value_mob.scale(0.1)
         return self
 
-    def _place_index(self) -> "ArrayEntry":
+    def _place_index(self) -> ArrayEntry:
         self.index_mob.scale_to_fit_height(
             self.frame.height * _INDEX_HEIGHT_FRACTION * self.index_scale,
         )
@@ -121,7 +121,7 @@ class ArrayEntry(VGroup):
         self.index_mob.align_to(self.frame, RIGHT).shift(LEFT * _INDEX_BUFF)
         return self
 
-    def set_value(self, value: float | str) -> "ArrayEntry":
+    def set_value(self, value: float | str) -> ArrayEntry:
         self.value = value
         self.value_mob.become(self._make_label(value, self.value_config))
         if _is_blank(value):
@@ -129,7 +129,7 @@ class ArrayEntry(VGroup):
         self._place_value()
         return self
 
-    def set_index(self, index: int | str | Tex | MathTex | Text) -> "ArrayEntry":
+    def set_index(self, index: int | str | Tex | MathTex | Text) -> ArrayEntry:
         self.index = index
         new = (
             index
@@ -285,9 +285,7 @@ class ArrayMob(VGroup):
         remaining = VGroup(*self.entries[index - self.starting_index :])
         if len(remaining) > 0:
             anchor: Mobject = (
-                self.get_entry(index - 1)
-                if index != self.starting_index
-                else self._reference_entry
+                self.get_entry(index - 1) if index != self.starting_index else self._reference_entry
             )
             anims.append(remaining.animate.next_to(anchor, RIGHT, buff=0))
         return AnimationGroup(*anims, **kwargs)
@@ -305,10 +303,14 @@ class ArrayMob(VGroup):
         entry_i = self.get_entry(i)
         entry_j = self.get_entry(j)
         right_path = ArcBetweenPoints(
-            entry_i.get_center(), entry_j.get_center(), angle=arc_angle,
+            entry_i.get_center(),
+            entry_j.get_center(),
+            angle=arc_angle,
         )
         left_path = ArcBetweenPoints(
-            entry_j.get_center(), entry_i.get_center(), angle=arc_angle,
+            entry_j.get_center(),
+            entry_i.get_center(),
+            angle=arc_angle,
         )
         anim = AnimationGroup(
             MoveAlongPath(entry_i, right_path),
@@ -360,17 +362,13 @@ class ArrayPointer(Vector):
     def _make_text(self, text: str | Mobject | None) -> Mobject:
         if _is_blank(text):
             return Text(".").set_opacity(0)
-        mob: Mobject = (
-            text
-            if isinstance(text, Mobject)
-            else MathTex(str(text), **self.text_config)
-        )
+        mob: Mobject = text if isinstance(text, Mobject) else MathTex(str(text), **self.text_config)
         mob.scale(self.text_scale)
         mob.next_to(self.arrow, direction=-self.get_vector(), buff=0.1)
         mob.set_color(self.get_color())
         return mob
 
-    def _position_arrow(self) -> "ArrayPointer":
+    def _position_arrow(self) -> ArrayPointer:
         return self.next_to(
             self.array.get_entry(self.index),
             direction=-self.get_vector(),

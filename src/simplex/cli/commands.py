@@ -1,4 +1,4 @@
-"""Simplex CLI -- new | render | build | serve | clean | doctor."""
+"""Simplex CLI -- new | render | build | serve | clean | doctor | thumbs."""
 
 import http.server
 import os
@@ -11,8 +11,9 @@ from rich.console import Console
 
 from simplex.deck.registry import discover
 from simplex.deck.scaffold import scaffold as deck_scaffold
-from simplex.render import cache, pdf, runner
+from simplex.render import cache, pdf, runner, thumbnail
 from simplex.web.builder import build as build_site
+from simplex.web.site_config import SiteConfig
 
 app = typer.Typer(help="Simplex -- Manim-slides framework with a generated portal.")
 console = Console()
@@ -23,17 +24,22 @@ _CACHE = Path(".simplex_cache")
 
 
 @app.command()
-def new(slug: str) -> None:
-    """Scaffold a new deck under `decks/<slug>/`."""
-    dest = deck_scaffold(slug, _DECKS)
+def new(target: str) -> None:
+    """Scaffold a new deck.
+
+    `simplex new <slug>` creates `decks/<slug>/` (featured section).
+    `simplex new <section>/<slug>` creates `decks/<section>/<slug>/`.
+    """
+    dest = deck_scaffold(target, _DECKS)
     console.print(f"[green]Created[/green] {dest}")
 
 
 @app.command()
 def render(slug: str) -> None:
     """Render a single deck."""
-    decks = {d.slug: d for d in discover(_DECKS)}
-    deck = decks.get(slug)
+    site_cfg = SiteConfig.load()
+    registry = discover(_DECKS, default_section_order=site_cfg.default_section_order)
+    deck = registry.find_deck(slug)
     if deck is None:
         raise typer.BadParameter(f"unknown deck: {slug}")
     out = _SITE / "decks" / deck.slug
@@ -42,6 +48,19 @@ def render(slug: str) -> None:
     pdf.export(deck, output_dir=out)
     cache.mark_fresh(deck, _CACHE)
     console.print(f"[green]Rendered[/green] {deck.slug} -> {out}")
+
+
+@app.command()
+def thumbs(slug: str) -> None:
+    """Regenerate thumbnails for a single deck."""
+    site_cfg = SiteConfig.load()
+    registry = discover(_DECKS, default_section_order=site_cfg.default_section_order)
+    deck = registry.find_deck(slug)
+    if deck is None:
+        raise typer.BadParameter(f"unknown deck: {slug}")
+    out = _SITE / "decks" / deck.slug
+    written = thumbnail.regenerate(deck, media_dir=out, cache_dir=_CACHE)
+    console.print(f"[green]Wrote[/green] {len(written)} thumbnails for {deck.slug}")
 
 
 @app.command()

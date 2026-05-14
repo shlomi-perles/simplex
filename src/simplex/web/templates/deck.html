@@ -1,21 +1,138 @@
 {% extends "base.html" %}
-{% block title %}{{ deck.title }}{% endblock %}
+{% block title %}{{ deck.title }} -- {{ site.brand }}{% endblock %}
+{% block main_class %}px-4 md:px-6 py-6 max-w-[1600px] mx-auto{% endblock %}
 {% block content %}
-<a href="/" class="text-sm text-neutral-400 hover:text-neutral-200">&larr; All decks</a>
-<h1 class="text-3xl mt-2">{{ deck.title }}</h1>
-{% if deck.summary %}<p class="text-neutral-400 mt-2">{{ deck.summary }}</p>{% endif %}
-<section class="mt-6">
-  <iframe src="slides.html"
-          class="w-full h-[600px] border border-neutral-800 rounded"
-          allowfullscreen></iframe>
+<a
+  href="{{ site.url('/') }}"
+  class="text-sm text-neutral-400 hover:text-white"
+>&larr; All decks</a>
+
+<header class="mt-2 mb-6 flex items-end justify-between gap-6 flex-wrap">
+  <div>
+    <h1 class="text-2xl md:text-3xl font-semibold tracking-tight">{{ deck.title }}</h1>
+    {% if deck.summary %}
+    <p class="text-neutral-400 mt-1 max-w-2xl">{{ deck.summary }}</p>
+    {% endif %}
+    <div class="mt-2 flex flex-wrap gap-2 text-xs items-center text-neutral-500">
+      {% if deck.category %}
+      <span class="px-2 py-0.5 bg-neutral-800 text-neutral-200 rounded">{{ deck.category }}</span>
+      {% endif %}
+      {% if total_duration_min %}
+      <span>{{ total_duration_min }} min &middot; {{ slide_count }} slides</span>
+      {% else %}
+      <span>{{ slide_count }} slides</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="flex gap-2">
+    {% if has_pdf %}
+    <a
+      href="{{ deck.slug }}.pdf"
+      class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-sm inline-flex items-center gap-2"
+      download
+    >
+      <span aria-hidden="true">&#x2913;</span> Presentation PDF
+    </a>
+    {% endif %}
+    {% if has_notes_pdf %}
+    <a
+      href="notes.pdf"
+      class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-sm inline-flex items-center gap-2"
+      download
+    >
+      <span aria-hidden="true">&#x2913;</span> Notes PDF
+    </a>
+    {% endif %}
+  </div>
+</header>
+
+<section
+  class="deck-grid"
+  data-deck-slug="{{ deck.slug }}"
+  data-slide-count="{{ slide_count }}"
+>
+  <article class="deck-viewer">
+    <div class="deck-viewer-frame">
+      <iframe
+        src="slides.html"
+        title="{{ deck.title }} presentation"
+        allowfullscreen
+        allow="autoplay; fullscreen"
+        loading="lazy"
+        class="deck-iframe"
+      ></iframe>
+    </div>
+    <div class="deck-controls" role="toolbar" aria-label="Slide controls">
+      <div class="deck-controls-left">
+        <button data-control="prev" aria-label="Previous slide" type="button">
+          &larr;
+        </button>
+        <button data-control="toggle-play" aria-label="Play/pause" type="button">
+          &#9654;&#9616;&#9616;
+        </button>
+        <button data-control="next" aria-label="Next slide" type="button">
+          &rarr;
+        </button>
+        <span
+          class="deck-counter"
+          data-counter
+          aria-live="polite"
+        >1 / {{ slide_count }}</span>
+      </div>
+      <div class="deck-controls-right">
+        <button data-control="fullscreen" aria-label="Fullscreen" type="button">
+          &#x26F6;
+        </button>
+      </div>
+    </div>
+
+    {% if notes_html %}
+    <article class="deck-notes prose prose-invert max-w-none mt-8">
+      {{ notes_html|safe }}
+    </article>
+    {% endif %}
+  </article>
+
+  <aside class="deck-sidebar" aria-label="Slide list">
+    <h2 class="deck-sidebar-title">Slides</h2>
+    <ol class="deck-slide-list" role="list">
+      {% for slide in slides %}
+      <li>
+        <button
+          type="button"
+          class="deck-slide-card"
+          data-slide-target="{{ slide.index }}"
+          {% if loop.first %}aria-current="true"{% endif %}
+        >
+          <div class="deck-slide-thumb">
+            {% if slide.thumbnail %}
+            <img
+              src="{{ slide.thumbnail }}"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              width="160"
+              height="90"
+            />
+            {% else %}
+            <div class="deck-slide-thumb-empty" aria-hidden="true"></div>
+            {% endif %}
+            <span class="deck-slide-index">{{ "%02d"|format(loop.index) }}</span>
+          </div>
+          <div class="deck-slide-meta">
+            <span class="deck-slide-title">
+              {{ slide.title or slide.scene }}
+            </span>
+            {% if slide.duration_s %}
+            <span class="deck-slide-duration">
+              {{ "%d:%02d"|format(slide.duration_s|int // 60, slide.duration_s|int % 60) }}
+            </span>
+            {% endif %}
+          </div>
+        </button>
+      </li>
+      {% endfor %}
+    </ol>
+  </aside>
 </section>
-<a href="{{ deck.slug }}.pdf"
-   class="inline-block mt-4 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded">
-  Download PDF
-</a>
-{% if notes_html %}
-<article class="prose prose-invert mt-8 max-w-none">
-{{ notes_html|safe }}
-</article>
-{% endif %}
 {% endblock %}

@@ -3,10 +3,14 @@
 from simplex.theme.tokens import LatexProfile, Palette, Theme, Typography
 
 _COMPACT_DISPLAY_PREAMBLE = (
-    r"\setlength{\abovedisplayskip}{0pt}" "\n"
-    r"\setlength{\belowdisplayskip}{0pt}" "\n"
-    r"\setlength{\abovedisplayshortskip}{0pt}" "\n"
-    r"\setlength{\belowdisplayshortskip}{0pt}" "\n"
+    r"\setlength{\abovedisplayskip}{0pt}"
+    "\n"
+    r"\setlength{\belowdisplayskip}{0pt}"
+    "\n"
+    r"\setlength{\abovedisplayshortskip}{0pt}"
+    "\n"
+    r"\setlength{\belowdisplayshortskip}{0pt}"
+    "\n"
 )
 
 DASTIMATOR_DARK: Theme = Theme(
