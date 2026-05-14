@@ -115,7 +115,8 @@ def code_block(
     Authors get vanilla `manim.Code` back -- everything Manim does to that
     class still works (`.code_lines`, `.background`, `.scale_to_fit_width`).
     """
-    register_darcula(formatter_style) if formatter_style == "darcula" else None
+    if formatter_style == "darcula":
+        register_darcula(formatter_style)
     theme = get_active_theme()
     paragraph_kwargs: dict[str, Any] = {"font": theme.typography.mono_family}
     paragraph_kwargs.update(paragraph_config or {})
