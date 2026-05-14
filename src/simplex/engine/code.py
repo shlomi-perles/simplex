@@ -26,6 +26,7 @@ from manim import (
     VGroup,
     Write,
 )
+
 from simplex.theme.context import get_active_theme
 from simplex.theme.pygments_style import DarculaStyle
 
