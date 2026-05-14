@@ -1,19 +1,7 @@
-"""Showcase deck -- scene entrypoints referenced from ``deck.toml``."""
+"""Showcase deck -- scene modules live alongside this file.
 
-from slides.scenes import (
-    CodeHelpers,
-    ExitAnimations,
-    GeometryHelpers,
-    GraphAndArray,
-    RegionAnchors,
-    TextHelpers,
-)
-
-__all__ = [
-    "CodeHelpers",
-    "ExitAnimations",
-    "GeometryHelpers",
-    "GraphAndArray",
-    "RegionAnchors",
-    "TextHelpers",
-]
+Scene classes are kept in their defining modules (`scenes.py` here); the
+runner loads each entrypoint module directly. We intentionally do NOT
+re-export scene classes -- manim's `scene_classes_from_file` filters by
+`__module__.startswith(loaded_module)`, so re-exported classes are dropped.
+"""

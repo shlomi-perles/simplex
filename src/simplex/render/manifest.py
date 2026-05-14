@@ -108,13 +108,19 @@ def _slides_from_scene_json(scene_json: Path, scene_name: str) -> list[dict[str,
     return rows
 
 
-def _resolve_video(scene_json: Path, entry: dict[str, object]) -> Path | None:
+def _resolve_video(media_dir: Path, entry: dict[str, object]) -> Path | None:
+    """Locate a slide video referenced by a JSON entry.
+
+    manim-slides stores `file` as a path relative to the cwd it ran from --
+    which we always set to `media_dir`. The fields are searched in order so
+    minor schema drift in upstream JSON does not break the manifest.
+    """
     raw = entry.get("file") or entry.get("video") or entry.get("path")
     if not isinstance(raw, str) or not raw:
         return None
     candidate = Path(raw)
     if not candidate.is_absolute():
-        candidate = (scene_json.parent / candidate).resolve()
+        candidate = (media_dir / candidate).resolve()
     return candidate if candidate.exists() else None
 
 
@@ -143,7 +149,7 @@ def build_manifest(
             global_index += 1
             continue
         for sub_idx, entry in enumerate(rows):
-            video = _resolve_video(scene_json, entry)
+            video = _resolve_video(media_dir, entry)
             duration = _ffprobe_duration(video) if video is not None else 0.0
             title = entry.get("title")
             if not isinstance(title, str):

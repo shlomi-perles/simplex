@@ -7,11 +7,11 @@ quality = "medium_quality"
 category = "Reference"
 order = 0
 entrypoints = [
-    "slides:TextHelpers",
-    "slides:CodeHelpers",
-    "slides:GraphAndArray",
-    "slides:RegionAnchors",
-    "slides:ExitAnimations",
-    "slides:GeometryHelpers",
+    "slides.scenes:TextHelpers",
+    "slides.scenes:CodeHelpers",
+    "slides.scenes:GraphAndArray",
+    "slides.scenes:RegionAnchors",
+    "slides.scenes:ExitAnimations",
+    "slides.scenes:GeometryHelpers",
 ]
 voiceover = false
