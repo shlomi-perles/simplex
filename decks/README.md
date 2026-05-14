@@ -10,8 +10,17 @@ Each deck contains:
 
 Scaffold a new deck with:
 
-```bash
-uv run simplex new my-slug
-```
+    uv run simplex new my-slug
 
 Directories whose name starts with `_` (e.g. `_template/`) are skipped by `discover()`.
+
+## Bundled decks
+
+- `_template/` -- starter copied by `simplex new` (skipped by `discover()`).
+- `showcase/` -- canonical demo of every Simplex-specific helper:
+  - `engine.text`: `BodyText`, `Caption`, `Definition`, `color_tex`
+  - `engine.code`: `code_block` + `highlight_code_lines` + `code_explain`
+  - `engine.geometry`: convex hull + surrounding rectangle
+  - `engine.region`: anchors + `shrink` + `reset`
+  - `engine.animations`: `set_exit_animation` + `clear_scene(exclude=...)`
+  - `slides.components`: `Node`, `Edge`, `ArrayMob`, `ArrayPointer`

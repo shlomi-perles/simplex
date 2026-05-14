@@ -1,0 +1,17 @@
+slug = "showcase"
+title = "Simplex showcase"
+summary = "Demonstrates every helper Simplex adds on top of vanilla Manim."
+tags = ["reference", "showcase"]
+theme = "dastimator_dark"
+quality = "medium_quality"
+scenes = [
+    "Title",
+    "TextHelpers",
+    "CodeHelpers",
+    "GraphAndArray",
+    "RegionAnchors",
+    "ExitAnimations",
+    "GeometryHelpers",
+    "Outro",
+]
+voiceover = false
