@@ -54,7 +54,7 @@ class TextHelpers(ContentSlide):
 
         formula = MathTex(r"a^2 + b^2 = c^2")
         formula.next_to(defn, DOWN, buff=0.4)
-        color_tex(formula, {"a": "#FF6B6B", "b": "#4ECDC4", "c": "#FFD93D"})
+        color_tex(formula, {"a": "#FF6B6B", "b": "#4ECDC4", "c": "#FFD93D"}, tex_class=MathTex)
         self.play(Write(formula))
         self.next_slide()
 

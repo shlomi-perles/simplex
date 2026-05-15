@@ -94,7 +94,7 @@ def color_tex(
     Example::
 
         eq = MathTex(r\"a^2 + b^2 = c^2\")
-        color_tex(eq, {\"a\": \"#FF6B6B\", \"b\": \"#4ECDC4\", \"c\": \"#FFD93D\"})
+        color_tex(eq, {\"a\": \"#FF6B6B\", \"b\": \"#4ECDC4\", \"c\": \"#FFD93D\"}, tex_class=MathTex)
 
     Returns ``equation`` so callers can chain.
     """
