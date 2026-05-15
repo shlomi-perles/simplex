@@ -1,5 +1,12 @@
-"""Geometry helpers: convex hull, surrounding rectangle, frame center."""
+"""Geometry helpers: convex hull, surrounding rectangle, frame center.
 
+Also exports `Arc3d`, `SurroundingRectangleUnion`, and `Vcis` -- small
+geometry primitives that don't have a clean Manim equivalent (Manim's
+`ArcBetweenPoints` is 2D-only, and `SurroundingRectangle` doesn't merge
+with neighbours).
+"""
+
+from copy import deepcopy
 from typing import Any
 
 import numpy as np
@@ -10,8 +17,10 @@ from manim import (
     UP,
     ConvexHull,
     Mobject,
+    Polygon,
     Rectangle,
     SurroundingRectangle,
+    Union,
     VGroup,
     VMobject,
     config,
@@ -101,3 +110,107 @@ def get_frame_center(
             0.0,
         ]
     )
+
+
+def Vcis(theta: float, *, clockwise: bool = False) -> np.ndarray:  # noqa: N802 -- math idiom
+    """Unit vector at angle `theta` (radians).
+
+    Default convention: counter-clockwise from +x. With `clockwise=True`,
+    measured clockwise from +y -- handy for clock-face layouts.
+    """
+    if clockwise:
+        return np.sin(theta) * RIGHT + np.cos(theta) * UP
+    return np.cos(theta) * RIGHT + np.sin(theta) * UP
+
+
+class Arc3d(VMobject):
+    """A 3D arc spanning from `a` to `b` along a fixed-radius sphere about `center`.
+
+    Manim's `ArcBetweenPoints` is implicitly 2D. This walks the chord in
+    `segments` steps and projects each sample back onto the sphere of the
+    given radius -- credit to @uwezi (Manim Discord).
+    """
+
+    def __init__(
+        self,
+        a: np.ndarray,
+        b: np.ndarray,
+        center: np.ndarray,
+        *,
+        radius: float = 1.0,
+        segments: int = 40,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        a = np.asarray(a, dtype=float)
+        b = np.asarray(b, dtype=float)
+        center = np.asarray(center, dtype=float)
+        start = center + _normalize(a - center) * radius
+        end = center + _normalize(b - center) * radius
+        self.set_points([start])
+        for t in np.linspace(0.0, 1.0, segments, endpoint=True):
+            chord_pt = start + t * (end - start)
+            self.add_smooth_curve_to(center + _normalize(chord_pt - center) * radius)
+
+
+def _normalize(v: np.ndarray) -> np.ndarray:
+    norm = float(np.linalg.norm(v))
+    return v / norm if norm > 0 else v
+
+
+class SurroundingRectangleUnion(VGroup):
+    """One or more polygons that together surround all `mobjects`.
+
+    Build a `SurroundingRectangle` per mobject, union them with Manim's
+    boolean op, optionally pull edges inward by `unbuff` (so adjacent
+    `SurroundingRectangleUnion`s for different groups don't touch), and
+    round corners by `corner_radius`.
+
+    Result: a `VGroup` of `Polygon` mobjects -- one per connected region
+    after the union.
+    """
+
+    def __init__(
+        self,
+        *mobjects: Mobject,
+        buff: float = 0.1,
+        unbuff: float = 0.05,
+        corner_radius: float = 0.0,
+        **kwargs: Any,
+    ) -> None:
+        rects = VGroup(*(SurroundingRectangle(m, buff=buff) for m in mobjects))
+        union = Union(*rects, **kwargs) if len(rects) > 1 else rects[0]
+        beziers = [union.points[i : i + 4] for i in range(0, len(union.points), 4)]
+
+        polygons: list[list[np.ndarray]] = []
+        current: list[np.ndarray] = []
+        for bez in beziers:
+            if not current:
+                current.append(bez[0])
+            elif np.allclose(bez[-1], current[0]):
+                current.append(bez[0])
+                polygons.append(current)
+                current = []
+            else:
+                current.append(bez[0])
+        self._polygons = polygons
+
+        if unbuff > 0:
+            self._apply_unbuff(unbuff)
+        super().__init__(*(Polygon(*poly, **kwargs) for poly in self._polygons), **kwargs)
+        if corner_radius > 0:
+            for poly in self:
+                poly.round_corners(corner_radius)
+
+    def _apply_unbuff(self, unbuff: float) -> None:
+        original = deepcopy(self._polygons)
+        for j, poly in enumerate(original):
+            for i, vertex in enumerate(poly):
+                edge_a = _normalize(vertex - poly[(i - 1) % len(poly)])
+                edge_b = _normalize(vertex - poly[(i + 1) % len(poly)])
+                bisector = edge_a + edge_b
+                cross_z = float(np.cross(edge_a[:2], edge_b[:2]))
+                if cross_z > 0:
+                    self._polygons[j][i] = vertex + unbuff * bisector
+                else:
+                    self._polygons[j][i] = vertex - unbuff * bisector
