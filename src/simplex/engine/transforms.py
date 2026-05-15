@@ -265,9 +265,7 @@ class TransformByGlyphMap(AnimationGroup):
         opts = _interpret_delay(opts)
         # Indices already used by an earlier entry need a copy so the prior
         # animation isn't disturbed when this one grabs the same glyph.
-        from_mob = VGroup(
-            *(a[i].copy() if i in self.mentioned_from else a[i] for i in from_slot)
-        )
+        from_mob = VGroup(*(a[i].copy() if i in self.mentioned_from else a[i] for i in from_slot))
         to_mob = VGroup(*(b[i] for i in to_slot))
         self.animations.append(transformer(from_mob, to_mob, **opts))
         self.mentioned_from.extend(from_slot)
@@ -298,26 +296,20 @@ class TransformByGlyphMap(AnimationGroup):
         b_color: str,
     ) -> None:
         b.next_to(a, DOWN)
-        labels_a = (
-            index_labels(
-                a,
-                label_height=label_height,
-                color=a_color,
-                background_stroke_width=3,
-                background_stroke_color=BLACK,
-            )
-            .set_z_index(10)
-        )
-        labels_b = (
-            index_labels(
-                b,
-                label_height=label_height,
-                color=b_color,
-                background_stroke_width=3,
-                background_stroke_color=BLACK,
-            )
-            .set_z_index(10)
-        )
+        labels_a = index_labels(
+            a,
+            label_height=label_height,
+            color=a_color,
+            background_stroke_width=3,
+            background_stroke_color=BLACK,
+        ).set_z_index(10)
+        labels_b = index_labels(
+            b,
+            label_height=label_height,
+            color=b_color,
+            background_stroke_width=3,
+            background_stroke_color=BLACK,
+        ).set_z_index(10)
         super().__init__(
             Create(labels_a),
             FadeIn(b, shift=DOWN),
