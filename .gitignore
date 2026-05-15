@@ -21,6 +21,8 @@ dist/
 
 # Manim output
 media/
+decks/**/slides/*.json
+decks/**/slides/files/
 
 # Generated site
 site/
