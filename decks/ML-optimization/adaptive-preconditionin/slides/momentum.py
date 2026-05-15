@@ -89,7 +89,8 @@ class MomentumIntuition2D(ContentSlide):
         # Run both optimizers from the same starting point.
         gd_pts = run_optimizer(lambda s: gd_step(s, lr=0.32), n_steps=20)
         mo_pts = run_optimizer(
-            lambda s: momentum_step(s, lr=0.32, gamma=GAMMA_MOMENTUM), n_steps=20,
+            lambda s: momentum_step(s, lr=0.32, gamma=GAMMA_MOMENTUM),
+            n_steps=20,
         )
         trail_gd = trail_from_points(ax_gd, gd_pts, color=C_GD)
         trail_mo = trail_from_points(ax_mo, mo_pts, color=C_MOMENTUM)
@@ -100,9 +101,7 @@ class MomentumIntuition2D(ContentSlide):
         self.play(FadeIn(head_gd), FadeIn(head_mo))
         self.next_slide()
 
-        moral = BodyText(
-            r"Damps the steep axis, accelerates the flat one."
-        ).scale(0.6)
+        moral = BodyText(r"Damps the steep axis, accelerates the flat one.").scale(0.6)
         self.region.place(moral, "bottom", buff=0.2)
         self.play(Write(moral))
         self.next_slide()
@@ -151,7 +150,9 @@ class MomentumStepBreakdown(ContentSlide):
         g = grad(x_t[0], x_t[1])
         grad_arrow = gradient_arrow(ax, x_t, g, color=C_GD, scale=0.7, stroke_width=6)
         grad_label = MathTex(
-            r"-\nabla f(x_t)", color=C_GD, font_size=28,
+            r"-\nabla f(x_t)",
+            color=C_GD,
+            font_size=28,
         ).next_to(grad_arrow.get_end(), DOWN, buff=0.1)
         self.play(Write(grad_arrow), Write(grad_label))
         self.next_slide()
@@ -160,13 +161,18 @@ class MomentumStepBreakdown(ContentSlide):
         v_scale = 0.9
         v_end = ax.c2p(x_t[0] - v_scale * v_t[0], x_t[1] - v_scale * v_t[1])
         v_arrow = Arrow(
-            start=ax.c2p(*x_t), end=v_end,
-            buff=0.0, stroke_width=8, max_tip_length_to_length_ratio=0.28,
+            start=ax.c2p(*x_t),
+            end=v_end,
+            buff=0.0,
+            stroke_width=8,
+            max_tip_length_to_length_ratio=0.28,
         )
         v_arrow.set_color(C_MOMENTUM)
         v_arrow.set_stroke(color=C_MOMENTUM, width=8)
         v_label = MathTex(
-            r"-v_{t+1}", color=C_MOMENTUM, font_size=28,
+            r"-v_{t+1}",
+            color=C_MOMENTUM,
+            font_size=28,
         ).next_to(v_arrow.get_end(), DOWN + LEFT, buff=0.1)
         self.play(Write(v_arrow), Write(v_label))
         self.next_slide()
@@ -199,15 +205,22 @@ class MomentumStepBreakdown(ContentSlide):
         x_next = new_state.x
         dot_next = glowing_dot(ax.c2p(*x_next), color=C_MOMENTUM)
         label_next = MathTex(
-            r"x_{t+1}", color=C_MOMENTUM, font_size=32,
+            r"x_{t+1}",
+            color=C_MOMENTUM,
+            font_size=32,
         ).next_to(dot_next, DOWN + RIGHT, buff=0.08)
 
         connecting = trail_from_points(
-            ax, np.array([x_t, x_next]), color=C_OPTIMUM, opacity=0.9,
+            ax,
+            np.array([x_t, x_next]),
+            color=C_OPTIMUM,
+            opacity=0.9,
         )
         self.play(
-            FadeOut(grad_arrow), FadeOut(grad_label),
-            FadeOut(v_arrow), FadeOut(v_label),
+            FadeOut(grad_arrow),
+            FadeOut(grad_label),
+            FadeOut(v_arrow),
+            FadeOut(v_label),
         )
         self.play(Write(connecting), FadeIn(dot_next), Write(label_next))
         self.next_slide()
@@ -242,7 +255,8 @@ class MomentumIn3D(ThreeDSlide, BaseSlide):
 
         # Trajectory of momentum on the bowl. Pre-compute path points.
         pts = run_optimizer(
-            lambda s: momentum_step(s, lr=0.20, gamma=0.85), n_steps=40,
+            lambda s: momentum_step(s, lr=0.20, gamma=0.85),
+            n_steps=40,
         )
         path_fn = iterates_to_3d_path(axes, pts)
         path = ParametricFunction(path_fn, t_range=(0.0, 1.0))

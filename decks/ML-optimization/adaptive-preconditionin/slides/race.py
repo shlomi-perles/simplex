@@ -143,12 +143,17 @@ class OptimizerRace3D(ThreeDSlide, BaseSlide):
         # Trajectories.
         trajectories = (
             (run_optimizer(lambda s: gd_step(s, lr=0.28), n_steps=40), C_GD, "GD"),
-            (run_optimizer(lambda s: momentum_step(s, lr=0.30, gamma=0.8), n_steps=40),
-             C_MOMENTUM, "Momentum"),
-            (run_optimizer(lambda s: adagrad_step(s, lr=1.2), n_steps=40),
-             C_VARIANCE, "AdaGrad"),
-            (run_optimizer(lambda s: adam_step(s, lr=0.32, gamma=0.9, beta=0.99), n_steps=40),
-             C_ADAM, "ADAM"),
+            (
+                run_optimizer(lambda s: momentum_step(s, lr=0.30, gamma=0.8), n_steps=40),
+                C_MOMENTUM,
+                "Momentum",
+            ),
+            (run_optimizer(lambda s: adagrad_step(s, lr=1.2), n_steps=40), C_VARIANCE, "AdaGrad"),
+            (
+                run_optimizer(lambda s: adam_step(s, lr=0.32, gamma=0.9, beta=0.99), n_steps=40),
+                C_ADAM,
+                "ADAM",
+            ),
         )
 
         balls: list[tuple[Sphere, ParametricFunction]] = []
@@ -180,12 +185,24 @@ class Recap(ContentSlide):
     def construct(self) -> None:
         rows = (
             (r"\textbf{GD}", r"Same LR for all axes -- stuck on ill-conditioned bowls.", C_GD),
-            (r"\textbf{Momentum}", r"Velocity averages past gradients $\Rightarrow$"
-                                   r" smoother, faster.", C_MOMENTUM),
-            (r"\textbf{AdaGrad}", r"Per-axis LR $\eta / [s_t]_i$ from squared-gradient"
-                                  r" history $\Rightarrow$ unit-invariant.", C_VARIANCE),
-            (r"\textbf{ADAM}", r"Momentum (first moment) $+$ discounted AdaGrad"
-                               r" (second moment).", C_ADAM),
+            (
+                r"\textbf{Momentum}",
+                r"Velocity averages past gradients $\Rightarrow$"
+                r" smoother, faster.",
+                C_MOMENTUM,
+            ),
+            (
+                r"\textbf{AdaGrad}",
+                r"Per-axis LR $\eta / [s_t]_i$ from squared-gradient"
+                r" history $\Rightarrow$ unit-invariant.",
+                C_VARIANCE,
+            ),
+            (
+                r"\textbf{ADAM}",
+                r"Momentum (first moment) $+$ discounted AdaGrad"
+                r" (second moment).",
+                C_ADAM,
+            ),
         )
 
         lines = VGroup()

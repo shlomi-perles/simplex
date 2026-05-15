@@ -149,8 +149,13 @@ def kicker_equation(font_size: int = 48) -> MathTex:
     "north star" throughout the deck.
     """
     eq = MathTex(
-        r"x_{t+1}", r"=", r"x_t", r"-",
-        r"\eta\,", r"M_t^{-1}", r"g_t",
+        r"x_{t+1}",
+        r"=",
+        r"x_t",
+        r"-",
+        r"\eta\,",
+        r"M_t^{-1}",
+        r"g_t",
         font_size=font_size,
     )
     eq[4].set_color(C_OPTIMUM)

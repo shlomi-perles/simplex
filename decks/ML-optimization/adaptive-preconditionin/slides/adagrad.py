@@ -95,12 +95,16 @@ class AdaGradMotivation(ContentSlide):
         bar_width = 0.4
 
         def make_bar(x_center: float, height: float, color: str) -> Polygon:
-            return Polygon(
-                np.array([x_center - bar_width / 2, baseline_y, 0.0]),
-                np.array([x_center + bar_width / 2, baseline_y, 0.0]),
-                np.array([x_center + bar_width / 2, baseline_y + height, 0.0]),
-                np.array([x_center - bar_width / 2, baseline_y + height, 0.0]),
-            ).set_fill(color, opacity=0.85).set_stroke(width=0)
+            return (
+                Polygon(
+                    np.array([x_center - bar_width / 2, baseline_y, 0.0]),
+                    np.array([x_center + bar_width / 2, baseline_y, 0.0]),
+                    np.array([x_center + bar_width / 2, baseline_y + height, 0.0]),
+                    np.array([x_center - bar_width / 2, baseline_y + height, 0.0]),
+                )
+                .set_fill(color, opacity=0.85)
+                .set_stroke(width=0)
+            )
 
         x_bar = make_bar(x_bar_x, 0.12, C_GD)
         y_bar = make_bar(y_bar_x, 0.12, C_VARIANCE)
@@ -124,7 +128,12 @@ class AdaGradMotivation(ContentSlide):
         for i in range(5):
             g = grads[i]
             arrow = gradient_arrow(
-                ax, positions[i], g, color=C_GD, scale=0.18, stroke_width=4,
+                ax,
+                positions[i],
+                g,
+                color=C_GD,
+                scale=0.18,
+                stroke_width=4,
             )
             trails.append(arrow)
             accum = accum + g * g
@@ -143,10 +152,14 @@ class AdaGradMotivation(ContentSlide):
         self.next_slide()
 
         # Caption: the steep x accumulates faster than y, so x's LR shrinks faster.
-        moral = VGroup(
-            BodyText(r"Steep coordinate $\Rightarrow$ huge accumulator $\Rightarrow$"),
-            BodyText(r"AdaGrad \emph{shrinks} its step on that axis."),
-        ).arrange(DOWN, buff=0.1).scale(0.65)
+        moral = (
+            VGroup(
+                BodyText(r"Steep coordinate $\Rightarrow$ huge accumulator $\Rightarrow$"),
+                BodyText(r"AdaGrad \emph{shrinks} its step on that axis."),
+            )
+            .arrange(DOWN, buff=0.1)
+            .scale(0.65)
+        )
         for line in moral:
             line.set_color(C_OPTIMUM)
         self.region.place(moral, "bottom", buff=0.15)
@@ -162,9 +175,9 @@ class AdaGradEquation(ContentSlide):
 
     def construct(self) -> None:
         # Step 1: introduce s_t.
-        intro = BodyText(
-            r"AdaGrad keeps a per-coordinate accumulator of squared gradients:"
-        ).scale(0.75)
+        intro = BodyText(r"AdaGrad keeps a per-coordinate accumulator of squared gradients:").scale(
+            0.75
+        )
         self.region.place(intro, "top", buff=0.4)
         self.play(Write(intro))
         self.next_slide()
@@ -312,7 +325,9 @@ class AdaGradMirror(ContentSlide):
         self.next_slide()
 
         phi_eq = MathTex(
-            r"\varphi_t(x)", r"=", r"\tfrac{1}{2}\, x^\top",
+            r"\varphi_t(x)",
+            r"=",
+            r"\tfrac{1}{2}\, x^\top",
             r"M_t",
             r"\, x",
             font_size=40,
