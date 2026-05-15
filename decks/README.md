@@ -14,6 +14,13 @@ Scaffold a new deck with:
 
 Directories whose name starts with `_` (e.g. `_template/`) are skipped by `discover()`.
 
+Force a re-render or re-render only a few scenes:
+
+    uv run simplex render my-slug --force
+    uv run simplex render my-slug --scene SceneA --scene SceneB
+
+See `src/simplex/render/README.md` for the full cache + re-render semantics.
+
 ## Bundled decks
 
 - `_template/` -- starter copied by `simplex new` (skipped by `discover()`).
