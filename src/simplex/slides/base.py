@@ -1,5 +1,18 @@
-"""BaseSlide -- the common manim-slides root."""
+"""BaseSlide -- the common manim-slides root.
 
+Theme + Manim config are applied in `__init__` *before* `super().__init__()`
+runs. Manim's `Scene.__init__` constructs the camera from `config.background_color`
+during super init, so setting that value in `setup()` (which runs later) is too
+late -- the camera locks in the previous value (Manim's default black). Doing
+the configure here is what makes `theme.palette.background` actually reach the
+rendered video.
+
+Per-deck theme/quality come in via `SIMPLEX_THEME` / `SIMPLEX_QUALITY` env
+vars, set by `simplex.render.runner` from `deck.toml`. The class attributes
+remain as fallbacks for slides run outside the simplex CLI.
+"""
+
+import os
 from collections.abc import Iterable
 from typing import Any
 
@@ -10,7 +23,7 @@ from simplex.engine.config import configure_manim
 from simplex.engine.defaults import apply_theme_defaults
 from simplex.engine.region import Region
 from simplex.theme import presets
-from simplex.theme.context import active_theme, get_active_theme
+from simplex.theme.context import active_theme
 
 
 class BaseSlide(Slide):
@@ -19,13 +32,18 @@ class BaseSlide(Slide):
     theme_name: str = "dastimator_dark"
     quality: str = "high_quality"
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        theme_name = os.environ.get("SIMPLEX_THEME", self.theme_name)
+        quality = os.environ.get("SIMPLEX_QUALITY", self.quality)
+        theme = presets.get(theme_name)
+        self._theme_ctx = active_theme(theme)
+        self._theme_ctx.__enter__()
+        configure_manim(theme, quality)
+        apply_theme_defaults(theme)
+        super().__init__(*args, **kwargs)
+
     def setup(self) -> None:
         super().setup()
-        self._theme_ctx = active_theme(presets.get(self.theme_name))
-        self._theme_ctx.__enter__()
-        theme = get_active_theme()
-        configure_manim(theme, self.quality)
-        apply_theme_defaults(theme)
         self.region = Region.full_frame()
 
     def tear_down(self) -> None:

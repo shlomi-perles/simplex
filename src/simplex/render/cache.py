@@ -47,3 +47,11 @@ def is_fresh(deck: DeckConfig, cache_dir: Path) -> bool:
 def mark_fresh(deck: DeckConfig, cache_dir: Path) -> None:
     cache_dir.mkdir(parents=True, exist_ok=True)
     _stamp(deck, cache_dir).touch()
+
+
+def clear(deck: DeckConfig, cache_dir: Path) -> None:
+    """Remove every stamp file for `deck` (any cache_key) from `cache_dir`."""
+    if not cache_dir.exists():
+        return
+    for stamp in cache_dir.glob(f"{deck.slug}.*.stamp"):
+        stamp.unlink()
