@@ -15,17 +15,13 @@ def _make_deck(decks_dir: Path) -> None:
     deck_dir = decks_dir / "demo"
     deck_dir.mkdir(parents=True)
     (deck_dir / "deck.toml").write_text(
-        'slug = "demo"\n'
-        'title = "Demo"\n'
-        'entrypoints = ["slides.scenes:Foo", "slides.scenes:Bar"]\n',
+        'slug = "demo"\ntitle = "Demo"\nentrypoints = ["slides.scenes:Foo", "slides.scenes:Bar"]\n',
         encoding="utf-8",
     )
     slides_pkg = deck_dir / "slides"
     slides_pkg.mkdir()
     (slides_pkg / "__init__.py").write_text("", encoding="utf-8")
-    (slides_pkg / "scenes.py").write_text(
-        "class Foo: ...\nclass Bar: ...\n", encoding="utf-8"
-    )
+    (slides_pkg / "scenes.py").write_text("class Foo: ...\nclass Bar: ...\n", encoding="utf-8")
 
 
 @pytest.fixture
@@ -47,9 +43,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
-def test_render_default_skips_when_fresh(
-    project: Path, stub_render: list[dict[str, Any]]
-) -> None:
+def test_render_default_skips_when_fresh(project: Path, stub_render: list[dict[str, Any]]) -> None:
     cli = CliRunner()
     cli.invoke(app, ["render", "demo"])
     assert len(stub_render) == 1
@@ -61,9 +55,7 @@ def test_render_default_skips_when_fresh(
     assert len(stub_render) == 1
 
 
-def test_render_force_ignores_cache(
-    project: Path, stub_render: list[dict[str, Any]]
-) -> None:
+def test_render_force_ignores_cache(project: Path, stub_render: list[dict[str, Any]]) -> None:
     cli = CliRunner()
     cli.invoke(app, ["render", "demo"])
     cli.invoke(app, ["render", "demo", "--force"])
@@ -90,9 +82,7 @@ def test_render_scene_filters_and_clears_stamp(
     assert stamps_after == []
 
 
-def test_render_unknown_scene_fails(
-    project: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_render_unknown_scene_fails(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def boom(deck: Any, *, output_dir: Path, scenes: tuple[str, ...] = ()) -> None:
         raise ValueError("unknown scene name(s): ['Ghost']")
 

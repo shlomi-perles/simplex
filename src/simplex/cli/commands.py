@@ -58,7 +58,9 @@ def render(
     out.mkdir(parents=True, exist_ok=True)
 
     if not partial and not force and cache.is_fresh(deck, _CACHE):
-        console.print(f"[yellow]cached[/yellow] {deck.slug} -- pass --force or --scene to re-render")
+        console.print(
+            f"[yellow]cached[/yellow] {deck.slug} -- pass --force or --scene to re-render"
+        )
         return
 
     try:
