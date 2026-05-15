@@ -78,17 +78,32 @@ def _maybe_render(
     cache_dir: Path,
     *,
     render: bool,
+    force: bool = False,
+    scenes: tuple[str, ...] = (),
 ) -> None:
     if not render:
         return
-    if cache.is_fresh(deck, cache_dir):
+    # When `scenes` is provided at the build level, intersect with this deck's
+    # actual scene class names: a deck without any of the requested scenes is
+    # skipped silently rather than raising on the runner's unknown-scene check.
+    deck_scenes = tuple(s for s in scenes if s in deck.scene_class_names)
+    if scenes and not deck_scenes:
         return
-    runner.render(deck, output_dir=media_dir)
+    partial = bool(deck_scenes)
+    if not partial and not force and cache.is_fresh(deck, cache_dir):
+        return
+    runner.render(deck, output_dir=media_dir, scenes=deck_scenes)
     # PDF export is best-effort: manim-slides convert may fail before assets
     # exist on disk; degrade silently to "no PDF" rather than break the build.
     with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError):
         pdf.export(deck, output_dir=media_dir)
-    cache.mark_fresh(deck, cache_dir)
+    if partial:
+        # The stamp claims "whole deck is fresh"; a partial render doesn't
+        # earn that, and a stale stamp would mask the unrendered scenes on
+        # the next full build. Drop it so the next non-partial run re-renders.
+        cache.clear(deck, cache_dir)
+    else:
+        cache.mark_fresh(deck, cache_dir)
 
 
 def _has_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
@@ -120,12 +135,14 @@ def _build_deck(
     site_cfg: SiteConfig,
     env: Environment,
     render: bool,
+    force: bool = False,
+    scenes: tuple[str, ...] = (),
 ) -> str | None:
     """Render one deck. Returns the cover thumbnail href (relative)."""
     deck_out = site_dir / "decks" / deck.slug
     deck_out.mkdir(parents=True, exist_ok=True)
 
-    _maybe_render(deck, deck_out, cache_dir, render=render)
+    _maybe_render(deck, deck_out, cache_dir, render=render, force=force, scenes=scenes)
 
     deck_manifest = manifest.build_manifest(deck, media_dir=deck_out)
     thumbs = thumbnail.generate(
@@ -205,11 +222,18 @@ def build(
     *,
     render: bool = True,
     site_cfg: SiteConfig | None = None,
+    force: bool = False,
+    only: tuple[str, ...] = (),
+    scenes: tuple[str, ...] = (),
 ) -> None:
     """Discover decks, optionally render them, and write the static site.
 
     Pass `render=False` to skip `manim-slides render` + PDF export -- useful
     in tests that need the HTML scaffolding without invoking Manim.
+
+    `force` skips the freshness cache. `only` filters to those deck slugs.
+    `scenes` filters each rendered deck to those scene class names (implies
+    a forced partial render).
     """
     site_cfg = site_cfg or SiteConfig.load(repo_root=decks_dir.parent)
     registry = discover(decks_dir, default_section_order=site_cfg.default_section_order)
@@ -217,9 +241,12 @@ def build(
     env = _jinja(site_cfg)
     _copy_static(site_dir)
 
+    only_set = set(only)
     deck_thumbs: dict[str, str | None] = {}
     for section in registry.sections:
         for deck in section.decks:
+            if only_set and deck.slug not in only_set:
+                continue
             deck_thumbs[deck.slug] = _build_deck(
                 deck,
                 site_dir=site_dir,
@@ -227,6 +254,8 @@ def build(
                 site_cfg=site_cfg,
                 env=env,
                 render=render,
+                force=force,
+                scenes=scenes,
             )
 
     for section in registry.sections:
