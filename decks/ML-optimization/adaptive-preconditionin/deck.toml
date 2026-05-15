@@ -1,10 +1,30 @@
 slug = "adaptive-preconditionin"
-title = "Adaptive Preconditionin"
-summary = "Replace with a one-line description."
-tags = []
+title = "Adaptive Preconditioning -- AdaGrad and ADAM"
+summary = "Step-by-step build from momentum GD to AdaGrad to ADAM with 2D + 3D intuition."
+tags = ["optimization", "deep-learning", "first-order"]
 theme = "dastimator_dark"
 quality = "high_quality"
 voiceover = false
-category = ""
-order = 1000
-entrypoints = ["slides.intro:Intro"]
+category = "ML-optimization"
+order = 12
+entrypoints = [
+    "slides.intro:Intro",
+    "slides.motivation:WhyPreconditioning",
+    "slides.motivation:UnitsExample",
+    "slides.motivation:GDZigzag",
+    "slides.momentum:MomentumIntuition2D",
+    "slides.momentum:MomentumStepBreakdown",
+    "slides.momentum:MomentumIn3D",
+    "slides.momentum:MomentumEquationDerivation",
+    "slides.adagrad:AdaGradMotivation",
+    "slides.adagrad:AdaGradEquation",
+    "slides.adagrad:AdaGradInAction",
+    "slides.adagrad:AdaGradMirror",
+    "slides.adam:AdamBuildUp",
+    "slides.adam:AdamEquations",
+    "slides.adam:AdamBoxes",
+    "slides.adam:AdamCaveat",
+    "slides.race:OptimizerRace2D",
+    "slides.race:OptimizerRace3D",
+    "slides.race:Recap",
+]
