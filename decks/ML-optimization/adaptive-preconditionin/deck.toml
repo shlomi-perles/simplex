@@ -1,0 +1,10 @@
+slug = "adaptive-preconditionin"
+title = "Adaptive Preconditionin"
+summary = "Replace with a one-line description."
+tags = []
+theme = "dastimator_dark"
+quality = "high_quality"
+voiceover = false
+category = ""
+order = 1000
+entrypoints = ["slides.intro:Intro"]
