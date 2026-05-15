@@ -9,8 +9,8 @@ from pygments.token import Comment, Generic, Keyword, Literal, Name
 class DarculaStyle(Style):
     """Pygments scheme inspired by JetBrains Darcula, ported from Dastimator."""
 
-    background_color = "#2B2B2B"
-    highlight_color = "#323232"
+    background_color = "#111111"
+    highlight_color = "#333333"
 
     styles = {  # noqa: RUF012 -- pygments declares `styles` as a class attribute.
         Comment.Multiline: "#808080",
