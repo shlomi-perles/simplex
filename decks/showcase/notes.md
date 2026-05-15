@@ -14,12 +14,19 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 | `RegionAnchors` | `engine.region` | nine anchor names, `shrink`, `reset` |
 | `ExitAnimations` | `engine.animations` | `set_exit_animation`, `clear_scene(exclude=...)` |
 | `GeometryHelpers` | `engine.geometry` | `get_convex_hull_polygon`, `get_surrounding_rectangle` |
+| `GlyphMapTransform` | `engine.transforms` | `TransformByGlyphMap` -- explicit glyph-index morph |
+| `TrackingHelpers` | `engine.dynamics` + `engine.geometry` | `VT` (`~`/`@`), `DN`, `Vcis` |
+| `ShapeAndDebug` | `engine.geometry` + `engine.debug` + `engine.transforms` | `SurroundingRectangleUnion`, `indexx_labels`, `bounding_box`, `GhostSlideFade` |
 
 ## Notes
 
 - The convex-hull demo requires SciPy. Install it via `pip install simplex[geometry]`; without it, the scene shows a caption pointing readers to the extras.
 - `code_block` registers the Darcula Pygments style on first use; subsequent calls are a no-op.
 - `Definition` reads its TeX environment from `theme.latex.environments["definition"]`, which defaults to `{minipage}{8cm}` in `DASTIMATOR_DARK`. Override by constructing a fresh `Theme` rather than mutating tokens (they're frozen).
+- The MF-Tools-derived helpers deliberately drop everything Manim 0.20.x already ships -- `ValueTracker` arithmetic operators, `index_labels`, `ConvexHull`, `Polygon.round_corners`, `Union`, `BraceLabel`/`BraceText`, and `Mobject.always` all stay native. We only add what isn't already there.
+- `TransformByGlyphMap` falls back to a `show_indices` mode if the leftover glyph counts don't line up -- pass an empty `glyph_map` (or `show_indices=True`) to see the index labels and write the right map.
+- `VT` only adds `~vt`, `vt @ x`, `vt @= x`. The `+`, `-`, `*`, `/`, `**` operators are inherited from `ValueTracker` (added in Manim 0.19.1).
+- `DN(callable_or_VT, ...)` attaches an `add_updater`, NOT `Mobject.always` -- the latter would snapshot the value once at attach time (a documented Manim gotcha).
 
 ## Math sample
 

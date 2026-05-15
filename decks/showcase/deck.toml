@@ -13,5 +13,8 @@ entrypoints = [
     "slides.scenes:RegionAnchors",
     "slides.scenes:ExitAnimations",
     "slides.scenes:GeometryHelpers",
+    "slides.scenes:GlyphMapTransform",
+    "slides.scenes:TrackingHelpers",
+    "slides.scenes:ShapeAndDebug",
 ]
 voiceover = false
