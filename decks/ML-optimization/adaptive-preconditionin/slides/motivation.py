@@ -86,12 +86,20 @@ class UnitsExample(ContentSlide):
 
         # Round / isotropic contours on the left (kept small).
         contours_left = contour_quad(
-            ax_left, a_x=1.0, a_y=1.0, color=C_MOMENTUM, opacity=0.7,
+            ax_left,
+            a_x=1.0,
+            a_y=1.0,
+            color=C_MOMENTUM,
+            opacity=0.7,
             levels=(0.4, 1.0, 2.0, 3.5),
         )
         # Elongated contours on the right (0.1, 1 -> very stretched).
         contours_right = contour_quad(
-            ax_right, a_x=0.1, a_y=1.0, color=C_VARIANCE, opacity=0.7,
+            ax_right,
+            a_x=0.1,
+            a_y=1.0,
+            color=C_VARIANCE,
+            opacity=0.7,
             levels=(0.5, 1.3, 2.4),
         )
 
@@ -117,12 +125,20 @@ class UnitsExample(ContentSlide):
 
         # Per-panel curvature -> per-panel gradient direction.
         grad_l = gradient_arrow(
-            ax_left, point=start, grad_vec=(1.0 * start[0], 1.0 * start[1]),
-            color=C_GD, scale=0.6, stroke_width=7,
+            ax_left,
+            point=start,
+            grad_vec=(1.0 * start[0], 1.0 * start[1]),
+            color=C_GD,
+            scale=0.6,
+            stroke_width=7,
         )
         grad_r = gradient_arrow(
-            ax_right, point=start, grad_vec=(0.1 * start[0], 1.0 * start[1]),
-            color=C_GD, scale=0.6, stroke_width=7,
+            ax_right,
+            point=start,
+            grad_vec=(0.1 * start[0], 1.0 * start[1]),
+            color=C_GD,
+            scale=0.6,
+            stroke_width=7,
         )
         self.play(FadeIn(dot_l), FadeIn(dot_r))
         self.play(Write(grad_l), Write(grad_r))

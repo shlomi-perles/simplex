@@ -233,8 +233,11 @@ def gradient_arrow(
         float(point[1] - scale * grad_vec[1]),
     )
     arrow = Arrow(
-        start=start, end=end, buff=buff,
-        stroke_width=stroke_width, max_tip_length_to_length_ratio=0.35,
+        start=start,
+        end=end,
+        buff=buff,
+        stroke_width=stroke_width,
+        max_tip_length_to_length_ratio=0.35,
     )
     arrow.set_color(color)
     arrow.set_stroke(color=color, width=stroke_width)
@@ -314,10 +317,7 @@ def iterates_to_3d_path(
     `z` is set from the loss surface plus a small lift so the curve sits
     just above the surface. The closure pre-computes all 3D points once.
     """
-    coords = [
-        axes.c2p(float(p[0]), float(p[1]), float(loss(p[0], p[1])) + z_lift)
-        for p in pts
-    ]
+    coords = [axes.c2p(float(p[0]), float(p[1]), float(loss(p[0], p[1])) + z_lift) for p in pts]
 
     def path(t: float) -> np.ndarray:
         t = max(0.0, min(1.0, t))
@@ -331,12 +331,41 @@ def iterates_to_3d_path(
 
 
 __all__ = [
-    "A_X", "A_Y", "BETA_ADAM", "C_ADAM", "C_AXIS", "C_DIM", "C_GD",
-    "C_MOMENTUM", "C_OPTIMUM", "C_TRAIL", "C_VARIANCE", "EPS_ADAGRAD",
-    "EPS_ADAM", "GAMMA_ADAM", "GAMMA_MOMENTUM", "LR_ADAGRAD", "LR_ADAM",
-    "LR_GD", "LR_MOMENTUM", "N_STEPS", "OptState", "START_POINT",
-    "adagrad_step", "adam_step", "contour_quad", "gd_step",
-    "glowing_dot", "grad", "gradient_arrow", "iterates_to_3d_path",
-    "loss", "loss_surface", "make_2d_axes", "make_3d_axes",
-    "momentum_step", "run_optimizer", "trail_from_points",
+    "A_X",
+    "A_Y",
+    "BETA_ADAM",
+    "C_ADAM",
+    "C_AXIS",
+    "C_DIM",
+    "C_GD",
+    "C_MOMENTUM",
+    "C_OPTIMUM",
+    "C_TRAIL",
+    "C_VARIANCE",
+    "EPS_ADAGRAD",
+    "EPS_ADAM",
+    "GAMMA_ADAM",
+    "GAMMA_MOMENTUM",
+    "LR_ADAGRAD",
+    "LR_ADAM",
+    "LR_GD",
+    "LR_MOMENTUM",
+    "N_STEPS",
+    "OptState",
+    "START_POINT",
+    "adagrad_step",
+    "adam_step",
+    "contour_quad",
+    "gd_step",
+    "glowing_dot",
+    "grad",
+    "gradient_arrow",
+    "iterates_to_3d_path",
+    "loss",
+    "loss_surface",
+    "make_2d_axes",
+    "make_3d_axes",
+    "momentum_step",
+    "run_optimizer",
+    "trail_from_points",
 ]

@@ -42,9 +42,11 @@ class AdamBuildUp(ContentSlide):
     def construct(self) -> None:
         # Left panel: momentum equation.
         mom_eq = MathTex(
-            r"g_t", r"=",
+            r"g_t",
+            r"=",
             r"\gamma\, g_{t-1}",
-            r"+", r"(1-\gamma)\,",
+            r"+",
+            r"(1-\gamma)\,",
             r"\nabla f(x_t)",
             font_size=32,
         )
@@ -54,9 +56,11 @@ class AdamBuildUp(ContentSlide):
 
         # Right panel: AdaGrad accumulator with a discount (RMSProp form).
         var_eq = MathTex(
-            r"[s_t]_i^{\,2}", r"=",
+            r"[s_t]_i^{\,2}",
+            r"=",
             r"\beta\,[s_{t-1}]_i^{\,2}",
-            r"+", r"(1-\beta)\,",
+            r"+",
+            r"(1-\beta)\,",
             r"[\nabla f(x_t)]_i^{\,2}",
             font_size=32,
         )
@@ -78,8 +82,13 @@ class AdamBuildUp(ContentSlide):
 
         # Combine: x_{t+1} = x_t - eta * M_t^{-1} * g_t.
         combine = MathTex(
-            r"x_{t+1}", r"=", r"x_t", r"-",
-            r"\eta\,", r"M_t^{-1}", r"g_t",
+            r"x_{t+1}",
+            r"=",
+            r"x_t",
+            r"-",
+            r"\eta\,",
+            r"M_t^{-1}",
+            r"g_t",
             font_size=44,
         )
         combine[4].set_color(C_OPTIMUM)
@@ -91,12 +100,14 @@ class AdamBuildUp(ContentSlide):
         l_arrow = CurvedArrow(
             start_point=mom_eq.get_bottom() + DOWN * 0.05,
             end_point=combine[6].get_top() + UP * 0.05,
-            angle=-0.6, color=C_MOMENTUM,
+            angle=-0.6,
+            color=C_MOMENTUM,
         )
         r_arrow = CurvedArrow(
             start_point=var_eq.get_bottom() + DOWN * 0.05,
             end_point=combine[5].get_top() + UP * 0.05,
-            angle=0.6, color=C_VARIANCE,
+            angle=0.6,
+            color=C_VARIANCE,
         )
         self.play(Write(l_arrow), Write(r_arrow))
         self.play(Write(combine))
@@ -154,13 +165,22 @@ class AdamBoxes(ContentSlide):
         # Highlight gamma (momentum decay) -> highlight beta (variance decay) ->
         # highlight eta (overall step).
         gamma_box = SurroundingRectangle(
-            eqs[0][2], color=C_MOMENTUM, buff=0.06, corner_radius=0.05,
+            eqs[0][2],
+            color=C_MOMENTUM,
+            buff=0.06,
+            corner_radius=0.05,
         )
         beta_box = SurroundingRectangle(
-            eqs[1][2], color=C_VARIANCE, buff=0.06, corner_radius=0.05,
+            eqs[1][2],
+            color=C_VARIANCE,
+            buff=0.06,
+            corner_radius=0.05,
         )
         eta_box = SurroundingRectangle(
-            eqs[2][4], color=C_OPTIMUM, buff=0.06, corner_radius=0.05,
+            eqs[2][4],
+            color=C_OPTIMUM,
+            buff=0.06,
+            corner_radius=0.05,
         )
 
         gamma_note = BodyText(
