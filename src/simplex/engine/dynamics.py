@@ -87,9 +87,7 @@ def maintain_apparent_stroke_width(
         original_camera_width = camera.frame.get_width()
 
         def update(mob: Mobject) -> None:
-            mob.set_stroke(
-                width=original_width * original_camera_width / camera.frame.get_width()
-            )
+            mob.set_stroke(width=original_width * original_camera_width / camera.frame.get_width())
 
         mobject.add_updater(update)
         return mobject

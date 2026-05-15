@@ -24,9 +24,7 @@ def _deck(tmp_path: Path) -> DeckConfig:
     slides_pkg = deck_dir / "slides"
     slides_pkg.mkdir()
     (slides_pkg / "__init__.py").write_text("", encoding="utf-8")
-    (slides_pkg / "scenes.py").write_text(
-        "class Foo: ...\nclass Bar: ...\n", encoding="utf-8"
-    )
+    (slides_pkg / "scenes.py").write_text("class Foo: ...\nclass Bar: ...\n", encoding="utf-8")
     return DeckConfig.load(deck_dir)
 
 
@@ -46,9 +44,7 @@ def captured(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, Any]]]:
     yield calls
 
 
-def test_render_sets_theme_and_quality_env(
-    tmp_path: Path, captured: list[dict[str, Any]]
-) -> None:
+def test_render_sets_theme_and_quality_env(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
     deck = _deck(tmp_path)
     runner.render(deck, output_dir=tmp_path / "out")
     assert len(captured) == 1
@@ -67,9 +63,7 @@ def test_render_passes_all_scenes_when_filter_empty(
     assert args[-2:] == ["Foo", "Bar"]
 
 
-def test_render_scenes_filter_keeps_subset(
-    tmp_path: Path, captured: list[dict[str, Any]]
-) -> None:
+def test_render_scenes_filter_keeps_subset(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
     deck = _deck(tmp_path)
     runner.render(deck, output_dir=tmp_path / "out", scenes=("Bar",))
     assert len(captured) == 1
