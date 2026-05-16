@@ -6,9 +6,17 @@ from pathlib import Path
 ROOTS: tuple[Path, ...] = (Path("src/simplex"), Path("decks"), Path("tests"))
 LIMIT: int = 50
 
+# Runtime-generated directories under `web/static/` (populated by
+# `simplex.web.vendor.ensure`). They're gitignored and have no business
+# carrying a per-directory README; skipping them keeps the check honest
+# whether or not vendoring has run.
+_VENDORED_STATIC: frozenset[str] = frozenset({"katex", "reveal.js", "fonts"})
+
 
 def _skipped(parts: tuple[str, ...]) -> bool:
-    return any(p.startswith("_") or p.startswith(".") for p in parts)
+    if any(p.startswith("_") or p.startswith(".") for p in parts):
+        return True
+    return parts[:2] == ("web", "static") and len(parts) >= 3 and parts[2] in _VENDORED_STATIC
 
 
 def main() -> int:

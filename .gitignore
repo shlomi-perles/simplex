@@ -32,6 +32,7 @@ src/simplex/web/static/tailwind.js
 src/simplex/web/static/htmx.min.js
 src/simplex/web/static/katex/
 src/simplex/web/static/reveal.js/
+src/simplex/web/static/fonts/
 
 # Editors
 .idea/

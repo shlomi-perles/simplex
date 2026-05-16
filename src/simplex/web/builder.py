@@ -29,6 +29,7 @@ from simplex.deck.config import DeckConfig
 from simplex.deck.registry import Section, SectionedRegistry, discover
 from simplex.render import cache, html, manifest, pdf, runner, thumbnail
 from simplex.web import notes, vendor
+from simplex.web.bibliography import Bibliography
 from simplex.web.site_config import SiteConfig
 
 
@@ -110,6 +111,12 @@ def _has_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
     return (deck_dir / f"{deck.slug}.pdf").exists()
 
 
+def _load_bibliography(deck_path: Path) -> Bibliography | None:
+    """Return the deck's parsed `refs.bib`, or `None` when absent."""
+    refs = deck_path / "refs.bib"
+    return Bibliography.load(refs) if refs.exists() else None
+
+
 def _has_notes_pdf(deck_dir: Path) -> bool:
     return (deck_dir / "notes.pdf").exists()
 
@@ -167,7 +174,8 @@ def _build_deck(
     notes_md = deck.path / "notes.md"
     notes_html = ""
     if notes_md.exists():
-        notes_html = notes.render(notes_md, slide_count=len(enriched))
+        bib = _load_bibliography(deck.path)
+        notes_html = notes.render(notes_md, slide_count=len(enriched), bibliography=bib)
 
     total_seconds = sum(s.duration_s for s in enriched)
     total_minutes: int | None = int(total_seconds // 60) if total_seconds > 0 else None

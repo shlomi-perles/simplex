@@ -1,22 +1,28 @@
 # web/
 
-Static-site generator: home carousels, deck pages, viewer bridge, notes
-markdown.
+Static-site generator: home carousels, deck pages, viewer bridge, academic
+notes pipeline (markdown + math + citations + Tufte sidenotes).
 
 ## Public surface
 
 - `SiteConfig.load()` -- merge committed `site.toml` with env overrides
   (`SIMPLEX_GA_TAG`, `SIMPLEX_BASE_URL`, `SIMPLEX_BRAND`, `SIMPLEX_PREVIEW`).
-- `notes.render(notes_md_path, slide_count=...)` -- markdown-it +
-  dollarmath + `[slide:N]` plugin -> HTML.
+- `notes.render(notes_md_path, slide_count=..., bibliography=...)` --
+  markdown-it + dollarmath + footnotes + `[slide:N]` plugin + `\cite{}`
+  plugin -> Tufte-style academic HTML (serif body, Lato headings,
+  right-margin sidenotes, references appendix).
+- `bibliography.Bibliography.load(refs_bib)` -- parse a `.bib`, assign
+  biblatex `alpha` labels (`[DHS11]`-style), render the cited subset.
 - `builder.build(decks_dir, site_dir, cache_dir, render=True)` -- discover
   -> render -> pdf -> notes -> emit per-deck `slides.html` + page +
   per-section pages + home.
 
 ## Don't
 
-- Don't bundle JS or load CDNs. Tailwind / KaTeX / RevealJS / viewer.js are
-  vendored under `static/` (see `static/README.md`).
+- Don't bundle JS or load CDNs. Tailwind / KaTeX / RevealJS / Lato /
+  Merriweather are vendored under `static/` (see `static/README.md`).
 - Don't hand-edit anything under `site/`. Edit templates / CSS instead.
 - Don't import Jinja templates as Python modules. Loaded via
   `PackageLoader("simplex.web", "templates")`.
+- Don't write a manual "References" section in `notes.md`. Use
+  `\cite{key}` and ship a `refs.bib`; the renderer appends the list.
