@@ -700,13 +700,152 @@ html {
   margin: 2em 0;
 }
 
+/* Display math.
+ *
+ * Default to `overflow-x: auto` so very wide formulas stay readable. The
+ * `notes.js` shim measures each `.katex-display` after KaTeX renders and
+ * applies a `transform: scale(...)` (capped at MIN_SCALE) when the
+ * equation only slightly overflows -- so the reader gets a fitted
+ * formula instead of a scrollbar for the common "just a touch too wide"
+ * case.
+ *
+ * `text-align: center` is the KaTeX default; we keep it because justified
+ * text reading doesn't apply to standalone display math. */
 .deck-notes .katex-display {
   margin: 1.4em 0;
   overflow-x: auto;
   overflow-y: hidden;
   text-align: center;
+  max-width: 100%;
 }
 .deck-notes .katex { font-size: 1.05em; }
+/* When notes.js has fitted the equation, lock visual flow to the scaled
+ * size: no scroll, no horizontal overflow, no leftover blank band. */
+.deck-notes .katex-display.katex-fitted {
+  overflow: visible;
+  text-align: left;
+}
+.deck-notes .katex-display.katex-fitted > .katex {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Theorem / definition / remark callouts                              */
+/* ------------------------------------------------------------------ */
+/*
+ * Each callout type carries its own accent. Variables let us layer
+ * `--callout-accent` and `--callout-tint` once and reuse them for the
+ * left border, tag colour, target highlight, and tinted background.
+ */
+
+.callout {
+  --callout-accent: var(--notes-accent);
+  --callout-tint: var(--notes-blockquote-bg);
+  --callout-tag-fg: var(--notes-accent);
+
+  display: block;
+  margin: 1.6em 0;
+  padding: 0.9em 1.2em;
+  background: var(--callout-tint);
+  border-left: 4px solid var(--callout-accent);
+  border-radius: 0 6px 6px 0;
+  color: var(--notes-fg);
+  hyphens: manual;
+  scroll-margin-top: 4rem;
+  position: relative;
+}
+.callout > p:first-child { margin-top: 0; }
+.callout > p:last-child { margin-bottom: 0; }
+.callout:target {
+  outline: 2px solid var(--callout-accent);
+  outline-offset: 2px;
+}
+
+.callout-tag {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: var(--callout-tag-fg);
+  margin-right: 0.45em;
+}
+
+/* Per-type palettes. Backgrounds are tinted versions of the accent so a
+ * mid-paragraph callout reads at a glance without overwhelming the
+ * Merriweather body around it. */
+.callout-theorem {
+  --callout-accent: #1f4f8a;
+  --callout-tint: #eaf1fa;
+  --callout-tag-fg: #163f73;
+}
+.callout-lemma {
+  --callout-accent: #0d7b6e;
+  --callout-tint: #e3f4f1;
+  --callout-tag-fg: #08594f;
+}
+.callout-proposition {
+  --callout-accent: #3a4cb8;
+  --callout-tint: #eaedfa;
+  --callout-tag-fg: #2b3a93;
+}
+.callout-corollary {
+  --callout-accent: #5b6ed1;
+  --callout-tint: #eef0fb;
+  --callout-tag-fg: #3f4fa8;
+}
+.callout-claim,
+.callout-fact {
+  --callout-accent: #1f6a8a;
+  --callout-tint: #e7f1f6;
+  --callout-tag-fg: #134f6b;
+}
+.callout-definition {
+  --callout-accent: #b06400;
+  --callout-tint: #fbf1de;
+  --callout-tag-fg: #8a4d00;
+}
+.callout-example {
+  --callout-accent: #2f7f3f;
+  --callout-tint: #e7f3e7;
+  --callout-tag-fg: #1f5e2c;
+}
+.callout-remark,
+.callout-note,
+.callout-observation {
+  --callout-accent: #757066;
+  --callout-tint: #f1ede0;
+  --callout-tag-fg: #4a4538;
+}
+.callout-proof {
+  --callout-accent: #9d9385;
+  --callout-tint: #f6f2e6;
+  --callout-tag-fg: #5d564a;
+  font-style: italic;
+}
+.callout-proof em { font-style: normal; }
+/* The classic "Q.E.D." marker at the close of a proof. */
+.callout-proof::after {
+  content: "\220E";
+  float: right;
+  margin-top: -1.6em;
+  color: var(--callout-accent);
+  font-style: normal;
+  font-size: 1.2em;
+}
+
+/* `\ref{label}` cross-reference chips. */
+.ref {
+  color: var(--notes-link);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--notes-link);
+  font-variant: small-caps;
+  letter-spacing: 0.02em;
+}
+.ref:hover {
+  background: rgba(30, 79, 138, 0.08);
+  border-bottom-style: solid;
+}
+.ref-stale { color: #b03030; border-bottom-color: #b03030; }
 
 /* Article-style "drop cap" on the first paragraph after the lead H1. */
 .deck-notes > p:first-of-type::first-letter,
