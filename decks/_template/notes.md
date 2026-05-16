@@ -12,6 +12,12 @@ $$
 \int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
 $$
 
+Theorem / definition / lemma / remark / proof blockquotes turn into colour-coded callouts and get anchored ids automatically:
+
+> **Theorem 1.1.** Every blockquote whose first paragraph begins with `**Theorem N.N.**` (or `Lemma`, `Definition`, `Remark`, `Proof`, …) becomes a referenceable callout.
+
+Reference one by id with `\ref{theorem-1-1}` — the renderer resolves it to **Theorem 1.1** automatically.
+
 Cite the bundled `refs.bib` with `\cite{key}` — the build appends a References section automatically (`\cite{KB15}` here).
 
 Code blocks render with Pygments:

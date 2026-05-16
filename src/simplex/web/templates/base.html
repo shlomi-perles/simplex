@@ -41,6 +41,7 @@
   Built with Simplex &middot; <a href="https://manim-slides.eertmans.be/" class="hover:text-neutral-300">manim-slides</a>
 </footer>
 <script src="{{ static('viewer.js') }}" defer></script>
+<script src="{{ static('notes.js') }}" defer></script>
 <script defer src="{{ static('katex/katex.min.js') }}"></script>
 <script defer src="{{ static('katex/auto-render.min.js') }}"
         onload="renderMathInElement(document.body, {
@@ -50,6 +51,7 @@
           ],
           throwOnError: false,
           ignoredTags: ['script','noscript','style','textarea','pre','code']
-        });"></script>
+        });
+        window.simplexFitMath && window.simplexFitMath();"></script>
 </body>
 </html>
