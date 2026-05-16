@@ -29,7 +29,10 @@ def make_plugin(slide_count: int | None = None) -> Any:
             match = _PATTERN.match(state.src, state.pos)
             if not match:
                 return False
+            # Silent / validation mode: must still advance `state.pos` past
+            # the match so callers like `parseLinkLabel` don't loop forever.
             if silent:
+                state.pos = match.end()
                 return True
             n = int(match.group(1))
             stale = slide_count is not None and (n < 1 or n > slide_count)

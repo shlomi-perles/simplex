@@ -1,9 +1,93 @@
 /* Simplex site-specific styles.
  *
  * Layered on top of vendored Tailwind. Keep selectors low-specificity so
- * utility classes in templates still win. CSS variables are tied to the
- * `dastimator_dark` theme palette in src/simplex/theme/presets.py.
+ * utility classes in templates still win.
+ *
+ * Typography stack (academic):
+ *   - Body / notes: Merriweather (serif), justified, hyphenated.
+ *   - Headings / chrome: Lato (clean sans, ties to the Francis-Bach reference).
+ *   - Math: KaTeX vendored woff2 (handled by katex.min.css).
+ *
+ * CSS variables in `:root` are tied to the `dastimator_dark` theme palette
+ * in src/simplex/theme/presets.py. Notes use a *light* surface inside the
+ * dark chrome -- closer to a physical paper / journal page, easier to read.
  */
+
+/* ------------------------------------------------------------------ */
+/* Fonts (vendored under /static/fonts/* by web/vendor.py)             */
+/* ------------------------------------------------------------------ */
+
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/lato/lato-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lato";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/lato/lato-latin-400-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/lato/lato-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lato";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/lato/lato-latin-700-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("fonts/lato/lato-latin-900-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Merriweather";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/merriweather/merriweather-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Merriweather";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/merriweather/merriweather-latin-400-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Merriweather";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/merriweather/merriweather-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Merriweather";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/merriweather/merriweather-latin-700-italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Merriweather";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("fonts/merriweather/merriweather-latin-900-normal.woff2") format("woff2");
+}
 
 :root {
   --bg: #242424;
@@ -16,9 +100,33 @@
   --border: #2e2e2e;
   --radius-card: 12px;
   --shadow-card: 0 6px 16px -4px rgba(0, 0, 0, 0.45);
+
+  /* Notes surface -- a paper-like reading pane within the dark chrome. */
+  --notes-bg: #fdfaf3;
+  --notes-fg: #1d1c1a;
+  --notes-fg-soft: #3b3a36;
+  --notes-fg-dim: #6c6a64;
+  --notes-rule: #e3ddcd;
+  --notes-accent: #8a5a00;
+  --notes-link: #1e4f8a;
+  --notes-blockquote-bg: #f3eedd;
+  --notes-code-bg: #f3efe2;
+  --notes-pre-bg: #1c1d1f;
+  --notes-pre-fg: #d4d4d4;
+  --notes-sidenote-bg: #fbf6e6;
+
+  --font-sans: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Merriweather", "Iowan Old Style", "Apple Garamond",
+    "Palatino Linotype", "Georgia", "Times New Roman", serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo,
+    Consolas, "Liberation Mono", monospace;
 }
 
-html { color-scheme: dark; }
+html {
+  color-scheme: dark;
+  font-family: var(--font-sans);
+}
 
 .skip-link {
   position: absolute;
@@ -204,9 +312,8 @@ html { color-scheme: dark; }
 /* ------------------------------------------------------------------ */
 
 /* Three areas: viewer (slides + controls), sidebar (slide list), notes.
-   Narrow layout: viewer -> sidebar -> notes (the sidebar slips *between*
-   slides and notes per UX brief). Wide layout: viewer + sidebar on top
-   row, notes underneath the viewer with the sidebar still anchored
+   Narrow layout: viewer -> sidebar -> notes. Wide layout: viewer + sidebar
+   on top row, notes underneath the viewer with the sidebar still anchored
    right alongside. */
 .deck-grid {
   display: grid;
@@ -243,8 +350,6 @@ html { color-scheme: dark; }
   display: block;
   background: var(--bg);
 }
-/* When the viewer frame goes fullscreen, drop the rounded corners and
-   ensure the iframe fills the whole viewport. */
 .deck-viewer-frame:fullscreen {
   aspect-ratio: auto;
   width: 100vw;
@@ -437,87 +542,367 @@ html { color-scheme: dark; }
   background: linear-gradient(135deg, #2a2a2a, #161616);
 }
 
-/* Notes: spacing + KaTeX + code highlighting. */
-.deck-notes { margin-top: 0.25rem; }
-.deck-notes h1, .deck-notes h2, .deck-notes h3 {
-  color: var(--fg);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin: 1.6em 0 0.6em;
+/* ------------------------------------------------------------------ */
+/* Academic notes pane                                                 */
+/* ------------------------------------------------------------------ */
+/*
+ * The notes pane is a paper-like reading surface. Layout reserves a 35%
+ * right margin on wide screens (>= 1280px) where Tufte-style sidenotes
+ * float; on narrower viewports the margin collapses and sidenotes inline
+ * via a CSS-only "click the number" toggle.
+ */
+
+.deck-notes {
+  margin-top: 0.25rem;
+  background: var(--notes-bg);
+  color: var(--notes-fg);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 2.5rem clamp(1.25rem, 4vw, 3rem);
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.75;
+  /* `text-align: justify` with hyphens makes dense technical prose read
+     like a typeset journal page; without hyphens it would leave rivers. */
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  position: relative;
+  overflow-wrap: break-word;
 }
-.deck-notes h1 { font-size: 1.6rem; margin-top: 0; }
-.deck-notes h2 { font-size: 1.25rem; }
-.deck-notes h3 { font-size: 1.05rem; }
-.deck-notes p, .deck-notes li { color: var(--fg-muted); line-height: 1.65; }
-.deck-notes a { color: var(--accent); text-decoration: none; }
-.deck-notes a:hover { text-decoration: underline; }
-.deck-notes ul, .deck-notes ol { padding-left: 1.4rem; margin: 0.6em 0; }
+
+@media (min-width: 1280px) {
+  .deck-notes {
+    /* Reserve a margin for sidenotes. The padding-right reservation,
+       combined with `.sidenote { right: 0; width: 32%; }`, places the
+       note in the gutter without overlapping body text. */
+    padding-right: clamp(2rem, 35%, 22rem);
+  }
+}
+
+.deck-notes h1,
+.deck-notes h2,
+.deck-notes h3,
+.deck-notes h4,
+.deck-notes h5,
+.deck-notes h6 {
+  font-family: var(--font-sans);
+  color: var(--notes-fg);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+  margin: 1.8em 0 0.55em;
+  text-align: left;
+  hyphens: manual;
+}
+.deck-notes h1 {
+  font-size: 2.1rem;
+  font-weight: 900;
+  margin-top: 0;
+  border-bottom: 1px solid var(--notes-rule);
+  padding-bottom: 0.45em;
+}
+.deck-notes h2 {
+  font-size: 1.55rem;
+  border-bottom: 1px solid var(--notes-rule);
+  padding-bottom: 0.3em;
+}
+.deck-notes h3 { font-size: 1.22rem; }
+.deck-notes h4 { font-size: 1.08rem; color: var(--notes-fg-soft); }
+
+.deck-notes p,
+.deck-notes li {
+  color: var(--notes-fg);
+  line-height: 1.75;
+}
+.deck-notes p { margin: 0.9em 0; }
+.deck-notes a {
+  color: var(--notes-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+.deck-notes a:hover { text-decoration-thickness: 2px; }
+
+.deck-notes ul,
+.deck-notes ol {
+  padding-left: 1.6rem;
+  margin: 0.6em 0;
+}
+.deck-notes ul li::marker { color: var(--notes-fg-dim); }
+
 .deck-notes table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1em 0;
-  font-size: 0.92rem;
+  margin: 1.2em 0;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
 }
-.deck-notes th, .deck-notes td {
-  border: 1px solid var(--border);
-  padding: 0.45rem 0.6rem;
+.deck-notes th,
+.deck-notes td {
+  border-top: 1px solid var(--notes-rule);
+  border-bottom: 1px solid var(--notes-rule);
+  padding: 0.5rem 0.7rem;
   text-align: left;
 }
-.deck-notes th { background: var(--bg-card); color: var(--fg); }
-.deck-notes code {
-  background: #111;
-  color: #d4d4d4;
-  padding: 0.1em 0.35em;
-  border-radius: 4px;
-  font-size: 0.88em;
-  font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
-}
-.deck-notes pre {
-  background: #111;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.85rem 1rem;
-  overflow-x: auto;
-  margin: 1em 0;
-  font-size: 0.88rem;
-  line-height: 1.55;
-}
-.deck-notes pre code { background: transparent; padding: 0; border-radius: 0; }
-.deck-notes blockquote {
-  border-left: 3px solid var(--accent);
-  padding: 0.2em 0 0.2em 0.9em;
-  color: var(--fg-muted);
-  margin: 1em 0;
-}
-.deck-notes .katex-display {
-  margin: 1.2em 0;
-  overflow-x: auto;
-  overflow-y: hidden;
+.deck-notes th {
+  background: var(--notes-blockquote-bg);
+  color: var(--notes-fg);
+  font-weight: 700;
 }
 
-/* Markdown notes -- jump-to-slide refs */
+.deck-notes code {
+  background: var(--notes-code-bg);
+  color: var(--notes-fg);
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+  font-size: 0.88em;
+  font-family: var(--font-mono);
+}
+.deck-notes pre {
+  background: var(--notes-pre-bg);
+  color: var(--notes-pre-fg);
+  border: 1px solid #111;
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  overflow-x: auto;
+  margin: 1.2em 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  text-align: left;
+  hyphens: manual;
+  font-family: var(--font-mono);
+}
+.deck-notes pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+}
+
+.deck-notes blockquote {
+  margin: 1.4em 0;
+  padding: 0.9em 1.2em;
+  border-left: 4px solid var(--notes-accent);
+  background: var(--notes-blockquote-bg);
+  color: var(--notes-fg-soft);
+  font-style: normal;
+  border-radius: 0 6px 6px 0;
+  hyphens: manual;
+}
+.deck-notes blockquote p:first-child { margin-top: 0; }
+.deck-notes blockquote p:last-child { margin-bottom: 0; }
+
+.deck-notes hr {
+  border: 0;
+  border-top: 1px solid var(--notes-rule);
+  margin: 2em 0;
+}
+
+.deck-notes .katex-display {
+  margin: 1.4em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+.deck-notes .katex { font-size: 1.05em; }
+
+/* Article-style "drop cap" on the first paragraph after the lead H1. */
+.deck-notes > p:first-of-type::first-letter,
+.deck-notes > h1:first-of-type + p::first-letter {
+  font-family: var(--font-sans);
+  font-weight: 900;
+  font-size: 3.3em;
+  float: left;
+  line-height: 0.85;
+  padding: 0.05em 0.12em 0 0;
+  color: var(--notes-accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Slide-ref + citation inline chips                                   */
+/* ------------------------------------------------------------------ */
+
 .slide-ref {
   display: inline-flex;
   align-items: center;
-  background: var(--bg-card);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  padding: 0 0.4rem;
+  background: var(--notes-blockquote-bg);
+  border: 1px solid var(--notes-accent);
+  color: var(--notes-accent);
+  padding: 0 0.45rem;
   border-radius: 4px;
+  font-family: var(--font-sans);
   font-size: 0.85em;
   text-decoration: none;
   cursor: pointer;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.slide-ref::before { content: "\25B6"; margin-right: 0.25rem; font-size: 0.7em; }
-.slide-ref:hover { background: var(--accent); color: #1a1a1a; }
+.slide-ref::before {
+  content: "\25B6";
+  margin-right: 0.25rem;
+  font-size: 0.7em;
+}
+.slide-ref:hover {
+  background: var(--notes-accent);
+  color: var(--notes-bg);
+}
 .slide-ref-stale {
   border-color: #b03030;
-  color: #ff8080;
+  color: #b03030;
   cursor: not-allowed;
 }
 
-/* Reduced motion overrides */
+.cite-group {
+  font-family: var(--font-sans);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+.cite {
+  color: var(--notes-link);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--notes-link);
+  font-variant: small-caps;
+  letter-spacing: 0.02em;
+}
+.cite:hover {
+  background: rgba(30, 79, 138, 0.08);
+  border-bottom-style: solid;
+}
+.cite-stale { color: #b03030; border-bottom-color: #b03030; }
+
+/* ------------------------------------------------------------------ */
+/* Bibliography                                                        */
+/* ------------------------------------------------------------------ */
+
+.bibliography {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--notes-rule);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+}
+.bibliography h2 {
+  font-family: var(--font-sans);
+  font-size: 1.35rem;
+  margin: 0 0 0.8em 0;
+  text-align: left;
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.bib-list {
+  padding-left: 0;
+  list-style: none;
+  counter-reset: bib;
+}
+.bib-entry {
+  position: relative;
+  padding: 0.55rem 0 0.55rem 2.2rem;
+  border-bottom: 1px solid var(--notes-rule);
+  text-align: left;
+  hyphens: manual;
+  line-height: 1.6;
+  scroll-margin-top: 4rem;
+}
+.bib-entry:last-child { border-bottom: 0; }
+.bib-entry::before {
+  counter-increment: bib;
+  content: "[" counter(bib) "]";
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  color: var(--notes-accent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.bib-entry:target {
+  background: rgba(255, 215, 0, 0.12);
+  border-radius: 4px;
+}
+.bib-link {
+  margin-left: 0.4em;
+  color: var(--notes-link);
+  text-decoration: none;
+  font-size: 0.85em;
+}
+.bib-link:hover { text-decoration: underline; }
+
+/* ------------------------------------------------------------------ */
+/* Tufte sidenotes                                                     */
+/* ------------------------------------------------------------------ */
+/*
+ * On wide screens (>= 1280px) the .sidenote floats into the right gutter
+ * reserved by `.deck-notes` padding-right. The label (number) stays inline
+ * with the surrounding sentence. On narrow screens, clicking the label
+ * toggles a hidden checkbox that reveals the note inline.
+ */
+
+.sidenote-toggle {
+  display: none;
+}
+
+.sidenote-ref {
+  font-family: var(--font-sans);
+  font-size: 0.78em;
+  font-weight: 700;
+  vertical-align: super;
+  line-height: 1;
+  color: var(--notes-accent);
+  cursor: pointer;
+  padding: 0 0.15em;
+  border-radius: 2px;
+}
+.sidenote-ref::before { content: "["; }
+.sidenote-ref::after { content: "]"; }
+.sidenote-ref:hover { background: rgba(138, 90, 0, 0.12); }
+
+.sidenote {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  text-align: left;
+  hyphens: manual;
+  color: var(--notes-fg-soft);
+  background: var(--notes-sidenote-bg);
+  border-left: 3px solid var(--notes-accent);
+  padding: 0.6rem 0.85rem;
+  margin: 0.8rem 0 1rem;
+  border-radius: 0 4px 4px 0;
+}
+
+@media (min-width: 1280px) {
+  .sidenote {
+    float: right;
+    clear: right;
+    width: 32%;
+    /* Push out of the body column into the reserved padding-right gutter. */
+    margin: 0.25rem 0 0.8rem clamp(0.75rem, 2vw, 1.5rem);
+    margin-right: calc(-1 * clamp(2rem, 33%, 21rem));
+    background: transparent;
+    border-left: 1px solid var(--notes-rule);
+    padding: 0 0 0 0.85rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+}
+
+/* Narrow viewport: collapse the sidenote until the user clicks the number. */
+@media (max-width: 1279px) {
+  .sidenote { display: none; }
+  .sidenote-toggle:checked + .sidenote { display: block; }
+  .sidenote-toggle:checked + .sidenote::before {
+    content: "Note: ";
+    color: var(--notes-accent);
+    font-weight: 700;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Reduced motion                                                      */
+/* ------------------------------------------------------------------ */
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
   .carousel-track { scroll-behavior: auto; }

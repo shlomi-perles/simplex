@@ -26,7 +26,7 @@ In fact, the algorithms we will discuss today currently include the most-used fi
 
 ## 1. The AdaGrad Algorithm
 
-The AdaGrad algorithm—introduced by Duchi, J., Hazan, E., & Singer, Y. [DHS11]—is a gradient-based optimization algorithm that adapts the learning rate for each variable based on the historical gradients.
+The AdaGrad algorithm—introduced by Duchi, Hazan, and Singer \cite{DHS11}—is a gradient-based optimization algorithm that adapts the learning rate for each variable based on the historical gradients.^[The "ada" in AdaGrad is short for "adaptive": the learning rate of each coordinate adapts to the variability of its past gradients.]
 
 The main idea behind AdaGrad is to scale the learning rate of each variable based on the sum of the squared gradients accumulated over time. This allows AdaGrad to give smaller learning rates to frequently updated variables and larger learning rates to variables with infrequent updates. Going back to the example of the bridge design, this means that if we were to change the units of the length variables, AdaGrad would automatically adjust the learning rates to compensate for the change in scale.
 
@@ -56,7 +56,7 @@ We assume that $\left[\nabla f\left(x_0\right)\right]_i \neq 0$ for all $i$, so 
 
 ## 2. ADAM: AdaGrad with Momentum
 
-In practice, people often use a variant of AdaGrad called **ADAM**, introduced by Kingma, D. P., & Ba, J. [KB15]. ADAM combines the adaptive learning rate of AdaGrad with the idea of momentum we already saw in Lecture 8. 
+In practice, people often use a variant of AdaGrad called **ADAM**, introduced by Kingma and Ba \cite{KB15}. ADAM combines the adaptive learning rate of AdaGrad with the idea of momentum we already saw in Lecture 8.^[See [slide:1] for the high-level intuition behind combining momentum with per-coordinate scaling.]
 
 In particular, at each iteration $t$, ADAM keeps track of the momentum (discounted sum of past gradients):
 
@@ -78,7 +78,7 @@ $$
 
 The hyperparameters $\eta, \gamma$, and $\beta$ in ADAM are typically set to $0.001, 0.9$, and $0.999$ respectively (this is PyTorch's default behavior).
 
-> **Remark 2.1.** The ADAM algorithm is widely used in practice and is known to work well for a wide range of optimization problems. It is particularly useful for training deep neural networks. However, ADAM does not have theoretical guarantees like AdaGrad. It is even known to diverge in some cases, even with convex objectives [RKK18].
+> **Remark 2.1.** The ADAM algorithm is widely used in practice and is known to work well for a wide range of optimization problems. It is particularly useful for training deep neural networks. However, ADAM does not have theoretical guarantees like AdaGrad. It is even known to diverge in some cases, even with convex objectives \cite{RKK18}.
 
 ---
 
@@ -250,11 +250,3 @@ So, to complete the proof, we only need to provide a bound on the norm of the sc
 > Taking square roots and using the fact that $\lambda$ was arbitrary yields the statement. $\blacksquare$
 
 Plugging the bound of Theorem 3.5 into (3) proves Theorem 3.1.
-
----
-
-## Bibliography
-
-*   **[DHS11]** J. Duchi, E. Hazan, and Y. Singer, "Adaptive subgradient methods for online learning and stochastic optimization," *Journal of machine learning research*, vol. 12, no. 7, 2011.
-*   **[KB15]** D. P. Kingma and J. Ba, "Adam: A Method for Stochastic Optimization," in *International Conference on Learning Representations (ICLR)*, 2015. [Online]. Available: http://arxiv.org/abs/1412.6980
-*   **[RKK18]** S. J. Reddi, S. Kale, and S. Kumar, "On the convergence of Adam and beyond," in *International Conference on Learning Representations (ICLR)*, 2018.
