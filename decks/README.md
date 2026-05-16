@@ -5,7 +5,10 @@ Author content lives here, one directory per deck.
 Each deck contains:
 - `deck.toml` -- DeckConfig fields (slug, title, summary, tags, theme, scenes, quality)
 - `slides.py` -- vanilla Manim subclassing `simplex.slides.*`
-- `notes.md` -- English notes rendered into the portal with KaTeX-ready math
+- `notes.md` -- academic-style notes (KaTeX math, `^[sidenotes]`,
+  `[slide:N]` jump links, `\cite{key}` citations)
+- `refs.bib` -- optional BibTeX bibliography; cited entries appear as
+  alpha-style `[Auth23]` tags + an auto-rendered References section
 - `assets/` -- optional images / data
 
 Scaffold a new deck with:

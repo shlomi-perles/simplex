@@ -15,8 +15,11 @@ TAILWIND_VER="3.4.4"
 KATEX_VER="0.16.11"
 REVEAL_VER="5.1.0"
 HTMX_VER="1.9.12"
+LATO_VER="5.0.18"
+MERRIWEATHER_VER="5.0.13"
 
 UNPKG="https://unpkg.com"
+JSDELIVR="https://cdn.jsdelivr.net/npm"
 
 fetch() {
   local url="$1"
@@ -65,5 +68,16 @@ fetch "$UNPKG/reveal.js@$REVEAL_VER/dist/theme/black.css" \
 # htmx (kept for future progressive enhancement; currently unused).
 fetch "$UNPKG/htmx.org@$HTMX_VER/dist/htmx.min.js" \
       "$STATIC/htmx.min.js"
+
+# Academic typography: Lato (headings / UI) + Merriweather (body / notes).
+# WOFF2 files come from `@fontsource` on jsDelivr (stable versioned URLs).
+for face in 400-normal 400-italic 700-normal 700-italic 900-normal ; do
+  fetch "$JSDELIVR/@fontsource/lato@$LATO_VER/files/lato-latin-$face.woff2" \
+        "$STATIC/fonts/lato/lato-latin-$face.woff2"
+done
+for face in 400-normal 400-italic 700-normal 700-italic 900-normal ; do
+  fetch "$JSDELIVR/@fontsource/merriweather@$MERRIWEATHER_VER/files/merriweather-latin-$face.woff2" \
+        "$STATIC/fonts/merriweather/merriweather-latin-$face.woff2"
+done
 
 echo "Done."

@@ -4,7 +4,8 @@ Vendored runtime assets, copied verbatim to `site/static/` at build time.
 
 ## Committed
 
-- `simplex.css` -- site-specific styles (carousel, deck page, slide-refs).
+- `simplex.css` -- site-specific styles (carousel, deck page, academic
+  notes typography, Tufte sidenotes, citations, bibliography).
 - `viewer.js` -- parent-page bridge for the deck iframe + carousel arrows.
 
 ## Vendored at install time (not committed)
@@ -13,6 +14,8 @@ Vendored runtime assets, copied verbatim to `site/static/` at build time.
 - `katex/` (CSS + fonts + JS auto-render)
 - `reveal.js/` (`reveal.js`, `reveal.css`, `reset.css`, `theme/simplex.css`)
 - `htmx.min.js` (optional, kept for future progressive enhancement)
+- `fonts/lato/` -- Lato 400/700/900 + italics (UI + headings)
+- `fonts/merriweather/` -- Merriweather 400/700/900 + italics (body notes)
 
 ## Don't
 
