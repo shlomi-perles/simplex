@@ -36,10 +36,11 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
 
 from simplex.theme.pygments_style import DarculaStyle
-from simplex.web import sidenotes
+from simplex.web import callouts, sidenotes
 from simplex.web.bibliography import Bibliography
 from simplex.web.citations import ENV_KEY as _CITE_ENV_KEY
 from simplex.web.citations import make_plugin as cite_plugin
+from simplex.web.refs import make_plugin as ref_plugin
 from simplex.web.slide_ref import make_plugin as slide_ref_plugin
 
 
@@ -85,6 +86,7 @@ def _make(
     md.use(anchors_plugin, max_level=3)
     md.use(slide_ref_plugin(slide_count=slide_count))
     md.use(cite_plugin(bibliography))
+    md.use(ref_plugin())
     return md
 
 
@@ -104,6 +106,11 @@ def render_text(
     env: dict[str, Any] = {}
     body = md.render(markdown, env)
     body = sidenotes.transform(body)
+    # Callouts after sidenotes so blockquote-shaped sidenotes (unlikely but
+    # possible) don't get mis-rewritten; before bibliography so `\ref{}`
+    # placeholders that point at callouts can be resolved while we're still
+    # walking the body.
+    body = callouts.transform(body)
     if bibliography is not None:
         used = tuple(env.get(_CITE_ENV_KEY, []))
         if used:
