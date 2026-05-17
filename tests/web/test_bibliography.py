@@ -153,3 +153,18 @@ def test_alpha_key_short_last_name() -> None:
 def test_bibentry_make_lowercases_entry_type() -> None:
     entry = BibEntry.make("k", "Article", {"author": "Smith, J.", "year": "2020"})
     assert entry.entry_type == "article"
+
+
+def test_bibliography_html_uses_alpha_marker() -> None:
+    """The printed bullet must show the alpha key (`[KB15]`) so it
+    matches the inline citation chip -- not a `[1]` ordinal."""
+    text = """
+    @article{a, author = {Adams, A.}, title = {Alpha}, year = 2020}
+    @inproceedings{b, author = {Brown, B. and Chen, C.}, title = {Beta}, year = 2021}
+    """
+    bib = Bibliography.parse(text)
+    html = bib.to_html(("a", "b"))
+    # Marker spans, not the old CSS counter.
+    assert '<span class="bib-marker">[Ada20]</span>' in html
+    assert '<span class="bib-marker">[BC21]</span>' in html
+    assert "counter(bib)" not in html
