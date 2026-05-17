@@ -36,7 +36,7 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
 
 from simplex.theme.pygments_style import DarculaStyle
-from simplex.web import callouts, sidenotes
+from simplex.web import callouts, equations, sidenotes
 from simplex.web.bibliography import Bibliography
 from simplex.web.citations import ENV_KEY as _CITE_ENV_KEY
 from simplex.web.citations import make_plugin as cite_plugin
@@ -106,11 +106,14 @@ def render_text(
     env: dict[str, Any] = {}
     body = md.render(markdown, env)
     body = sidenotes.transform(body)
+    # Equations first so the labels they emit are visible to the callouts
+    # pass, which resolves every `\ref{...}` placeholder in one walk.
+    body, eq_labels = equations.transform(body)
     # Callouts after sidenotes so blockquote-shaped sidenotes (unlikely but
     # possible) don't get mis-rewritten; before bibliography so `\ref{}`
-    # placeholders that point at callouts can be resolved while we're still
-    # walking the body.
-    body = callouts.transform(body)
+    # placeholders that point at callouts (or equations) can be resolved
+    # while we're still walking the body.
+    body = callouts.transform(body, extra_labels=eq_labels)
     if bibliography is not None:
         used = tuple(env.get(_CITE_ENV_KEY, []))
         if used:

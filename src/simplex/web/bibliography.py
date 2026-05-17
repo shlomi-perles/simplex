@@ -85,7 +85,12 @@ class BibEntry(BaseModel):
         )
 
     def render_html(self) -> str:
-        """Emit one <li> for the bibliography list."""
+        """Emit one <li> for the bibliography list.
+
+        The alpha-key marker (e.g. `[KB15]`) is rendered as an inline
+        `<span class="bib-marker">`, not a CSS counter, so the printed
+        bullet matches the inline `[KB15]` citation chip.
+        """
         parts: list[str] = []
         if self.authors:
             parts.append(_join_authors(self.authors))
@@ -100,7 +105,8 @@ class BibEntry(BaseModel):
         body = ", ".join(parts)
         if link := self._link_html():
             body = f"{body} {link}"
-        return f'<li id="bib-{_escape_html(self.key)}" class="bib-entry">{body}.</li>'
+        marker = f'<span class="bib-marker">[{_escape_html(self.alpha_key)}]</span>'
+        return f'<li id="bib-{_escape_html(self.key)}" class="bib-entry">{marker} {body}.</li>'
 
     def _venue_html(self) -> str:
         for field in ("journal", "booktitle", "publisher", "school", "institution"):

@@ -249,4 +249,4 @@ So, to complete the proof, we only need to provide a bound on the norm of the sc
 > 
 > Taking square roots and using the fact that $\lambda$ was arbitrary yields the statement. $\blacksquare$
 
-Plugging the bound of \ref{theorem-3-5} into (3) proves \ref{theorem-3-1}.
+Plugging the bound of \ref{theorem-3-5} into \ref{eq-3} proves \ref{theorem-3-1}.
