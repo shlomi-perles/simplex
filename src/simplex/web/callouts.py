@@ -63,16 +63,22 @@ _REF_RE = re.compile(
 )
 
 
-def transform(html: str) -> str:
+def transform(html: str, *, extra_labels: dict[str, str] | None = None) -> str:
     """Rewrite theorem-style blockquotes and resolve `\\ref{}` placeholders.
+
+    `extra_labels` lets other passes (e.g. `equations.transform`) seed the
+    label map: any id present there is reachable via `\\ref{id}` and
+    rendered with the supplied display string. Callout ids overwrite
+    extra labels of the same name (rare, but the callout is the more
+    specific definition).
 
     Two-pass:
       1. Walk every blockquote, detect callout type, rewrite to `<aside>`,
          and record the label map (`"theorem-3-1" -> "Theorem 3.1"`).
       2. Walk every `<a class="ref">` placeholder and substitute the
-         display label.
+         display label, combining `extra_labels` with the callout map.
     """
-    labels: dict[str, str] = {}
+    labels: dict[str, str] = dict(extra_labels or {})
     # Auto-numbering for unnumbered callouts of the same type (e.g. multiple
     # standalone "Proof." blocks). Keyed by lowercase type.
     counters: dict[str, int] = defaultdict(int)

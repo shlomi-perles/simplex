@@ -729,6 +729,43 @@ html {
   margin: 0;
 }
 
+/* Display-equation container.
+ *
+ * `web/equations.py` pulls `\tag{X}` out of the math content and emits a
+ * <span class="eq-tag"> sibling so the tag never overlaps the formula
+ * (KaTeX's own tag is `position: absolute; right: 0` and rides inside
+ * the scaled box when `notes.js` fits a wide equation).
+ *
+ * Grid: math column shrinks to available width (`minmax(0, 1fr)`), tag
+ * stays at its natural size in the right column. */
+.deck-notes .equation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.5em;
+  margin: 1.4em 0;
+  scroll-margin-top: 4rem;
+}
+.deck-notes .equation > .math.block {
+  margin: 0;
+  min-width: 0;
+}
+.deck-notes .equation > .math.block .katex-display {
+  margin: 0;
+}
+.deck-notes .eq-tag {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  color: var(--notes-fg-dim);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.deck-notes .equation:target {
+  outline: 2px solid var(--notes-link);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 /* ------------------------------------------------------------------ */
 /* Theorem / definition / remark callouts                              */
 /* ------------------------------------------------------------------ */
@@ -764,8 +801,6 @@ html {
 .callout-tag {
   font-family: var(--font-sans);
   font-weight: 700;
-  font-variant: small-caps;
-  letter-spacing: 0.04em;
   color: var(--callout-tag-fg);
   margin-right: 0.45em;
 }
@@ -833,19 +868,18 @@ html {
   font-size: 1.2em;
 }
 
-/* `\ref{label}` cross-reference chips. */
+/* `\ref{label}` cross-reference chips. Title-case label, no underline --
+ * the colour alone signals the link. */
 .ref {
   color: var(--notes-link);
   text-decoration: none;
-  border-bottom: 1px dotted var(--notes-link);
-  font-variant: small-caps;
-  letter-spacing: 0.02em;
+  font-weight: 600;
 }
 .ref:hover {
-  background: rgba(30, 79, 138, 0.08);
-  border-bottom-style: solid;
+  background: rgba(30, 79, 138, 0.10);
+  border-radius: 3px;
 }
-.ref-stale { color: #b03030; border-bottom-color: #b03030; }
+.ref-stale { color: #b03030; }
 
 /* Article-style "drop cap" on the first paragraph after the lead H1. */
 .deck-notes > p:first-of-type::first-letter,
@@ -901,15 +935,13 @@ html {
 .cite {
   color: var(--notes-link);
   text-decoration: none;
-  border-bottom: 1px dotted var(--notes-link);
-  font-variant: small-caps;
-  letter-spacing: 0.02em;
+  font-weight: 600;
 }
 .cite:hover {
-  background: rgba(30, 79, 138, 0.08);
-  border-bottom-style: solid;
+  background: rgba(30, 79, 138, 0.10);
+  border-radius: 3px;
 }
-.cite-stale { color: #b03030; border-bottom-color: #b03030; }
+.cite-stale { color: #b03030; }
 
 /* ------------------------------------------------------------------ */
 /* Bibliography                                                        */
@@ -933,11 +965,10 @@ html {
 .bib-list {
   padding-left: 0;
   list-style: none;
-  counter-reset: bib;
 }
 .bib-entry {
   position: relative;
-  padding: 0.55rem 0 0.55rem 2.2rem;
+  padding: 0.55rem 0 0.55rem 4.5rem;
   border-bottom: 1px solid var(--notes-rule);
   text-align: left;
   hyphens: manual;
@@ -945,15 +976,17 @@ html {
   scroll-margin-top: 4rem;
 }
 .bib-entry:last-child { border-bottom: 0; }
-.bib-entry::before {
-  counter-increment: bib;
-  content: "[" counter(bib) "]";
+/* Alpha-style marker -- `[KB15]` -- rendered as an inline element from
+ * Python so the printed bullet always matches the inline citation chip. */
+.bib-marker {
   position: absolute;
   left: 0;
   top: 0.55rem;
-  color: var(--notes-accent);
-  font-variant-numeric: tabular-nums;
+  width: 4rem;
+  color: var(--notes-link);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .bib-entry:target {
   background: rgba(255, 215, 0, 0.12);
