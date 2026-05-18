@@ -1,6 +1,6 @@
 """Preset Theme instances seeded from Dastimator's consts.py."""
 
-from simplex.theme.tokens import LatexProfile, Palette, Theme, Typography
+from simplex.theme.tokens import LatexProfile, Palette, Theme, Typography, WebPalette
 
 _COMPACT_DISPLAY_PREAMBLE = (
     r"\setlength{\abovedisplayskip}{0pt}"
@@ -32,6 +32,18 @@ DASTIMATOR_DARK: Theme = Theme(
         preamble=_COMPACT_DISPLAY_PREAMBLE,
         environments={"definition": "{minipage}{8cm}"},
     ),
+    web_palette=WebPalette(
+        accent="#FFD700",
+        background="#242424",
+        surface="#2D2D2D",
+        text_primary="#FFFFFF",
+        text_muted="#A0A0A0",
+        link="#58C4DD",
+        code_background="#111111",
+        font_family_sans="system-ui, -apple-system, sans-serif",
+        font_family_mono="'JetBrains Mono', 'Fira Code', monospace",
+        font_size_base="1rem",
+    ),
 )
 
 ACADEMIC_LIGHT: Theme = Theme(
@@ -51,6 +63,18 @@ ACADEMIC_LIGHT: Theme = Theme(
     typography=Typography(),
     latex=LatexProfile(
         environments={"definition": "{minipage}{8cm}"},
+    ),
+    web_palette=WebPalette(
+        accent="#0066CC",
+        background="#FFFFFF",
+        surface="#F4F4F4",
+        text_primary="#1A1A1A",
+        text_muted="#6B6B6B",
+        link="#0066CC",
+        code_background="#F8F8F8",
+        font_family_sans="system-ui, -apple-system, sans-serif",
+        font_family_mono="'JetBrains Mono', 'Fira Code', monospace",
+        font_size_base="1rem",
     ),
 )
 

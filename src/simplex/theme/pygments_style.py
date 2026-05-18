@@ -2,8 +2,30 @@
 (notes code blocks). Kept manim-free so the web build doesn't pull manim in.
 """
 
+import sys
+import types
+
 from pygments.style import Style
 from pygments.token import Comment, Generic, Keyword, Literal, Name
+
+
+def register_darcula(style_name: str = "darcula") -> None:
+    """Register `DarculaStyle` under `style_name` in Pygments. Idempotent.
+
+    Called automatically by `simplex.plugin.activate` and `engine.code.code_block`.
+    Exposed so users with their own Code mobjects can opt into the same palette.
+    """
+    import pygments.styles
+
+    if style_name in pygments.styles.STYLE_MAP:
+        return
+    cls_name = DarculaStyle.__name__
+    module = types.ModuleType(style_name)
+    setattr(module, cls_name, DarculaStyle)
+    setattr(pygments.styles, style_name, module)
+    sys.modules[f"pygments.styles.{style_name}"] = module
+    style_map: dict[str, str] = pygments.styles.STYLE_MAP  # type: ignore[assignment]
+    style_map[style_name] = f"{style_name}::{cls_name}"
 
 
 class DarculaStyle(Style):

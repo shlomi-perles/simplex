@@ -1,6 +1,6 @@
-"""Slide base classes."""
+"""Slide base classes + chrome factory."""
 
 from simplex.slides.base import BaseSlide
-from simplex.slides.content import ContentSlide
+from simplex.slides.chrome import make_chrome
 
-__all__ = ["BaseSlide", "ContentSlide"]
+__all__ = ["BaseSlide", "make_chrome"]

@@ -4,8 +4,6 @@ Wraps :class:`manim.Code` (the Pygments-backed listing) and exposes its
 ``code_lines`` attribute through small animation helpers.
 """
 
-import sys
-import types
 from typing import Any
 
 from manim import (
@@ -23,28 +21,9 @@ from manim import (
 )
 
 from simplex.theme.context import get_active_theme
-from simplex.theme.pygments_style import DarculaStyle
+from simplex.theme.pygments_style import DarculaStyle, register_darcula
 
-__all__ = ["DarculaStyle"]
-
-
-def register_darcula(style_name: str = "darcula") -> None:
-    """Register `DarculaStyle` under `style_name` in Pygments. Idempotent.
-
-    Called automatically by `code_block`. Exposed so users with their own
-    Code mobjects can opt into the same palette.
-    """
-    import pygments.styles
-
-    if style_name in pygments.styles.STYLE_MAP:
-        return
-    cls_name = DarculaStyle.__name__
-    module = types.ModuleType(style_name)
-    setattr(module, cls_name, DarculaStyle)
-    setattr(pygments.styles, style_name, module)
-    sys.modules[f"pygments.styles.{style_name}"] = module
-    style_map: dict[str, str] = pygments.styles.STYLE_MAP  # type: ignore[assignment]
-    style_map[style_name] = f"{style_name}::{cls_name}"
+__all__ = ["DarculaStyle", "register_darcula"]
 
 
 def code_block(

@@ -1,7 +1,8 @@
 """Showcase deck -- exercises every Simplex-specific helper end-to-end.
 
 Each scene targets one module so a reader can correlate the output with the
-source.
+source. Scenes call `self.next_slide(name=...)` to start a main slide and
+bare `self.next_slide()` for sub-stops within it.
 """
 
 import math
@@ -41,19 +42,28 @@ from simplex.engine.geometry import (
 )
 from simplex.engine.text import BodyText, Caption, Definition, color_tex
 from simplex.engine.transforms import GhostSlideFade, TransformByGlyphMap
-from simplex.slides import ContentSlide
+from simplex.slides import BaseSlide, make_chrome
 from simplex.slides.components import ArrayMob, ArrayPointer, Edge, Node
+from simplex.theme.context import get_active_theme
 
 
-class TextHelpers(ContentSlide):
-    header = "engine/text.py -- BodyText, Caption, Definition, color\\_tex"
-    page_number = 1
+class TextHelpers(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        self.add_to_canvas(
+            **make_chrome(
+                get_active_theme(),
+                self.region,
+                header=r"engine/text.py -- BodyText, Caption, Definition, color\_tex",
+                page=1,
+            )
+        )
 
     def construct(self) -> None:
         body = BodyText(r"Body paragraphs default to \textit{theme.typography.body}: $E = mc^2$.")
         self.region.place(body, "top", buff=0.3)
         self.add(body)
-        self.next_slide()
+        self.next_slide(name="TextHelpers")
 
         cap = Caption("Captions use the smaller theme.typography.caption font size.")
         cap.next_to(body, DOWN, buff=0.4)
@@ -76,9 +86,17 @@ class TextHelpers(ContentSlide):
         self.next_slide()
 
 
-class CodeHelpers(ContentSlide):
-    header = "engine/code.py -- code\\_block + highlight + explain"
-    page_number = 2
+class CodeHelpers(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        self.add_to_canvas(
+            **make_chrome(
+                get_active_theme(),
+                self.region,
+                header=r"engine/code.py -- code\_block + highlight + explain",
+                page=2,
+            )
+        )
 
     def construct(self) -> None:
         snippet = (
@@ -97,7 +115,7 @@ class CodeHelpers(ContentSlide):
         code.scale_to_fit_width(self.region.width * 0.8)
         self.region.place(code, "top", buff=0.3)
         self.play(FadeIn(code))
-        self.next_slide()
+        self.next_slide(name="CodeHelpers")
 
         fade, indicate = highlight_code_lines(code, lines=[5, 6, 7, 8, 9])
         self.play(fade)
@@ -114,9 +132,17 @@ class CodeHelpers(ContentSlide):
         self.next_slide()
 
 
-class GraphAndArray(ContentSlide):
-    header = "Components -- Node, Edge, ArrayMob, ArrayPointer"
-    page_number = 3
+class GraphAndArray(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        self.add_to_canvas(
+            **make_chrome(
+                get_active_theme(),
+                self.region,
+                header="Components -- Node, Edge, ArrayMob, ArrayPointer",
+                page=3,
+            )
+        )
 
     def construct(self) -> None:
         n1 = Node("1")
@@ -131,7 +157,7 @@ class GraphAndArray(ContentSlide):
             Edge(n2, n3, weight="2"),
         ]
         self.play(FadeIn(n1, n2, n3, *edges))
-        self.next_slide()
+        self.next_slide(name="GraphAndArray")
 
         arr = ArrayMob(
             "A:",
@@ -161,9 +187,17 @@ class GraphAndArray(ContentSlide):
         self.next_slide()
 
 
-class RegionAnchors(ContentSlide):
-    header = "engine/region.py -- anchors + shrink"
-    page_number = 4
+class RegionAnchors(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        self.add_to_canvas(
+            **make_chrome(
+                get_active_theme(),
+                self.region,
+                header="engine/region.py -- anchors + shrink",
+                page=4,
+            )
+        )
 
     def construct(self) -> None:
         markers = []
@@ -178,7 +212,7 @@ class RegionAnchors(ContentSlide):
             self.region.place(mob, anchor, buff=0.25)
             markers.append(mob)
         self.play(*(Write(m) for m in markers))
-        self.next_slide()
+        self.next_slide(name="RegionAnchors")
 
         self.region.shrink(left=2.5, right=2.5)
         sidebar = Caption("shrink(left=2.5, right=2.5) reflows subsequent placements")
@@ -193,28 +227,44 @@ class RegionAnchors(ContentSlide):
         self.next_slide()
 
 
-class ExitAnimations(ContentSlide):
-    header = "Remove + set\\_exit\\_animation + clear\\_scene"
-    page_number = 5
+class ExitAnimations(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        self.add_to_canvas(
+            **make_chrome(
+                get_active_theme(),
+                self.region,
+                header=r"Remove + set\_exit\_animation + clear\_scene",
+                page=5,
+            )
+        )
 
     def construct(self) -> None:
         keep = BodyText("survives via clear\\_scene(exclude=[this])")
-        fade = BodyText("default exit: FadeOut")
+        fade = BodyText("default exit: Unwrite (Tex default)")
         shrink = BodyText("custom exit via set\\_exit\\_animation(mob, ShrinkToCenter)")
         set_exit_animation(shrink, ShrinkToCenter)
 
         keep.shift(UP * 1.8)
         shrink.shift(DOWN * 1.8)
         self.add(keep, fade, shrink)
-        self.next_slide()
+        self.next_slide(name="ExitAnimations")
 
         self.clear_scene(exclude=[keep])
         self.next_slide()
 
 
-class GeometryHelpers(ContentSlide):
-    header = "engine/geometry.py -- convex hull + surrounding rect"
-    page_number = 6
+class GeometryHelpers(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        self.add_to_canvas(
+            **make_chrome(
+                get_active_theme(),
+                self.region,
+                header="engine/geometry.py -- convex hull + surrounding rect",
+                page=6,
+            )
+        )
 
     def construct(self) -> None:
         points = np.array(
@@ -234,7 +284,7 @@ class GeometryHelpers(ContentSlide):
         hull = get_convex_hull_polygon(points, round_radius=0.15)
         hull.set_stroke(width=4)
         self.play(Write(hull))
-        self.next_slide()
+        self.next_slide(name="GeometryHelpers")
 
         a = Dot(LEFT * 3 + DOWN)
         b = Dot(RIGHT * 3 + UP)
@@ -243,9 +293,17 @@ class GeometryHelpers(ContentSlide):
         self.next_slide()
 
 
-class GlyphMapTransform(ContentSlide):
-    header = "engine/transforms.py -- TransformByGlyphMap"
-    page_number = 7
+class GlyphMapTransform(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        self.add_to_canvas(
+            **make_chrome(
+                get_active_theme(),
+                self.region,
+                header="engine/transforms.py -- TransformByGlyphMap",
+                page=7,
+            )
+        )
 
     def construct(self) -> None:
         eq1 = MathTex("f(x) = 4x^2 + 5x + 6").scale(1.4)
@@ -253,7 +311,7 @@ class GlyphMapTransform(ContentSlide):
         self.region.place(eq1, "center")
         eq2.move_to(eq1)
         self.add(eq1)
-        self.next_slide()
+        self.next_slide(name="GlyphMapTransform")
 
         # Map every "x" -> "(-3)" group; the unmentioned glyphs slide into place.
         self.play(
@@ -282,9 +340,17 @@ class GlyphMapTransform(ContentSlide):
         self.next_slide()
 
 
-class TrackingHelpers(ContentSlide):
-    header = "engine/dynamics.py -- VT, DN + engine/geometry.py Vcis"
-    page_number = 8
+class TrackingHelpers(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        self.add_to_canvas(
+            **make_chrome(
+                get_active_theme(),
+                self.region,
+                header="engine/dynamics.py -- VT, DN + engine/geometry.py Vcis",
+                page=8,
+            )
+        )
 
     def construct(self) -> None:
         # A clock-style pointer driven by a VT angle.
@@ -312,7 +378,7 @@ class TrackingHelpers(ContentSlide):
         readout.scale(0.9).next_to(face, DOWN, buff=0.5)
         self.region.place(face, "center")
         self.add(face, ticks, hand, readout)
-        self.next_slide()
+        self.next_slide(name="TrackingHelpers")
 
         # `~vt` reads it; `vt @ x` returns an animate.set_value builder for play().
         self.play(angle @ (PI / 2), run_time=1.5)
@@ -323,9 +389,17 @@ class TrackingHelpers(ContentSlide):
         self.next_slide()
 
 
-class ShapeAndDebug(ContentSlide):
-    header = "engine/geometry.py SurroundingRectangleUnion + engine/debug.py"
-    page_number = 9
+class ShapeAndDebug(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        self.add_to_canvas(
+            **make_chrome(
+                get_active_theme(),
+                self.region,
+                header="engine/geometry.py SurroundingRectangleUnion + engine/debug.py",
+                page=9,
+            )
+        )
 
     def construct(self) -> None:
         # 6x4 grid of dots; group three subsets and surround each with a single
@@ -359,7 +433,7 @@ class ShapeAndDebug(ContentSlide):
         unions.move_to(grid)
         self.play(FadeIn(grid))
         self.play(*(Write(u) for u in unions))
-        self.next_slide()
+        self.next_slide(name="ShapeAndDebug")
 
         # Multi-color index labels for a multi-string MathTex.
         eq = MathTex(r"\sin\!\left(", r"{a^2 + b^2}", r"\over", r"{3n + 1}", r"\right)")
