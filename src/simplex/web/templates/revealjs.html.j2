@@ -7,9 +7,12 @@
   <link rel="stylesheet" href="{{ static_prefix }}/reveal.js/reset.css" />
   <link rel="stylesheet" href="{{ static_prefix }}/reveal.js/reveal.css" />
   <style>
+    {{ palette_css|safe }}
+  </style>
+  <style>
     html, body {
-      background: #242424;
-      color: #f8f8f8;
+      background: var(--simplex-bg, #242424);
+      color: var(--simplex-text, #f8f8f8);
       height: 100%;
       width: 100%;
       margin: 0;
@@ -18,7 +21,7 @@
       touch-action: manipulation;
     }
     .reveal, .reveal .slides {
-      background: #242424;
+      background: var(--simplex-bg, #242424);
       width: 100% !important;
       height: 100% !important;
       inset: 0;
@@ -43,7 +46,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #242424;
+      background: var(--simplex-bg, #242424);
     }
     .reveal video {
       max-width: 100%;
@@ -51,16 +54,16 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      background: #242424;
+      background: var(--simplex-bg, #242424);
       display: block;
     }
     .reveal .controls { display: none !important; }
     .reveal .progress {
       background: rgba(255,255,255,.08);
       height: 3px;
-      color: #ffd700;
+      color: var(--simplex-accent, #ffd700);
     }
-    .reveal .progress span { background: #ffd700; }
+    .reveal .progress span { background: var(--simplex-accent, #ffd700); }
     .tap-zone {
       position: fixed;
       top: 0;
@@ -77,38 +80,58 @@
       .reveal .slides section { transition: none !important; }
     }
     .empty-slide {
-      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-family: var(--simplex-font-sans, ui-sans-serif, system-ui, sans-serif);
       font-size: 1.25rem;
       color: rgba(255,255,255,.65);
       padding: 2rem;
       text-align: center;
     }
   </style>
+  {% if deck_custom_css %}
+  <style>
+    {{ deck_custom_css|safe }}
+  </style>
+  {% endif %}
 </head>
 <body>
   <div class="reveal" role="region" aria-label="{{ deck.title }} slide viewer">
     <div class="slides">
-      {% for slide in slides %}
+      {% for main in main_slides %}
       <section
-        data-slide-index="{{ slide.index }}"
-        data-scene="{{ slide.scene }}"
-        {% if slide.title %}data-title="{{ slide.title }}"{% endif %}
+        data-main-index="{{ main.index }}"
+        data-scene="{{ main.scene }}"
+        data-name="{{ main.name }}"
       >
-        {% if slide.video %}
-        <video
-          data-autoplay
-          muted
-          playsinline
-          preload="metadata"
-          aria-label="{{ slide.title or slide.scene }} animation"
+        {% for sub in main.subsections %}
+        <section
+          data-sub-name="{{ sub.name }}"
+          {% if "loop" in sub.type_ %}data-background-video-loop{% endif %}
         >
-          <source src="{{ slide.video }}" type="video/mp4" />
-        </video>
-        {% else %}
-        <div class="empty-slide">
-          <p>{{ slide.title or slide.scene }}</p>
-          <p style="font-size:.85rem;opacity:.6">no video segment available</p>
-        </div>
+          {% if sub.video_href %}
+          <video
+            data-autoplay
+            muted
+            playsinline
+            preload="metadata"
+            aria-label="{{ main.name }} - {{ sub.name }}"
+          >
+            <source src="{{ sub.video_href }}" type="video/mp4" />
+          </video>
+          {% else %}
+          <div class="empty-slide">
+            <p>{{ main.name }} - {{ sub.name }}</p>
+            <p style="font-size:.85rem;opacity:.6">no video segment available</p>
+          </div>
+          {% endif %}
+        </section>
+        {% endfor %}
+        {% if not main.subsections %}
+        <section data-sub-name="empty">
+          <div class="empty-slide">
+            <p>{{ main.name }}</p>
+            <p style="font-size:.85rem;opacity:.6">no rendered video for this slide yet</p>
+          </div>
+        </section>
         {% endif %}
       </section>
       {% endfor %}
@@ -137,7 +160,7 @@
         hash: false,
         keyboard: true,
         touch: true,
-        transition: reduce ? 'none' : 'fade',
+        transition: reduce ? 'none' : '{{ transition }}',
         backgroundTransition: 'none',
         autoPlayMedia: true,
         slideNumber: false,
@@ -148,13 +171,12 @@
         disableLayout: true,
         viewDistance: 2,
       }).then(function () {
-        // ---- Outbound: tell the parent which slide we're on. ----
         function emit() {
-          const idx = Reveal.getIndices().h;
-          const total = {{ slide_count }};
+          const idx = Reveal.getIndices();
+          const total = {{ main_slide_count }};
           try {
             window.parent.postMessage(
-              { type: 'simplex.slide', idx: idx, total: total },
+              { type: 'simplex.slide', idx: idx.h, sub: idx.v || 0, total: total },
               parentOrigin
             );
           } catch (_) { /* parent gone or different origin */ }
@@ -162,20 +184,17 @@
         Reveal.on('slidechanged', emit);
         Reveal.on('ready', emit);
 
-        // ---- Inbound: parent asks us to jump / step / play. ----
         window.addEventListener('message', function (e) {
           const data = e.data || {};
           if (typeof data !== 'object') return;
           if (data.type === 'simplex.goto' && Number.isInteger(data.idx)) {
-            Reveal.slide(data.idx);
+            Reveal.slide(data.idx, data.sub || 0);
           } else if (data.type === 'simplex.next') {
             Reveal.next();
           } else if (data.type === 'simplex.prev') {
             Reveal.prev();
           } else if (data.type === 'simplex.toggle-play') {
-            const v = document.querySelector(
-              '.reveal .slides .present video'
-            );
+            const v = document.querySelector('.reveal .slides .present video');
             if (v) {
               if (v.paused) { v.play(); } else { v.pause(); }
               try {
@@ -183,39 +202,25 @@
                   { type: 'simplex.play-state', playing: !v.paused },
                   parentOrigin
                 );
-              } catch (_) { /* parent gone */ }
+              } catch (_) { /* */ }
             }
           } else if (data.type === 'simplex.fullscreen') {
             const el = document.documentElement;
-            const fn =
-              el.requestFullscreen ||
-              el.webkitRequestFullscreen ||
-              el.mozRequestFullScreen;
-            const exit =
-              document.exitFullscreen ||
-              document.webkitExitFullscreen ||
-              document.mozCancelFullScreen;
-            const inFs =
-              document.fullscreenElement ||
-              document.webkitFullscreenElement ||
-              document.mozFullScreenElement;
+            const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
+            const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen;
+            const inFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
             try {
-              if (inFs) {
-                if (exit) { exit.call(document); }
-              } else if (fn) {
-                fn.call(el);
-              }
-            } catch (_) { /* user gesture missing or blocked */ }
+              if (inFs) { if (exit) { exit.call(document); } }
+              else if (fn) { fn.call(el); }
+            } catch (_) { /* */ }
           }
         });
 
-        // Surface play/pause state changes (video events trigger naturally).
         document.addEventListener('play', function (e) {
           if (!e.target || e.target.tagName !== 'VIDEO') return;
           try {
             window.parent.postMessage(
-              { type: 'simplex.play-state', playing: true },
-              parentOrigin
+              { type: 'simplex.play-state', playing: true }, parentOrigin
             );
           } catch (_) { /* */ }
         }, true);
@@ -223,22 +228,17 @@
           if (!e.target || e.target.tagName !== 'VIDEO') return;
           try {
             window.parent.postMessage(
-              { type: 'simplex.play-state', playing: false },
-              parentOrigin
+              { type: 'simplex.play-state', playing: false }, parentOrigin
             );
           } catch (_) { /* */ }
         }, true);
 
-        // ---- Tap zones (touch only). On desktop, RevealJS handles clicks. ----
         if (isTouch) {
           document.querySelectorAll('.tap-zone').forEach(function (z) {
             z.addEventListener('click', function (ev) {
               ev.preventDefault();
-              if (z.dataset.tap === 'next') {
-                Reveal.next();
-              } else {
-                Reveal.prev();
-              }
+              if (z.dataset.tap === 'next') { Reveal.next(); }
+              else { Reveal.prev(); }
             }, { passive: false });
           });
         } else {
@@ -247,6 +247,12 @@
           });
         }
       });
+
+      {% if watch %}
+      // --watch mode: subscribe to SSE for live reload on render.
+      const es = new EventSource('/_simplex/events');
+      es.addEventListener('reload', () => window.location.reload());
+      {% endif %}
     })();
   </script>
 </body>
