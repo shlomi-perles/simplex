@@ -1,29 +1,22 @@
-"""Invoke `manim-slides render` via subprocess.
+"""Invoke ``manim-slides render`` via subprocess.
 
-Each `module:Class` entrypoint resolves to the file that physically defines the
-class (`slides/scenes.py`, `slides/intro.py`, the legacy single-file
-`slides.py`, ...). We group entrypoints by file and invoke `manim-slides render`
-once per file with that file's scene classes.
+The theme/quality used to flow in via ``SIMPLEX_THEME`` / ``SIMPLEX_QUALITY``
+env vars consumed by a per-scene shim in ``BaseSlide.__init__``. As of
+v0.2.0 each deck declares ``plugins = simplex`` in its ``manim.cfg``; the
+plugin entry-point applies theme defaults and ``save_sections = True`` at
+``import manim`` time. The runner now only needs to invoke
+``manim-slides render`` with the right quality flag and source file.
 
-Why per-file (instead of pointing at a re-exporting `slides/__init__.py`):
-manim's scene discovery filters by `obj.__module__.startswith(loaded_module)`,
-so a class imported into `__init__.py` from elsewhere is rejected and you get
-"There are no scenes inside that module".
+We still spawn a subprocess (not in-process) for three reasons: clean
+SIGINT, OOM isolation, and per-deck ``manim.config`` isolation (different
+decks may use different themes or qualities).
 
-Why we run with `cwd=output_dir` (not the deck dir): manim-slides writes its
-per-scene PresentationConfig JSON and per-slide video chunks to a `./slides/`
-folder hard-coded relative to cwd. Running from `output_dir` keeps every
-emitted artefact under the build tree so the manifest, thumbnail, and PDF
-steps can find it -- and keeps the deck source directory untouched.
-
-Theme propagation: deck.toml's `theme` and `quality` are passed to the child
-process via `SIMPLEX_THEME` / `SIMPLEX_QUALITY` env vars. `BaseSlide.__init__`
-reads them and configures Manim before `Scene.__init__` builds the camera, so
-`config.background_color` reaches the camera (otherwise the camera locks in
-Manim's default black and our theme palette is ignored).
+We run with ``cwd=output_dir`` so manim-slides writes its per-scene
+``slides/<Scene>.json`` (PresentationConfig) to the build tree; manim's
+section + video output goes to ``<output_dir>/videos/<src_stem>/<q>/...``
+via ``--media_dir``.
 """
 
-import os
 import subprocess
 from pathlib import Path
 
@@ -50,7 +43,7 @@ def _filter_groups(
     groups: tuple[tuple[Path, tuple[str, ...]], ...],
     scenes: tuple[str, ...],
 ) -> tuple[tuple[Path, tuple[str, ...]], ...]:
-    """Keep only entries whose class name is in `scenes`. Drop empty groups."""
+    """Keep only entries whose class name is in ``scenes``. Drop empty groups."""
     wanted = set(scenes)
     available = {name for _, names in groups for name in names}
     unknown = wanted - available
@@ -71,11 +64,13 @@ def render(
     *,
     output_dir: Path,
     scenes: tuple[str, ...] = (),
+    write_last_frame: bool = False,
 ) -> None:
-    """Render every scene in `deck` into `output_dir` via manim-slides.
+    """Render every scene in ``deck`` into ``output_dir`` via manim-slides.
 
-    When `scenes` is non-empty, only those class names are rendered. Other
-    scenes' previously rendered outputs are left untouched on disk.
+    When ``scenes`` is non-empty, only those class names are rendered.
+    When ``write_last_frame=True``, manim writes only the last frame of
+    each section (used by ``simplex test`` for fast smoke checks).
     """
     groups = deck.resolve_entrypoints()
     if not groups:
@@ -85,21 +80,25 @@ def render(
     output_dir.mkdir(parents=True, exist_ok=True)
     media_dir = output_dir.resolve()
     quality = _quality_flag(deck.quality)
-    env = {
-        **os.environ,
-        "SIMPLEX_THEME": deck.theme,
-        "SIMPLEX_QUALITY": deck.quality,
-    }
+
+    base_args: list[str] = [
+        "manim-slides",
+        "render",
+        "--quality",
+        quality,
+        "--media_dir",
+        str(media_dir),
+        "--save_sections",
+    ]
+    if not deck.caching:
+        base_args.append("--disable_caching")
+    if write_last_frame:
+        base_args.append("--write_last_frame")
 
     for source_file, scene_names in groups:
-        args: list[str] = [
-            "manim-slides",
-            "render",
-            "--quality",
-            quality,
-            "--media_dir",
-            str(media_dir),
+        args = [
+            *base_args,
             str(source_file.resolve()),
             *scene_names,
         ]
-        subprocess.run(args, check=True, cwd=media_dir, env=env)
+        subprocess.run(args, check=True, cwd=media_dir)

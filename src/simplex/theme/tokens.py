@@ -63,6 +63,28 @@ class LatexProfile(BaseModel):
         return tmpl
 
 
+class WebPalette(BaseModel):
+    """CSS variables for the generated portal + RevealJS deck pages.
+
+    Each field maps to a ``--simplex-*`` CSS custom property emitted by
+    ``simplex.theme.web_css.render_web_css``. Decks override individual
+    fields via ``[web]`` in ``deck.toml``; unset fields fall back to the
+    theme's defaults.
+    """
+
+    model_config = ConfigDict(frozen=True)
+    accent: str = "#FFD700"
+    background: str = "#242424"
+    surface: str = "#2D2D2D"
+    text_primary: str = "#FFFFFF"
+    text_muted: str = "#A0A0A0"
+    link: str = "#58C4DD"
+    code_background: str = "#111111"
+    font_family_sans: str = "system-ui, sans-serif"
+    font_family_mono: str = "'JetBrains Mono', monospace"
+    font_size_base: str = "1rem"
+
+
 class Theme(BaseModel):
     model_config = ConfigDict(frozen=True)
     name: str
@@ -71,3 +93,4 @@ class Theme(BaseModel):
     spacing: Spacing = Field(default_factory=Spacing)
     motion: Motion = Field(default_factory=Motion)
     latex: LatexProfile = Field(default_factory=LatexProfile)
+    web_palette: WebPalette = Field(default_factory=WebPalette)

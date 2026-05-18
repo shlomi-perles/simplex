@@ -9,7 +9,9 @@ from simplex.theme.tokens import (
     Spacing,
     Theme,
     Typography,
+    WebPalette,
 )
+from simplex.theme.web_css import render_web_css
 
 __all__ = [
     "LatexProfile",
@@ -18,7 +20,9 @@ __all__ = [
     "Spacing",
     "Theme",
     "Typography",
+    "WebPalette",
     "active_theme",
     "get_active_theme",
     "presets",
+    "render_web_css",
 ]

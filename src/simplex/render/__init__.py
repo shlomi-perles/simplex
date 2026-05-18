@@ -1,1 +1,1 @@
-"""Render pipeline: manim-slides invocation, PDF export, cache."""
+"""Render pipeline: manim-slides subprocess + reconcile + html/pdf/pptx export."""
