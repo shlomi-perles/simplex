@@ -9,6 +9,9 @@
 <script src="{{ static('tailwind.js') }}"></script>
 <link rel="stylesheet" href="{{ static('katex/katex.min.css') }}" />
 <link rel="stylesheet" href="{{ static('simplex.css') }}" />
+{% if palette_css %}
+<style>{{ palette_css|safe }}</style>
+{% endif %}
 {% if site.ga_enabled %}
 <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.ga_tag }}"></script>
 <script>

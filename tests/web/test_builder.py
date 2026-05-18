@@ -36,12 +36,10 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     _write_deck(decks_dir, "bravo", "Bravo", scenes=("S1",))
 
     site_dir = tmp_path / "site"
-    cache_dir = tmp_path / "cache"
 
     build(
         decks_dir=decks_dir,
         site_dir=site_dir,
-        cache_dir=cache_dir,
         render=False,
         site_cfg=SiteConfig(brand="Simplex"),
     )
@@ -50,15 +48,16 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     assert "Alpha" in index_html
     assert "Bravo" in index_html
     assert "carousel" in index_html
+    # Palette CSS injected into <head>.
+    assert "--simplex-bg" in index_html
 
     alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
     assert "Alpha" in alpha_html
     assert 'class="math inline"' in alpha_html
-    # The slide-ref plugin renders [slide:1] as an anchor.
     assert 'class="slide-ref"' in alpha_html
-    # The iframe page exists.
     slides_html = (site_dir / "decks" / "alpha" / "slides.html").read_text(encoding="utf-8")
     assert "Reveal" in slides_html
+    assert "--simplex-bg" in slides_html
 
 
 def test_build_emits_section_pages_and_orders(tmp_path: Path) -> None:
@@ -69,12 +68,10 @@ def test_build_emits_section_pages_and_orders(tmp_path: Path) -> None:
     _write_deck(decks_dir, "intro", "Featured Intro", scenes=("S1",))
 
     site_dir = tmp_path / "site"
-    cache_dir = tmp_path / "cache"
 
     build(
         decks_dir=decks_dir,
         site_dir=site_dir,
-        cache_dir=cache_dir,
         render=False,
         site_cfg=SiteConfig(brand="Simplex"),
     )
@@ -95,12 +92,10 @@ def test_build_gates_ga_tag(tmp_path: Path) -> None:
     decks_dir.mkdir()
     _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
     site_dir = tmp_path / "site"
-    cache_dir = tmp_path / "cache"
 
     build(
         decks_dir=decks_dir,
         site_dir=site_dir,
-        cache_dir=cache_dir,
         render=False,
         site_cfg=SiteConfig(brand="Simplex"),
     )
@@ -109,7 +104,6 @@ def test_build_gates_ga_tag(tmp_path: Path) -> None:
     build(
         decks_dir=decks_dir,
         site_dir=site_dir,
-        cache_dir=cache_dir,
         render=False,
         site_cfg=SiteConfig(brand="Simplex", ga_tag="G-TEST"),
     )
@@ -118,7 +112,6 @@ def test_build_gates_ga_tag(tmp_path: Path) -> None:
     build(
         decks_dir=decks_dir,
         site_dir=site_dir,
-        cache_dir=cache_dir,
         render=False,
         site_cfg=SiteConfig(brand="Simplex", ga_tag="G-TEST", preview=True),
     )
