@@ -4,6 +4,18 @@ A Manim-slides presentation framework with a generated web portal.
 
 Authors write **vanilla Manim** (`MathTex(...)`, `VGroup(...).arrange(RIGHT)`); Simplex configures defaults underneath via frozen theme tokens. A `simplex new` command scaffolds a new deck; `simplex build` renders every deck and produces a static portal for GitHub Pages.
 
+## The three repos
+
+`simplex` is one of three packages that together make up the v0.2.0 toolkit:
+
+| Repo | PyPI | Role |
+|---|---|---|
+| [`manim-simplex`](https://github.com/shlomi-perles/manim-simplex) | `manim-simplex` | The manim plugin: mobjects, theme, `BaseSlide`, the `manim.plugins` entry-point. |
+| `simplex` (this repo) | `simplex` | The platform: CLI, deck discovery, render orchestration, web builder. Depends on `manim-simplex`. |
+| [`simplex-lectures-template`](https://github.com/shlomi-perles/simplex-lectures-template) | -- | GitHub Template. Pre-wired user lectures repo. |
+
+Both PyPI distributions ship `src/simplex/` **without** `__init__.py` and let Python's PEP 420 implicit namespace packages merge them at import time, so `from simplex.engine import Remove` and `from simplex.cli.commands import app` resolve regardless of which wheel ships the module.
+
 ## Quick start
 
 ```bash
@@ -26,16 +38,15 @@ uv run simplex serve
 
 ```
 simplex/
-|-- src/simplex/
-|   |-- theme/      frozen Pydantic tokens + presets
-|   |-- engine/     configure_manim, apply_theme_defaults, Region, Remove
-|   |-- slides/     BaseSlide / ContentSlide on manim-slides
-|   |-- deck/       DeckConfig, discovery, scaffolder
-|   |-- render/     manim-slides subprocess + PDF + cache
-|   |-- web/        markdown notes + Jinja portal
-|   `-- cli/        Typer entry point
-|-- decks/          author content (one directory per deck)
+|-- src/simplex/          (no __init__.py -- PEP 420 namespace)
+|   |-- deck/             DeckConfig, discovery, scaffolder
+|   |-- render/           runner, reconcile, html/pdf/pptx, thumbnail
+|   |-- web/              markdown notes + Jinja portal + SSE reload
+|   `-- cli/              Typer entry point
+|-- decks/                author content (one directory per deck)
 `-- tests/
+
+# Plugin half (mobjects, theme, slide bases) lives in manim-simplex.
 ```
 
 Every directory ships a short `README.md` (<=50 lines) covering *scope*, *public surface*, and *don'ts*. Only this root README is long-form.
