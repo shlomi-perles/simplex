@@ -1,13 +1,13 @@
 [project]
 name = "simplex"
-version = "0.1.0"
+version = "0.2.0"
 description = "Manim-slides presentation framework with a generated web portal."
 readme = "README.md"
 requires-python = ">=3.14"
 license = { text = "MIT" }
 authors = [{ name = "Shlomi Perles" }]
 dependencies = [
-    "manim>=0.20.1",
+    "manim-simplex>=0.2.0",
     "manim-slides>=5.1.7",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
@@ -25,9 +25,6 @@ dependencies = [
 
 [project.scripts]
 simplex = "simplex.cli.commands:app"
-
-[project.entry-points."manim.plugins"]
-simplex = "simplex.plugin:activate"
 
 [dependency-groups]
 dev = [
