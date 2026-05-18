@@ -28,3 +28,5 @@ jobs:
         run: uv run basedpyright
       - name: Tests
         run: uv run pytest -q
+      - name: Render smoke (showcase, last-frame only)
+        run: uv run simplex test --only showcase

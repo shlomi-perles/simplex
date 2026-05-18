@@ -1,4 +1,4 @@
-name: Publish
+name: Deploy
 on:
   push:
     branches: [main]
@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -36,13 +36,15 @@ jobs:
         run: uv sync
       - name: Vendor static assets
         run: bash scripts/vendor.sh
-      - name: Cache render output
+      - name: Cache manim render output
         uses: actions/cache@v4
         with:
-          path: .simplex_cache
-          key: simplex-cache-${{ hashFiles('decks/**/deck.toml', 'decks/**/slides/**/*.py', 'decks/**/slides.py', 'src/simplex/**/*.py') }}
+          path: |
+            site/decks/*/media
+            ~/.cache/uv
+          key: simplex-media-${{ hashFiles('uv.lock', 'decks/**/deck.toml', 'decks/**/slides/**/*.py', 'decks/**/slides.py', 'decks/**/manim.cfg', 'src/simplex/**/*.py') }}
           restore-keys: |
-            simplex-cache-
+            simplex-media-
       - name: Build site
         run: uv run simplex build
       - name: Upload Pages artifact
