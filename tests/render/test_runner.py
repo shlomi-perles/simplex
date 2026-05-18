@@ -1,4 +1,4 @@
-"""runner.render: subprocess env propagation + per-scene filtering."""
+"""runner.render: subprocess invocation, --save_sections flag, scene filtering."""
 
 from collections.abc import Iterator
 from pathlib import Path
@@ -41,17 +41,15 @@ def captured(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, Any]]]:
         return _Done()
 
     monkeypatch.setattr(runner.subprocess, "run", fake_run)
-    yield calls
+    return calls
 
 
-def test_render_sets_theme_and_quality_env(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
+def test_render_passes_save_sections(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
     deck = _deck(tmp_path)
     runner.render(deck, output_dir=tmp_path / "out")
     assert len(captured) == 1
-    env = captured[0]["env"]
-    assert env["SIMPLEX_THEME"] == "academic_light"
-    assert env["SIMPLEX_QUALITY"] == "low_quality"
-    assert "PATH" in env  # os.environ is preserved
+    args = captured[0]["args"]
+    assert "--save_sections" in args
 
 
 def test_render_passes_all_scenes_when_filter_empty(
@@ -77,3 +75,17 @@ def test_render_unknown_scene_raises(tmp_path: Path, captured: list[dict[str, An
     with pytest.raises(ValueError, match="unknown scene"):
         runner.render(deck, output_dir=tmp_path / "out", scenes=("Ghost",))
     assert captured == []
+
+
+def test_render_write_last_frame_adds_flag(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
+    deck = _deck(tmp_path)
+    runner.render(deck, output_dir=tmp_path / "out", write_last_frame=True)
+    args = captured[0]["args"]
+    assert "--write_last_frame" in args
+
+
+def test_render_caching_disabled_adds_flag(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
+    deck = _deck(tmp_path).model_copy(update={"caching": False})
+    runner.render(deck, output_dir=tmp_path / "out")
+    args = captured[0]["args"]
+    assert "--disable_caching" in args

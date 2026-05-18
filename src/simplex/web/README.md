@@ -18,9 +18,9 @@ notes pipeline (markdown + math + citations + Tufte sidenotes).
   blockquotes as anchored `<aside class="callout callout-theorem"
   id="theorem-3-1">` blocks; resolve `\ref{}` placeholders to the
   display label.
-- `builder.build(decks_dir, site_dir, cache_dir, render=True)` -- discover
-  -> render -> pdf -> notes -> emit per-deck `slides.html` + page +
-  per-section pages + home.
+- `builder.build(decks_dir, site_dir, *, render=True, site_cfg=None, only=(), scenes=(), watch=False)`
+  -- discover -> render -> pdf -> reconcile -> thumbnail -> notes ->
+  emit per-deck `slides.html` + page + per-section pages + home.
 
 ## Don't
 

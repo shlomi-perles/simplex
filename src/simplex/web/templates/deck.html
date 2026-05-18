@@ -108,7 +108,7 @@
         >
           <div class="deck-slide-head">
             <span class="deck-slide-title">
-              {{ "%02d. "|format(loop.index) }}{{ slide.title or slide.scene }}
+              {{ "%02d. "|format(loop.index) }}{{ slide.name or slide.scene }}
             </span>
             {% if slide.duration_s %}
             <span class="deck-slide-duration">

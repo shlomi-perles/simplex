@@ -1,19 +1,22 @@
-"""Simplex CLI -- new | render | build | serve | clean | doctor | thumbs."""
+"""Simplex CLI -- new | init | render | build | serve | test | clean | doctor."""
 
+import asyncio
 import contextlib
 import http.server
-import os
 import shutil
 import socketserver
 import subprocess
+import sys
+import threading
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
 
 from simplex.deck.registry import discover
 from simplex.deck.scaffold import scaffold as deck_scaffold
-from simplex.render import cache, pdf, runner, thumbnail
+from simplex.render import pdf, runner
 from simplex.web.builder import build as build_site
 from simplex.web.site_config import SiteConfig
 
@@ -22,91 +25,146 @@ console = Console()
 
 _DECKS = Path("decks")
 _SITE = Path("site")
-_CACHE = Path(".simplex_cache")
+
+# Reload signaling for `simplex serve --watch`.
+_RELOAD_EVENT = threading.Event()
 
 
 @app.command()
 def new(target: str) -> None:
     """Scaffold a new deck.
 
-    `simplex new <slug>` creates `decks/<slug>/` (featured section).
-    `simplex new <section>/<slug>` creates `decks/<section>/<slug>/`.
+    ``simplex new <slug>`` creates ``decks/<slug>/`` (featured section).
+    ``simplex new <section>/<slug>`` creates ``decks/<section>/<slug>/``.
     """
     dest = deck_scaffold(target, _DECKS)
     console.print(f"[green]Created[/green] {dest}")
 
 
 @app.command()
-def render(
-    slug: str,
-    force: bool = typer.Option(False, "--force", help="Ignore the freshness cache and re-render."),
-    scene: list[str] = typer.Option(
-        None,
-        "--scene",
-        help="Re-render only this scene class. Repeatable. Implies --force.",
-    ),
+def init(
+    target_dir: Annotated[
+        Path | None,
+        typer.Argument(
+            help="Directory to create. Default: prompt + git clone the template.",
+        ),
+    ] = None,
 ) -> None:
-    """Render a single deck."""
+    """Scaffold a new lectures repo from ``shlomi-perles/simplex-lectures-template``.
+
+    Requires the ``gh`` CLI for full template integration; falls back to
+    ``git clone`` of the public template otherwise.
+    """
+    template_repo = "shlomi-perles/simplex-lectures-template"
+    if target_dir is None:
+        target_dir = Path(typer.prompt("New repo directory name"))
+    if target_dir.exists():
+        raise typer.BadParameter(f"{target_dir} already exists")
+
+    gh_path = shutil.which("gh")
+    if gh_path is not None:
+        repo_name = typer.prompt(
+            f"GitHub repo to create (default: {target_dir.name})",
+            default=target_dir.name,
+        )
+        subprocess.run(
+            [
+                gh_path,
+                "repo",
+                "create",
+                repo_name,
+                "--template",
+                template_repo,
+                "--clone",
+                "--private",
+            ],
+            check=True,
+        )
+        console.print(f"[green]Created[/green] {repo_name} from {template_repo}")
+        return
+
+    git_path = shutil.which("git")
+    if git_path is None:
+        raise typer.BadParameter("neither `gh` nor `git` is available on PATH")
+    subprocess.run(
+        [git_path, "clone", f"https://github.com/{template_repo}.git", str(target_dir)],
+        check=True,
+    )
+    shutil.rmtree(target_dir / ".git", ignore_errors=True)
+    console.print(
+        f"[green]Cloned[/green] template into {target_dir}. "
+        "Run `git init && git add . && git commit -m initial` inside it next."
+    )
+
+
+@app.command()
+def render(
+    target: str,
+    scene: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--scene",
+            help="Re-render only this scene class. Repeatable.",
+        ),
+    ] = None,
+) -> None:
+    """Render a single deck.
+
+    Triple-syntax targets accepted:
+
+    - ``slug``                       full deck
+    - ``slug::SceneClass``           one scene (alias for ``--scene SceneClass``)
+    - ``slug::SceneClass::MainName`` reserved; for now renders the whole scene
+    """
+    slug, _, scene_spec = target.partition("::")
     site_cfg = SiteConfig.load()
     registry = discover(_DECKS, default_section_order=site_cfg.default_section_order)
     deck = registry.find_deck(slug)
     if deck is None:
         raise typer.BadParameter(f"unknown deck: {slug}")
-    scenes = tuple(scene or ())
-    partial = bool(scenes)
+
+    scene_filter: tuple[str, ...] = tuple(scene or ())
+    if scene_spec:
+        scene_name, _, _main = scene_spec.partition("::")
+        scene_filter = (*scene_filter, scene_name)
+
     out = _SITE / "decks" / deck.slug
     out.mkdir(parents=True, exist_ok=True)
 
-    if not partial and not force and cache.is_fresh(deck, _CACHE):
-        console.print(
-            f"[yellow]cached[/yellow] {deck.slug} -- pass --force or --scene to re-render"
-        )
-        return
-
     try:
-        runner.render(deck, output_dir=out, scenes=scenes)
+        runner.render(deck, output_dir=out, scenes=scene_filter)
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError):
+    with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError, ImportError):
         pdf.export(deck, output_dir=out)
 
-    if partial:
-        cache.clear(deck, _CACHE)
-    else:
-        cache.mark_fresh(deck, _CACHE)
     console.print(f"[green]Rendered[/green] {deck.slug} -> {out}")
 
 
 @app.command()
-def thumbs(slug: str) -> None:
-    """Regenerate thumbnails for a single deck."""
-    site_cfg = SiteConfig.load()
-    registry = discover(_DECKS, default_section_order=site_cfg.default_section_order)
-    deck = registry.find_deck(slug)
-    if deck is None:
-        raise typer.BadParameter(f"unknown deck: {slug}")
-    out = _SITE / "decks" / deck.slug
-    written = thumbnail.regenerate(deck, media_dir=out, cache_dir=_CACHE)
-    console.print(f"[green]Wrote[/green] {len(written)} thumbnails for {deck.slug}")
-
-
-@app.command()
 def build(
-    force: bool = typer.Option(False, "--force", help="Ignore the freshness cache for every deck."),
-    only: list[str] = typer.Option(None, "--only", help="Only build this deck slug. Repeatable."),
-    scene: list[str] = typer.Option(
-        None,
-        "--scene",
-        help="Re-render only this scene class on every selected deck. Implies --force.",
-    ),
+    only: Annotated[
+        list[str] | None,
+        typer.Option("--only", help="Only build this deck slug. Repeatable."),
+    ] = None,
+    scene: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--scene",
+            help="Re-render only this scene class on every selected deck.",
+        ),
+    ] = None,
+    no_render: Annotated[
+        bool,
+        typer.Option("--no-render", help="Skip rendering; only rebuild HTML/portal."),
+    ] = False,
 ) -> None:
-    """Build the full static portal under `site/`."""
+    """Build the full static portal under ``site/``."""
     build_site(
         _DECKS,
         _SITE,
-        _CACHE,
-        force=force,
+        render=not no_render,
         only=tuple(only or ()),
         scenes=tuple(scene or ()),
     )
@@ -114,29 +172,170 @@ def build(
 
 
 @app.command()
-def serve(port: int = 8000) -> None:
-    """Serve `site/` via the stdlib HTTP server."""
+def test(
+    only: Annotated[
+        list[str] | None,
+        typer.Option("--only", help="Only test this deck slug. Repeatable."),
+    ] = None,
+) -> None:
+    """Smoke-render every deck with ``--write_last_frame --quality l``.
+
+    Used in CI: catches scene-construction errors without paying for full
+    video encoding. Exits non-zero on the first deck that fails to render.
+    """
+    site_cfg = SiteConfig.load()
+    registry = discover(_DECKS, default_section_order=site_cfg.default_section_order)
+    only_set = set(only or ())
+
+    failures: list[tuple[str, str]] = []
+    for section in registry.sections:
+        for deck in section.decks:
+            if only_set and deck.slug not in only_set:
+                continue
+            out = _SITE / "decks" / deck.slug
+            try:
+                runner.render(deck, output_dir=out, write_last_frame=True)
+                console.print(f"[green]ok[/green]   {deck.slug}")
+            except (subprocess.CalledProcessError, ValueError) as exc:
+                failures.append((deck.slug, str(exc)))
+                console.print(f"[red]FAIL[/red] {deck.slug}: {exc}")
+
+    if failures:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def serve(
+    port: Annotated[int, typer.Option(help="Port to serve on.")] = 8000,
+    watch: Annotated[
+        bool,
+        typer.Option(
+            "--watch/--no-watch",
+            help="Watch decks/ + src/ and reload the browser on save.",
+        ),
+    ] = False,
+) -> None:
+    """Serve ``site/`` via the stdlib HTTP server.
+
+    With ``--watch``, also runs a watchfiles loop that re-runs the build on
+    every save and pushes an SSE event so open browser tabs reload.
+    """
     if not _SITE.exists():
         raise typer.BadParameter("site/ does not exist -- run `simplex build` first")
-    os.chdir(_SITE)
-    handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", port), handler) as httpd:
-        console.print(f"Serving http://localhost:{port}")
-        httpd.serve_forever()
+
+    handler_cls = _make_handler(_SITE)
+    server = socketserver.ThreadingTCPServer(("", port), handler_cls)
+    server.daemon_threads = True
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    console.print(f"Serving http://localhost:{port}")
+
+    try:
+        if watch:
+            asyncio.run(_watch_loop())
+        else:
+            server_thread.join()
+    except KeyboardInterrupt:
+        console.print("\n[yellow]stopping[/yellow]")
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def _make_handler(site_dir: Path) -> type[http.server.BaseHTTPRequestHandler]:
+    """Return a request handler that serves files + an SSE endpoint."""
+
+    class _Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            super().__init__(*args, directory=str(site_dir), **kwargs)  # type: ignore[arg-type]
+
+        def do_GET(self) -> None:
+            if self.path == "/_simplex/events":
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "keep-alive")
+                self.end_headers()
+                self._stream_events()
+                return
+            super().do_GET()
+
+        def _stream_events(self) -> None:
+            try:
+                while True:
+                    if _RELOAD_EVENT.wait(timeout=30):
+                        _RELOAD_EVENT.clear()
+                        self.wfile.write(b"event: reload\ndata: 1\n\n")
+                    else:
+                        self.wfile.write(b": keepalive\n\n")
+                    self.wfile.flush()
+            except BrokenPipeError:
+                pass
+            except ConnectionResetError:
+                pass
+
+        def log_message(self, format: str, *args: object) -> None:
+            pass  # quiet by default
+
+    return _Handler
+
+
+async def _watch_loop() -> None:
+    """Watchfiles + rebuild + broadcast SSE reload on every change."""
+    try:
+        from watchfiles import awatch
+    except ImportError as exc:
+        raise typer.BadParameter(
+            "watchfiles is required for --watch; install with `uv sync`"
+        ) from exc
+
+    targets = [p for p in (Path("decks"), Path("src") / "simplex") if p.exists()]
+    console.print(f"[yellow]watching[/yellow] {', '.join(str(t) for t in targets)}")
+
+    async for changes in awatch(*targets, debounce=200):
+        affected = sorted(_affected_deck_slugs(changes))
+        if not affected:
+            continue
+        console.print(f"[yellow]reload[/yellow] {', '.join(affected)}")
+        try:
+            build_site(_DECKS, _SITE, only=tuple(affected), watch=True)
+            _RELOAD_EVENT.set()
+        except Exception as exc:
+            console.print(f"[red]build failed[/red]: {exc}")
+
+
+def _affected_deck_slugs(changes: set[tuple[object, str]]) -> set[str]:
+    """Map watchfiles change paths to the deck slugs they affect.
+
+    A change under ``decks/<slug>/...`` affects that slug. A change under
+    ``src/simplex/...`` affects every deck (return empty -> caller rebuilds all).
+    """
+    slugs: set[str] = set()
+    src_changed = False
+    for _, path in changes:
+        parts = Path(path).resolve().relative_to(Path.cwd().resolve(), walk_up=True).parts
+        if len(parts) >= 2 and parts[0] == "decks":
+            slugs.add(parts[1])
+        elif len(parts) >= 2 and parts[0] == "src":
+            src_changed = True
+    if src_changed:
+        slugs = set()  # signals "rebuild everything"
+    return slugs
 
 
 @app.command()
 def clean(
-    deck: list[str] = typer.Option(
-        None,
-        "--deck",
-        help="Only clean these deck slugs (site/decks/<slug>/ + cache stamp + thumbnails).",
-    ),
+    deck: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--deck",
+            help="Only clean these deck slugs (site/decks/<slug>/).",
+        ),
+    ] = None,
 ) -> None:
-    """Remove `site/`, `media/`, and the render cache.
+    """Remove ``site/`` and ``media/``.
 
-    With `--deck <slug>` (repeatable), only that deck's site output, cache
-    stamp, and thumbnail cache are removed; other decks survive.
+    With ``--deck <slug>`` (repeatable), only that deck's output is removed.
     """
     if deck:
         site_cfg = SiteConfig.load()
@@ -149,15 +348,10 @@ def clean(
             if site_deck.exists():
                 shutil.rmtree(site_deck)
                 console.print(f"removed {site_deck}")
-            cache.clear(d, _CACHE)
-            thumbs_dir = _CACHE / "thumbnails" / d.slug
-            if thumbs_dir.exists():
-                shutil.rmtree(thumbs_dir)
-                console.print(f"removed {thumbs_dir}")
             console.print(f"[green]Cleaned[/green] {d.slug}")
         return
 
-    for target in (_SITE, Path("media"), _CACHE):
+    for target in (_SITE, Path("media")):
         if target.exists():
             shutil.rmtree(target)
             console.print(f"removed {target}")
@@ -175,7 +369,7 @@ def doctor() -> None:
         else:
             console.print(f"[red]MISSING[/red] {tool}")
             ok = False
-    raise typer.Exit(code=0 if ok else 1)
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":

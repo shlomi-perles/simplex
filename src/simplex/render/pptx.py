@@ -1,8 +1,8 @@
-"""Convert a rendered deck to PDF via ``manim_slides.convert.PDF`` in-process.
+"""Convert a rendered deck to PowerPoint via ``manim_slides.convert.PowerPoint``.
 
-The PDF converter takes the per-scene ``PresentationConfig`` objects
-written by manim-slides during render (under ``<output_dir>/slides/*.json``)
-and writes one combined PDF. No subprocess, no shell.
+Free path through manim-slides' in-process converter; same pattern as
+``render/pdf.py``. Users who need a corporate-PowerPoint format get it
+without extra dependencies.
 """
 
 from pathlib import Path
@@ -11,13 +11,13 @@ from simplex.deck.config import DeckConfig
 
 
 def export(deck: DeckConfig, *, output_dir: Path) -> Path:
-    """Write ``<output_dir>/<slug>.pdf`` from manim-slides' rendered scenes."""
-    from manim_slides.convert import PDF
+    """Write ``<output_dir>/<slug>.pptx`` from manim-slides' rendered scenes."""
+    from manim_slides.convert import PowerPoint
     from manim_slides.present import get_scenes_presentation_config
 
     output_dir.mkdir(parents=True, exist_ok=True)
     media_dir = output_dir.resolve()
-    pdf_path = media_dir / f"{deck.slug}.pdf"
+    pptx_path = media_dir / f"{deck.slug}.pptx"
     scenes = deck.scene_class_names
     if not scenes:
         raise ValueError(f"deck {deck.slug!r} has no scenes/entrypoints configured")
@@ -26,5 +26,5 @@ def export(deck: DeckConfig, *, output_dir: Path) -> Path:
         list(scenes),
         media_dir / "slides",
     )
-    PDF(presentation_configs=presentation_configs).convert_to(pdf_path)
-    return pdf_path
+    PowerPoint(presentation_configs=presentation_configs).convert_to(pptx_path)
+    return pptx_path
