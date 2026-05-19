@@ -6,7 +6,7 @@ from simplex.engine.text import Caption
 from simplex.slides import BaseSlide
 from simplex.theme.context import get_active_theme
 
-from common import C_ADAM, C_GD, C_MOMENTUM, C_VARIANCE  # noqa: I001
+from common import C_ADAM, C_GD, C_MOMENTUM, C_VARIANCE
 from equation_lab import kicker_equation
 
 

@@ -23,14 +23,14 @@ from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from simplex.deck.config import DeckConfig
-from simplex.render.reconcile import DeckManifest, Subsection
+from simplex.manifest import DeckManifest, Subsection
 from simplex.theme.web_css import render_web_css
 
 
 @dataclass(frozen=True, slots=True)
 class _SubView:
     name: str
-    type_: str
+    section_type: str
     video_href: str | None
 
 
@@ -61,7 +61,7 @@ def _copy_segments(manifest: DeckManifest, dest_dir: Path) -> list[_MainView]:
             sub_views.append(
                 _SubView(
                     name=sub.name,
-                    type_=sub.type_,
+                    section_type=sub.section_type.value,
                     video_href=_copy_one(sub, main.index, sub_idx, seg_dir, dest_dir),
                 )
             )

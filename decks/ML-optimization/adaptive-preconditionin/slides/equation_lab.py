@@ -21,7 +21,7 @@ from manim import (
     VGroup,
 )
 
-from common import C_GD, C_MOMENTUM, C_OPTIMUM, C_VARIANCE  # noqa: I001
+from common import C_GD, C_MOMENTUM, C_OPTIMUM, C_VARIANCE
 
 
 def gd_equation(font_size: int = 44) -> MathTex:
