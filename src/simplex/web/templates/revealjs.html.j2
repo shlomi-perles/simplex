@@ -175,8 +175,17 @@
         controlsTutorial: false,
         progress: true,
         hash: false,
-        keyboard: true,
-        touch: true,
+        // Remap all arrow keys to flat next/prev so direction never matters,
+        // even when the slide grid has vertical sub-stops. Keys: 37 left,
+        // 38 up, 39 right, 40 down, 32 space, 33 PageUp, 34 PageDown.
+        keyboard: {
+          37: 'prev', 38: 'prev', 33: 'prev',
+          39: 'next', 40: 'next', 32: 'next', 34: 'next',
+        },
+        // Disable Reveal's built-in swipe gestures. Mobile navigation goes
+        // through the .tap-zone elements below; this keeps tap-right = next
+        // and tap-left = prev regardless of horizontal/vertical slide layout.
+        touch: false,
         transition: reduce ? 'none' : '{{ transition }}',
         backgroundTransition: 'none',
         autoPlayMedia: true,

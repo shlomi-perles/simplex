@@ -8,6 +8,10 @@ directory) wins over the extraction rule.
 
 Content-addressable cache: file name = sha256 of source path + mtime + deck
 slug, so re-rendering a subsection naturally invalidates its thumbnail.
+
+The "no video" fallback ships an inline SVG so the placeholder is always
+a valid image, even on systems where ffmpeg isn't installed. Production
+thumbnails still use ffmpeg to extract a real frame.
 """
 
 import contextlib
@@ -21,7 +25,7 @@ from simplex.manifest import DeckManifest, MainSlide, Subsection
 
 DEFAULT_WIDTH = 480
 DEFAULT_SECONDARY_WIDTH = 960
-PLACEHOLDER_NAME = "_placeholder.jpg"
+PLACEHOLDER_NAME = "_placeholder.svg"
 
 
 def _key(video: Path, slug: str) -> str:
@@ -70,32 +74,29 @@ def _run_ffmpeg(
     return False
 
 
+_PLACEHOLDER_SVG = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 270" '
+    'preserveAspectRatio="xMidYMid slice" role="img" '
+    'aria-label="No preview available">'
+    '<rect width="480" height="270" fill="#242424"/>'
+    '<text x="240" y="142" text-anchor="middle" fill="#8a8a8a" '
+    'font-family="system-ui, sans-serif" font-size="18">no preview yet</text>'
+    "</svg>"
+)
+
+
 def _placeholder(dest_dir: Path) -> Path:
-    """Write a 16:9 dark JPEG placeholder once per deck and return its path."""
+    """Write a 16:9 SVG placeholder once per deck and return its path.
+
+    SVG works without ffmpeg and is a single inline string, so the file is
+    always a valid image regardless of the host's video-tool availability.
+    """
     placeholder = dest_dir / PLACEHOLDER_NAME
     if placeholder.exists():
         return placeholder
     placeholder.parent.mkdir(parents=True, exist_ok=True)
-    if shutil.which("ffmpeg") is not None:
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-loglevel",
-                "error",
-                "-f",
-                "lavfi",
-                "-i",
-                f"color=c=#242424:s={DEFAULT_WIDTH}x270:d=0.1",
-                "-vframes",
-                "1",
-                str(placeholder),
-            ],
-            check=False,
-            timeout=15,
-        )
-    if not placeholder.exists():
-        placeholder.write_bytes(b"\xff\xd8\xff\xe0\x00\x00\xff\xd9")
+    placeholder.write_text(_PLACEHOLDER_SVG, encoding="utf-8")
     return placeholder
 
 
