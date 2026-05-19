@@ -125,12 +125,32 @@ def _row_duration(row: dict[str, object], video: Path | None) -> float:
 def _is_main_section(type_str: str, *, is_first_in_scene: bool) -> bool:
     """Whether this section starts a new MAIN slide.
 
-    The auto-created first section (``default.normal``, manim's default)
-    counts as a main if it precedes any explicit ``simplex.*`` markers.
+    Manim creates an implicit ``default.normal`` section at the start of
+    every scene. When the very next section is an explicit ``simplex.main``,
+    the user clearly intends *that* to be the slide's start, so the leading
+    ``default.normal`` is absorbed by the caller as a lead-in subsection
+    (handled in ``build_manifest``); ``_is_main_section`` only returns True
+    for ``default.normal`` when the scene has no explicit main marker at all.
     """
     if type_str.startswith(_MAIN_PREFIX):
         return True
     return is_first_in_scene and type_str == _DEFAULT_NORMAL
+
+
+def _absorb_leading_default(rows: list[dict[str, object]]) -> int:
+    """Count leading ``default.normal`` rows that should fold into the next main.
+
+    Returns the number of leading rows to attach as lead-in subsections of the
+    first ``simplex.main`` row. Returns ``0`` when there's no following
+    ``simplex.main`` (so the implicit default stays as its own main).
+    """
+    count = 0
+    while count < len(rows) and str(rows[count].get("type", "")) == _DEFAULT_NORMAL:
+        count += 1
+    if count == 0 or count >= len(rows):
+        return 0
+    next_type = str(rows[count].get("type", ""))
+    return count if next_type.startswith(_MAIN_PREFIX) else 0
 
 
 def _humanise(camel: str) -> str:
@@ -182,10 +202,26 @@ def build_manifest(deck: DeckConfig, *, media_dir: Path) -> DeckManifest:
         pending_type: SimplexSectionType | None = None
         pending_subs: list[Subsection] = []
 
-        for i, row in enumerate(rows):
+        absorbed = _absorb_leading_default(rows)
+        lead_in: list[Subsection] = []
+        for absorbed_row in rows[:absorbed]:
+            type_str = str(absorbed_row.get("type", _DEFAULT_NORMAL))
+            video = _video_path(absorbed_row, sections_dir)
+            lead_in.append(
+                Subsection(
+                    name=str(absorbed_row.get("name", "unnamed")),
+                    section_type=_coerce_section_type(type_str, as_main=False),
+                    video=video,
+                    duration_s=_row_duration(absorbed_row, video),
+                )
+            )
+
+        for i, row in enumerate(rows[absorbed:], start=absorbed):
             type_str = str(row.get("type", _DEFAULT_NORMAL))
             name = str(row.get("name", "unnamed"))
             video = _video_path(row, sections_dir)
+            # ``i == 0`` only matters when nothing was absorbed; an absorbed
+            # leading default.normal already handled the "first in scene" case.
             is_main = _is_main_section(type_str, is_first_in_scene=(i == 0))
             sub = Subsection(
                 name=name,
@@ -211,7 +247,8 @@ def build_manifest(deck: DeckConfig, *, media_dir: Path) -> DeckManifest:
                     if type_str.startswith(_MAIN_PREFIX)
                     else SimplexSectionType.MAIN
                 )
-                pending_subs = [sub]
+                pending_subs = [*lead_in, sub]
+                lead_in = []
             else:
                 pending_subs.append(sub)
         if pending_name is not None and pending_type is not None:

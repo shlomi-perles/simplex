@@ -9,9 +9,13 @@ directory) wins over the extraction rule.
 Content-addressable cache: file name = sha256 of source path + mtime + deck
 slug, so re-rendering a subsection naturally invalidates its thumbnail.
 
-The "no video" fallback ships an inline SVG so the placeholder is always
-a valid image, even on systems where ffmpeg isn't installed. Production
-thumbnails still use ffmpeg to extract a real frame.
+Extraction tries the system ``ffmpeg`` CLI first (fastest), then falls back
+to PyAV -- manim already depends on PyAV for its own concatenation pipeline,
+so this fallback works without any extra system binaries (the typical reason
+real previews showed "no preview yet" on Windows: manim runs via PyAV but
+ffmpeg.exe is not on PATH, so the old code went straight to the placeholder).
+The "no video" fallback ships an inline SVG so the placeholder is always a
+valid image even when neither extractor can run.
 """
 
 import contextlib
@@ -19,6 +23,10 @@ import hashlib
 import shutil
 import subprocess
 from pathlib import Path
+
+import av
+import av.error
+from PIL.Image import Resampling
 
 from simplex.deck.config import DeckConfig
 from simplex.manifest import DeckManifest, MainSlide, Subsection
@@ -34,23 +42,34 @@ def _key(video: Path, slug: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
-def _run_ffmpeg(
+def _extract_frame(
     video: Path,
     dest: Path,
     *,
     width: int,
     seek_from_end: bool = True,
 ) -> bool:
-    """Extract one frame near the end (or start) of `video` to `dest`.
+    """Extract one frame near the end (or start) of ``video`` to ``dest``.
 
-    ``seek_from_end=True`` uses ``-sseof -0.1`` to grab the last frame --
-    the right choice for a thumbnail that should represent the final
-    visual state of a slide. ``False`` falls back to the very first frame
-    (used by the empty-placeholder fallback).
+    Tries ``ffmpeg`` first; falls back to PyAV (bundled with manim) when the
+    CLI is missing. Returns ``True`` on success.
     """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if _try_ffmpeg(video, dest, width=width, seek_from_end=seek_from_end):
+        return True
+    return _try_pyav(video, dest, width=width, seek_from_end=seek_from_end)
+
+
+def _try_ffmpeg(
+    video: Path,
+    dest: Path,
+    *,
+    width: int,
+    seek_from_end: bool,
+) -> bool:
+    """Extract a frame via the ``ffmpeg`` CLI if it's on PATH."""
     if shutil.which("ffmpeg") is None:
         return False
-    dest.parent.mkdir(parents=True, exist_ok=True)
     seek = ["-sseof", "-0.1"] if seek_from_end else ["-ss", "0.1"]
     args = [
         "ffmpeg",
@@ -72,6 +91,44 @@ def _run_ffmpeg(
         subprocess.run(args, check=True, timeout=30)
         return dest.exists()
     return False
+
+
+def _try_pyav(
+    video: Path,
+    dest: Path,
+    *,
+    width: int,
+    seek_from_end: bool,
+) -> bool:
+    """Decode a representative frame with PyAV and save it as JPEG.
+
+    Walks every frame and keeps the last when ``seek_from_end`` is true; for
+    typical slide-length clips (<10 s) that's still fast and avoids the
+    container-specific seek edge cases (no-keyframe, B-frame ordering, etc.)
+    that bite when you try to seek directly to the tail.
+    """
+    try:
+        with av.open(str(video)) as container:
+            stream = container.streams.video[0]
+            stream.thread_type = "AUTO"
+            chosen = None
+            for frame in container.decode(stream):
+                chosen = frame
+                if not seek_from_end:
+                    break
+            if chosen is None:
+                return False
+            image = chosen.to_image()
+    except (av.error.FFmpegError, IndexError, OSError):
+        return False
+    src_w, src_h = image.size
+    if src_w <= 0 or src_h <= 0:
+        return False
+    target_h = max(1, round(src_h * width / src_w))
+    if (src_w, src_h) != (width, target_h):
+        image = image.resize((width, target_h), Resampling.LANCZOS)
+    image.save(str(dest), "JPEG", quality=85, optimize=True)
+    return dest.exists()
 
 
 _PLACEHOLDER_SVG = (
@@ -179,10 +236,10 @@ def _one(
         if not dest.exists():
             shutil.copy2(cached, dest)
         return dest.relative_to(thumbs_dir.parent)
-    if _run_ffmpeg(sub.video, dest, width=DEFAULT_WIDTH, seek_from_end=True):
+    if _extract_frame(sub.video, dest, width=DEFAULT_WIDTH, seek_from_end=True):
         shutil.copy2(dest, cached)
         dest_2x = thumbs_dir / f"{key}@2x.jpg"
-        if _run_ffmpeg(sub.video, dest_2x, width=DEFAULT_SECONDARY_WIDTH, seek_from_end=True):
+        if _extract_frame(sub.video, dest_2x, width=DEFAULT_SECONDARY_WIDTH, seek_from_end=True):
             shutil.copy2(dest_2x, cache_root / f"{key}@2x.jpg")
         return dest.relative_to(thumbs_dir.parent)
     return _placeholder(thumbs_dir).relative_to(thumbs_dir.parent)
