@@ -302,17 +302,17 @@ class OutlineHelpers(OutlineScene):
     def __init__(self, **kwargs):
         parts = [
             OutlinePart(
-                title=Tex(r"\textbf{Typed parts}"),
+                title=Tex(r"Typed parts"),
                 label=Caption(r"Typed\\parts"),
                 visual=VGroup(Circle(radius=0.65), MathTex(r"P_1")).set_color(GOLD),
             ),
             OutlinePart(
-                title=Tex(r"\textbf{Progress from Region.linspace}"),
+                title=Tex(r"Progress from Region.linspace"),
                 label=Caption(r"Region\\linspace"),
                 visual=VGroup(Square(side_length=1.2), MathTex(r"x_i")).set_color(BLUE),
             ),
             OutlinePart(
-                title=Tex(r"\textbf{Mobject-native animation}"),
+                title=Tex(r"Mobject-native animation"),
                 label=Caption(r"animate\\set\_index"),
                 visual=VGroup(Triangle(), MathTex(r"\alpha")).set_color(GREEN),
             ),
