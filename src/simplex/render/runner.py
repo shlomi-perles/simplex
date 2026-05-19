@@ -4,8 +4,11 @@ The theme/quality used to flow in via ``SIMPLEX_THEME`` / ``SIMPLEX_QUALITY``
 env vars consumed by a per-scene shim in ``BaseSlide.__init__``. As of
 v0.2.0 each deck declares ``plugins = simplex`` in its ``manim.cfg``; the
 plugin entry-point applies theme defaults and ``save_sections = True`` at
-``import manim`` time. The runner now only needs to invoke
-``manim-slides render`` with the right quality flag and source file.
+``import manim`` time. The runner re-introduces the ``SIMPLEX_THEME`` env
+var purely to *select* which preset the plugin activates -- Python's
+``ContextVar`` doesn't traverse the ``subprocess`` boundary, so without
+the env var every render falls back to ``DASTIMATOR_DARK`` regardless of
+what the deck's ``deck.toml`` declares.
 
 We still spawn a subprocess (not in-process) for three reasons: clean
 SIGINT, OOM isolation, and per-deck ``manim.config`` isolation (different
@@ -17,6 +20,7 @@ section + video output goes to ``<output_dir>/videos/<src_stem>/<q>/...``
 via ``--media_dir``.
 """
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -97,10 +101,15 @@ def render(
         # ``--save_last_frame``; both produce the same single-PNG output.
         base_args.append("--save_last_frame")
 
+    # Carry the deck's theme name across the subprocess via env var; the
+    # manim plugin in the child interpreter reads ``SIMPLEX_THEME`` to pick
+    # the preset whose background/typography it pushes onto ``manim.config``.
+    env = {**os.environ, "SIMPLEX_THEME": deck.theme}
+
     for source_file, scene_names in groups:
         args = [
             *base_args,
             str(source_file.resolve()),
             *scene_names,
         ]
-        subprocess.run(args, check=True, cwd=media_dir)
+        subprocess.run(args, check=True, cwd=media_dir, env=env)
