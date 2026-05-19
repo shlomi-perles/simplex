@@ -237,7 +237,7 @@ class RegionAnchors(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header="engine/region.py -- direction anchors + shrink + split",
+            header=r"engine/region.py -- direction anchors + shrink + split",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -327,7 +327,7 @@ class GeometryHelpers(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header="engine/geometry.py -- convex hull + surrounding rect",
+            header=r"engine/geometry.py -- convex hull + surrounding rect",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -365,7 +365,7 @@ class GlyphMapTransform(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header="engine/glyph_map.py -- TransformByGlyphMap",
+            header=r"engine/glyph\_map.py -- TransformByGlyphMap",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -411,7 +411,7 @@ class TrackingHelpers(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header="engine/dynamics.py -- VT, DN + engine/geometry.py Vcis",
+            header=r"engine/dynamics.py -- VT, DN + engine/geometry.py Vcis",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -459,7 +459,7 @@ class ShapeAndDebug(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header="engine/geometry.py SurroundingRectangleUnion + engine/debug.py",
+            header=r"engine/geometry.py SurroundingRectangleUnion + engine/debug.py",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
