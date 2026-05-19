@@ -108,7 +108,8 @@ def test_generate_extracts_real_frame_without_ffmpeg_cli(
 
     # Force the CLI path off so the PyAV fallback is exercised.
     monkeypatch.setattr(
-        "simplex.render.thumbnail.shutil.which", lambda _name: None  # type: ignore[arg-type]
+        "simplex.render.thumbnail.shutil.which",
+        lambda _name: None,  # type: ignore[arg-type]
     )
 
     out = generate(deck, manifest, site_deck_dir=site_deck_dir, cache_dir=tmp_path / "cache")
