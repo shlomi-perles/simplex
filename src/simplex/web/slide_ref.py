@@ -1,8 +1,11 @@
 """markdown-it-py plugin -- ``[slide:N]`` => clickable jump anchor.
 
-Renders as ``<a href="#" class="slide-ref" data-slide="{N-1}">N</a>``. The
+Renders as ``<a href="#" class="slide-ref" data-slide="{N}">N</a>``. The
 parent viewer.js (see ``web/static/viewer.js``) binds clicks and forwards
-``{type: 'simplex.goto', idx: N-1}`` to the iframe.
+``{type: 'simplex.goto', idx: N}`` to the iframe, which subtracts one to
+reach Reveal's 0-based horizontal index. The 1-based convention here
+matches the sidebar's ``data-slide-target`` (= ``MainSlide.index``) so
+both navigation paths speak the same vocabulary.
 
 If ``slide_count`` is provided and N is out of range, the anchor is emitted
 with the extra class ``slide-ref-stale`` so the build flags it visually
@@ -40,7 +43,7 @@ def make_plugin(slide_count: int | None = None) -> Any:
             classes = "slide-ref" + (" slide-ref-stale" if stale else "")
             title = "Slide out of range" if stale else f"Jump to slide {n}"
             token.content = (
-                f'<a href="#" class="{classes}" data-slide="{n - 1}" '
+                f'<a href="#" class="{classes}" data-slide="{n}" '
                 f'role="button" aria-label="{title}" title="{title}">{n}</a>'
             )
             state.pos = match.end()
