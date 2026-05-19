@@ -101,20 +101,37 @@ def _placeholder(dest_dir: Path) -> Path:
 
 
 def _pick_source(main: MainSlide, override_idx: int) -> Subsection | None:
-    """Pick which subsection's last frame to use for `main`'s thumbnail.
+    """Pick which subsection's frame to use for `main`'s thumbnail.
 
-    Default index is ``-2`` (second-to-last); for short mains the rule
-    clamps to whatever subsection exists. Returns ``None`` when the main
-    has no playable subsections.
+    Returns the subsection at ``override_idx`` if it has a usable video,
+    otherwise walks the remaining subsections (last-to-first) so a missing
+    video at ``-1`` (e.g. the trailing skip-animations section Manim emits
+    when ``construct()`` ends without a final ``play()``) doesn't degrade
+    into the placeholder. Returns ``None`` only when the main has no
+    playable video at any index.
     """
     subs = main.subsections
     if not subs:
         return None
     try:
-        return subs[override_idx]
+        primary = subs[override_idx]
     except IndexError:
-        # Out-of-range index -- fall back to last available subsection.
-        return subs[-1]
+        primary = subs[-1]
+    if _has_video(primary):
+        return primary
+    # Fallback: scan from last to first, skipping the primary we already
+    # tried. The last sub usually carries the slide's final visual state
+    # (the most informative thumbnail), so we prefer it over earlier ones.
+    for sub in reversed(subs):
+        if sub is primary:
+            continue
+        if _has_video(sub):
+            return sub
+    return primary
+
+
+def _has_video(sub: Subsection) -> bool:
+    return sub.video is not None and sub.video.exists()
 
 
 def generate(
