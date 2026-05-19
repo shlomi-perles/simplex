@@ -237,7 +237,7 @@ class RegionAnchors(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header=r"engine/region.py -- direction anchors + shrink + split",
+            header=r"engine/region.py -- direction anchors + shrink + split + linspace",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -283,6 +283,14 @@ class RegionAnchors(BaseSlide):
             sub.place(cap, ORIGIN)
             labels.append(cap)
         self.play(*(Write(label) for label in labels))
+        self.next_slide()
+
+        self.play(*(Unwrite(label) for label in labels))
+        points = self.region.linspace(RIGHT, 3)
+        dots = VGroup(*(Dot(p, radius=0.08, color=GOLD) for p in points))
+        caption = Caption("linspace(RIGHT, 3) keeps equal margins")
+        self.region.place(caption, DOWN, buff=0.35)
+        self.play(FadeIn(dots), Write(caption))
         self.next_slide()
 
 
