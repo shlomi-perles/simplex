@@ -128,6 +128,18 @@ html {
   font-family: var(--font-sans);
 }
 
+/* Anchor the site chrome to the theme palette (set by ``render_web_css`` in
+ * a later ``<style>`` block). Each property falls back to the site-local
+ * ``--bg`` / ``--fg`` so the page never renders with browser defaults --
+ * even if the palette CSS fails to load or Tailwind's runtime JIT misses a
+ * class. This is the single source of truth for the body background; do not
+ * re-add ``bg-[#xxx]`` Tailwind classes on ``<body>``. */
+body {
+  background: var(--simplex-bg, var(--bg));
+  color: var(--simplex-text, var(--fg));
+  font-family: var(--simplex-font-sans, var(--font-sans));
+}
+
 .skip-link {
   position: absolute;
   left: -9999px;
