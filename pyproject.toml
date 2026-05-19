@@ -1,5 +1,8 @@
 [project]
-name = "simplex"
+# PyPI distribution name. The import name stays ``simplex`` (a PEP 420
+# namespace shared with ``manim-simplex``); only the wheel/sdist on PyPI
+# carries the ``-py`` suffix because the bare ``simplex`` slot is taken.
+name = "simplex-py"
 version = "0.2.0"
 description = "Manim-slides presentation framework with a generated web portal."
 readme = "README.md"
