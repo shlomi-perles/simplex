@@ -17,7 +17,7 @@ import subprocess
 from pathlib import Path
 
 from simplex.deck.config import DeckConfig
-from simplex.render.reconcile import DeckManifest, MainSlide, Subsection
+from simplex.manifest import DeckManifest, MainSlide, Subsection
 
 DEFAULT_WIDTH = 480
 DEFAULT_SECONDARY_WIDTH = 960

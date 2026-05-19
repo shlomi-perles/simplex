@@ -3,8 +3,9 @@
 from pathlib import Path
 
 from simplex.deck.config import DeckConfig
-from simplex.render.reconcile import DeckManifest, MainSlide, Subsection
+from simplex.manifest import DeckManifest, MainSlide, Subsection
 from simplex.render.thumbnail import generate
+from simplex.section import SimplexSectionType
 
 
 def _deck(tmp_path: Path) -> DeckConfig:
@@ -26,8 +27,8 @@ def test_generate_returns_placeholder_when_videos_absent(tmp_path: Path) -> None
                 index=1,
                 scene="S1",
                 name="Intro",
-                section_type="simplex.main",
-                subsections=(Subsection(name="Intro", type_="simplex.main"),),
+                section_type=SimplexSectionType.MAIN,
+                subsections=(Subsection(name="Intro", section_type=SimplexSectionType.MAIN),),
             ),
         ),
     )
@@ -70,7 +71,7 @@ def test_generate_uses_thumbnail_path_override(tmp_path: Path) -> None:
                 index=1,
                 scene="S1",
                 name="Intro",
-                section_type="simplex.main",
+                section_type=SimplexSectionType.MAIN,
                 subsections=(),
             ),
         ),

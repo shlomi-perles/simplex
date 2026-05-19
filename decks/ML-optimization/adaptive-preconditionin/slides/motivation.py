@@ -24,7 +24,7 @@ from simplex.engine.text import BodyText, Caption
 from simplex.slides import ContentSlide
 
 # Local helpers (slides dir is on sys.path inside the running script).
-from common import (  # noqa: I001
+from common import (
     A_X,
     A_Y,
     C_AXIS,
