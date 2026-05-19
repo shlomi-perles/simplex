@@ -39,6 +39,12 @@ def test_generate_returns_placeholder_when_videos_absent(tmp_path: Path) -> None
     assert 1 in out
     placeholder = site_deck_dir / out[1]
     assert placeholder.exists()
+    # The placeholder must be a real, renderable image -- not the broken
+    # 8-byte JPEG header we used to emit when ffmpeg was missing.
+    assert placeholder.suffix == ".svg"
+    body = placeholder.read_text(encoding="utf-8")
+    assert body.startswith("<?xml")
+    assert "<svg" in body and "</svg>" in body
 
 
 def test_generate_uses_thumbnail_path_override(tmp_path: Path) -> None:
