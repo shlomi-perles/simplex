@@ -13,8 +13,10 @@ Two JSON sources are read per scene:
 
 The reconciler walks each scene's sections in order and groups consecutive
 SUB rows under their preceding MAIN, producing a ``DeckManifest`` of
-``MainSlide`` records. The original flat ``SlideRef``/``manifest.py`` model
-is gone -- web templates and thumbnail logic now consume the main/sub tree.
+``MainSlide`` records. The schema (``DeckManifest``, ``MainSlide``,
+``Subsection``) is owned by the ``manim-simplex`` plugin and imported
+from :mod:`simplex.manifest` -- the two repos share a single Pydantic
+definition rather than maintaining parallel copies.
 """
 
 import contextlib
@@ -23,9 +25,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
-
 from simplex.deck.config import DeckConfig
+from simplex.manifest import DeckManifest, MainSlide, Subsection
+from simplex.section import SimplexSectionType
 
 # Section types we recognise as a MAIN boundary. Anything not on this list
 # (and not the auto-created first ``default.normal``) is attached as a sub.
@@ -33,45 +35,19 @@ _MAIN_PREFIX = "simplex.main"
 _DEFAULT_NORMAL = "default.normal"
 
 
-class Subsection(BaseModel):
-    """One row in the native sections JSON (main or sub)."""
+def _coerce_section_type(raw: str, *, as_main: bool) -> SimplexSectionType:
+    """Map a raw Manim sections-JSON ``type`` string to a ``SimplexSectionType``.
 
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
-    name: str
-    type_: str
-    video: Path | None = None
-    duration_s: float = 0.0
-
-
-class MainSlide(BaseModel):
-    """A user-visible main slide with its sub-slides bundled in."""
-
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
-    index: int
-    scene: str
-    name: str
-    section_type: str
-    subsections: tuple[Subsection, ...]
-    thumbnail: Path | None = None
-    notes: str | None = None
-
-    @property
-    def duration_s(self) -> float:
-        return sum(s.duration_s for s in self.subsections)
-
-
-class DeckManifest(BaseModel):
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
-    deck_slug: str
-    main_slides: tuple[MainSlide, ...]
-
-    @property
-    def slide_count(self) -> int:
-        return len(self.main_slides)
-
-    @property
-    def total_duration_s(self) -> float:
-        return sum(m.duration_s for m in self.main_slides)
+    Strings that already match a Simplex value (``simplex.main``,
+    ``simplex.sub.loop``, ...) round-trip into the matching enum.
+    Anything else (``default.normal`` from Manim's auto-created pre-amble,
+    user-written custom types) is bucketed into ``MAIN`` or ``SUB`` based
+    on the reconciler's classification at the call site.
+    """
+    try:
+        return SimplexSectionType(raw)
+    except ValueError:
+        return SimplexSectionType.MAIN if as_main else SimplexSectionType.SUB
 
 
 def _ffprobe_duration(video: Path) -> float:
@@ -181,7 +157,7 @@ def build_manifest(deck: DeckConfig, *, media_dir: Path) -> DeckManifest:
                     index=counter,
                     scene=scene,
                     name=_humanise(scene),
-                    section_type="simplex.main",
+                    section_type=SimplexSectionType.MAIN,
                     subsections=(),
                 )
             )
@@ -195,7 +171,7 @@ def build_manifest(deck: DeckConfig, *, media_dir: Path) -> DeckManifest:
                     index=counter,
                     scene=scene,
                     name=_humanise(scene),
-                    section_type="simplex.main",
+                    section_type=SimplexSectionType.MAIN,
                     subsections=(),
                 )
             )
@@ -203,20 +179,21 @@ def build_manifest(deck: DeckConfig, *, media_dir: Path) -> DeckManifest:
             continue
 
         pending_name: str | None = None
-        pending_type: str | None = None
+        pending_type: SimplexSectionType | None = None
         pending_subs: list[Subsection] = []
 
         for i, row in enumerate(rows):
             type_str = str(row.get("type", _DEFAULT_NORMAL))
             name = str(row.get("name", "unnamed"))
             video = _video_path(row, sections_dir)
+            is_main = _is_main_section(type_str, is_first_in_scene=(i == 0))
             sub = Subsection(
                 name=name,
-                type_=type_str,
+                section_type=_coerce_section_type(type_str, as_main=is_main),
                 video=video,
                 duration_s=_row_duration(row, video),
             )
-            if _is_main_section(type_str, is_first_in_scene=(i == 0)):
+            if is_main:
                 if pending_name is not None and pending_type is not None:
                     main_slides.append(
                         MainSlide(
@@ -229,7 +206,11 @@ def build_manifest(deck: DeckConfig, *, media_dir: Path) -> DeckManifest:
                     )
                     counter += 1
                 pending_name = name if type_str != _DEFAULT_NORMAL else _humanise(scene)
-                pending_type = type_str if type_str.startswith(_MAIN_PREFIX) else "simplex.main"
+                pending_type = (
+                    _coerce_section_type(type_str, as_main=True)
+                    if type_str.startswith(_MAIN_PREFIX)
+                    else SimplexSectionType.MAIN
+                )
                 pending_subs = [sub]
             else:
                 pending_subs.append(sub)

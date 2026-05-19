@@ -93,4 +93,4 @@ def test_manifest_loop_type_preserved(tmp_path: Path) -> None:
     manifest = build_manifest(deck, media_dir=media_dir)
     looping = manifest.main_slides[0]
     assert looping.section_type == "simplex.main.loop"
-    assert looping.subsections[1].type_ == "simplex.sub.loop"
+    assert looping.subsections[1].section_type == "simplex.sub.loop"

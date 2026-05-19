@@ -3,7 +3,7 @@ name = "simplex"
 version = "0.2.0"
 description = "Manim-slides presentation framework with a generated web portal."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 license = { text = "MIT" }
 authors = [{ name = "Shlomi Perles" }]
 dependencies = [
@@ -47,14 +47,32 @@ packages = ["src/simplex"]
 "src/simplex/web/templates" = "simplex/web/templates"
 "src/simplex/web/static" = "simplex/web/static"
 
+[tool.uv.sources]
+# Use the sibling checkout while both repos are in active co-development.
+# CI and published builds resolve `manim-simplex>=0.2.0` from PyPI by
+# removing (or commenting out) this block.
+manim-simplex = { path = "../manim-simplex", editable = true }
+
 [tool.basedpyright]
 include = ["src", "tests"]
-pythonVersion = "3.14"
+pythonVersion = "3.13"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
 reportUnknownMemberType = false
 reportUnknownVariableType = false
 reportUnknownArgumentType = false
+# Manim's 0.20.x type stubs are incomplete; mirror the same softening as
+# manim-simplex so this repo's CI passes for the same upstream reasons.
+reportArgumentType = "warning"
+reportReturnType = "warning"
+reportAssignmentType = "warning"
+reportInconsistentConstructor = "warning"
+reportUnknownLambdaType = "warning"
+# manim-slides converters (PDF, PowerPoint, RevealJS) are Pydantic models
+# with sensible defaults the stubs don't expose; reportCallIssue fires on
+# every conversion call. Demote.
+reportCallIssue = "warning"
+reportPrivateUsage = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

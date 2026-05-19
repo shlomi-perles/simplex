@@ -34,7 +34,7 @@ from manim_slides import ThreeDSlide
 from simplex.engine.text import BodyText, Caption
 from simplex.slides import BaseSlide, ContentSlide
 
-from common import (  # noqa: I001
+from common import (
     C_AXIS,
     C_GD,
     C_MOMENTUM,
