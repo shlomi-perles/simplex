@@ -10,6 +10,7 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 |-------|--------|---------|
 | `TextHelpers` | `engine.text` | `Tex` body defaults, `Caption`, `TexPage` (default 8 cm + `width_cm` kwarg), `color_tex` |
 | `CodeHelpers` | `engine.code` | `code_block`, `highlight_code_lines`, `code_explain`, `transform_code_lines` |
+| `CodeWithMath` | `engine.code` | `code_with_math` -- inline LaTeX (`$...$`) in pseudocode, with `bold_math` + `math_color` styling |
 | `GraphAndArray` | `mobjects.graph` + `mobjects.array` | `Node`, `Edge`, `ArrayMob`, `ArrayPointer` |
 | `RegionAnchors` | `engine.region` | direction anchors (`UL`/`UR`/`DL`/`DR`/`ORIGIN`), `shrink`, `reset`, `split(axis, k)` |
 | `ExitAnimations` | `engine.animations` | `set_exit_animation`, `register_exit`, `clear_scene(exclude=...)` |
@@ -23,6 +24,7 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 
 - The convex-hull demo requires SciPy. Install it via `pip install simplex-py[geometry]`; without it, the scene shows a caption pointing readers to the extras.
 - `code_block` registers the Darcula Pygments style on first use; subsequent calls are a no-op.
+- `code_with_math(src, ...)` replaces every `$...$` region in `src` with a `MathTex` glyph scaled to the surrounding code font (calibrated against a cached `Mq` reference, so `\infty` and `\bigcup_{i=1}^n` both land at the right size). Lines reflow so the rendered math width drives the layout, and the background is refit only when at least one substitution happens. Pass `bold_math=True` to wrap each match in `\boldsymbol{...}` and `math_color="..."` to recolour the math.
 - `TexPage` is the encapsulated fixed-width helper (was `Definition`). Its default page width is **8 cm**; pass `width_cm=10.5` per call, or set the class attribute on a subclass (`class WidePage(TexPage): width_cm = 12.0`) for a deck-wide variant. The `{minipage}{<width>cm}` literal only appears inside `TexPage` itself -- themes no longer carry it.
 - Body-sized prose uses plain `manim.Tex`. The plugin's `apply_theme_defaults` sets the body `font_size` and `color` so `Tex(...)` already matches what the old `BodyText` produced.
 - `region.place(mob, anchor, buff=...)` accepts a Manim direction vector (`UP`, `DR`, `ORIGIN`, ...) -- string anchors raise `ValueError`.
