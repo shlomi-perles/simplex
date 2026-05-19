@@ -6,6 +6,20 @@
 <title>{% block title %}{{ site.brand }}{% endblock %}</title>
 <meta name="description" content="{{ site.tagline or (site.brand + ' decks') }}" />
 {% block head_meta %}{% endblock %}
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("simplex-theme");
+      var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      var theme = stored || (prefersDark ? "dark" : "light");
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+    } catch (_) {
+      document.documentElement.dataset.theme = "dark";
+      document.documentElement.style.colorScheme = "dark";
+    }
+  })();
+</script>
 <script src="{{ static('tailwind.js') }}"></script>
 <link rel="stylesheet" href="{{ static('katex/katex.min.css') }}" />
 <link rel="stylesheet" href="{{ static('simplex.css') }}" />
@@ -24,25 +38,52 @@
 </head>
 <body class="min-h-screen antialiased">
 <a href="#main" class="skip-link">Skip to content</a>
-<header class="px-6 py-4 border-b border-neutral-800 flex items-center gap-6">
-  <a href="{{ site.url('/') }}" class="text-2xl font-semibold tracking-tight">
-    {{ site.brand }}
-  </a>
-  {% if site.tagline %}
-  <span class="hidden md:inline text-neutral-500 text-sm">{{ site.tagline }}</span>
-  {% endif %}
-  <nav class="ml-auto flex items-center gap-4 text-sm text-neutral-300">
-    {% for link in site.nav %}
-    <a href="{{ link.href }}" class="hover:text-white transition">{{ link.label }}</a>
-    {% endfor %}
+<header class="site-nav-wrap">
+  <nav class="site-navbar" aria-label="Primary">
+    <a href="{{ site.url('/') }}" class="site-brand" aria-label="{{ site.brand }} home">
+      <i data-lucide="monitor-play" aria-hidden="true"></i>
+      <span>{{ site.brand }}</span>
+    </a>
+    <div class="site-nav-links">
+      {% for link in site.nav %}
+      {% set label = link.label|lower %}
+      {% set icon = "github" if "github" in label else ("book-open" if "docs" in label else ("home" if "home" in label or "deck" in label else "circle-dot")) %}
+      <a
+        href="{{ link.href }}"
+        class="site-nav-link"
+        {% if link.href.startswith('http') %}target="_blank" rel="noreferrer"{% endif %}
+      >
+        <i data-lucide="{{ icon }}" aria-hidden="true"></i>
+        <span>{{ link.label }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    <div class="site-nav-actions">
+      {% block nav_actions %}{% endblock %}
+      <button
+        type="button"
+        class="theme-toggle"
+        data-theme-toggle
+        aria-label="Toggle color theme"
+        title="Toggle color theme"
+      >
+        <i data-lucide="sun" class="theme-icon theme-icon-sun" aria-hidden="true"></i>
+        <i data-lucide="moon" class="theme-icon theme-icon-moon" aria-hidden="true"></i>
+      </button>
+    </div>
   </nav>
 </header>
 <main id="main" class="{% block main_class %}px-6 py-8 max-w-7xl mx-auto{% endblock %}">
   {% block content %}{% endblock %}
 </main>
-<footer class="mt-16 px-6 py-6 border-t border-neutral-900 text-xs text-neutral-500">
-  Built with Simplex &middot; <a href="https://manim-slides.eertmans.be/" class="hover:text-neutral-300">manim-slides</a>
+<footer class="site-footer">
+  <span>Built with Simplex</span>
+  <a href="https://manim-slides.eertmans.be/" target="_blank" rel="noreferrer">
+    <i data-lucide="external-link" aria-hidden="true"></i>
+    <span>manim-slides</span>
+  </a>
 </footer>
+<script src="{{ static('lucide/lucide.min.js') }}" defer></script>
 <script src="{{ static('viewer.js') }}" defer></script>
 <script src="{{ static('notes.js') }}" defer></script>
 <script defer src="{{ static('katex/katex.min.js') }}"></script>

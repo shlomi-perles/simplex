@@ -1,55 +1,35 @@
 {% extends "base.html" %}
 {% block title %}{{ deck.title }} -- {{ site.brand }}{% endblock %}
-{% block main_class %}px-4 md:px-6 py-6 max-w-[1600px] mx-auto{% endblock %}
+{% block nav_actions %}
+  {% if has_pdf %}
+  <a
+    href="{{ deck.slug }}.pdf"
+    class="site-resource-link"
+    download
+  >
+    <i data-lucide="file-down" aria-hidden="true"></i>
+    <span>Presentation PDF</span>
+  </a>
+  {% endif %}
+  {% if has_notes_pdf %}
+  <a
+    href="notes.pdf"
+    class="site-resource-link"
+    download
+  >
+    <i data-lucide="file-text" aria-hidden="true"></i>
+    <span>Notes PDF</span>
+  </a>
+  {% endif %}
+{% endblock %}
+{% block main_class %}deck-main{% endblock %}
 {% block content %}
-<a
-  href="{{ site.url('/') }}"
-  class="text-sm text-neutral-400 hover:text-white"
->&larr; All decks</a>
-
-<header class="mt-2 mb-6 flex items-end justify-between gap-6 flex-wrap">
-  <div>
-    <h1 class="text-2xl md:text-3xl font-semibold tracking-tight">{{ deck.title }}</h1>
-    {% if deck.summary %}
-    <p class="text-neutral-400 mt-1 max-w-2xl">{{ deck.summary }}</p>
-    {% endif %}
-    <div class="mt-2 flex flex-wrap gap-2 text-xs items-center text-neutral-500">
-      {% if deck.category %}
-      <span class="px-2 py-0.5 bg-neutral-800 text-neutral-200 rounded">{{ deck.category }}</span>
-      {% endif %}
-      {% if total_duration_min %}
-      <span>{{ total_duration_min }} min &middot; {{ slide_count }} slides</span>
-      {% else %}
-      <span>{{ slide_count }} slides</span>
-      {% endif %}
-    </div>
-  </div>
-  <div class="flex gap-2">
-    {% if has_pdf %}
-    <a
-      href="{{ deck.slug }}.pdf"
-      class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-sm inline-flex items-center gap-2"
-      download
-    >
-      <span aria-hidden="true">&#x2913;</span> Presentation PDF
-    </a>
-    {% endif %}
-    {% if has_notes_pdf %}
-    <a
-      href="notes.pdf"
-      class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-sm inline-flex items-center gap-2"
-      download
-    >
-      <span aria-hidden="true">&#x2913;</span> Notes PDF
-    </a>
-    {% endif %}
-  </div>
-</header>
-
 <section
   class="deck-grid"
   data-deck-slug="{{ deck.slug }}"
   data-slide-count="{{ slide_count }}"
+  data-default-slide-number="{% if deck.web.show_slide_number %}true{% else %}false{% endif %}"
+  data-default-clock="{% if deck.web.show_clock %}true{% else %}false{% endif %}"
 >
   <div class="deck-viewer">
     <div class="deck-viewer-frame">
@@ -63,40 +43,59 @@
       ></iframe>
     </div>
     <div class="deck-controls" role="toolbar" aria-label="Slide controls">
-      <div class="deck-controls-left">
-        <button data-control="prev" class="deck-ctl-btn" aria-label="Previous slide" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M15.5 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+      <div class="deck-control-group" aria-label="Playback">
+        <button data-control="prev" class="deck-ctl-btn" aria-label="Previous slide" title="Previous" type="button">
+          <i data-lucide="chevron-left" aria-hidden="true"></i>
         </button>
-        <button data-control="toggle-play" class="deck-ctl-btn deck-ctl-play" aria-label="Play" data-state="paused" type="button">
-          <svg class="deck-ctl-icon-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M7 5v14l12-7L7 5z" fill="currentColor"/>
-          </svg>
-          <svg class="deck-ctl-icon-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <rect x="6"  y="5" width="4" height="14" rx="1" fill="currentColor"/>
-            <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/>
-          </svg>
+        <button data-control="restart" class="deck-ctl-btn" aria-label="Restart slide" title="Restart" type="button">
+          <i data-lucide="rotate-ccw" aria-hidden="true"></i>
         </button>
-        <button data-control="next" class="deck-ctl-btn" aria-label="Next slide" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M8.5 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+        <button data-control="toggle-play" class="deck-ctl-btn deck-ctl-play" aria-label="Play" title="Play" data-state="paused" type="button">
+          <i data-lucide="play" class="deck-ctl-icon-play" aria-hidden="true"></i>
+          <i data-lucide="pause" class="deck-ctl-icon-pause" aria-hidden="true"></i>
+        </button>
+        <button data-control="next" class="deck-ctl-btn" aria-label="Next slide" title="Next" type="button">
+          <i data-lucide="chevron-right" aria-hidden="true"></i>
+        </button>
+        <button data-control="fullscreen" class="deck-ctl-btn" aria-label="Fullscreen" title="Fullscreen" type="button">
+          <i data-lucide="maximize" aria-hidden="true"></i>
         </button>
         <span class="deck-counter" data-counter aria-live="polite">1 / {{ slide_count }}</span>
       </div>
-      <div class="deck-controls-right">
-        <button data-control="fullscreen" class="deck-ctl-btn" aria-label="Fullscreen" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+      <div class="deck-settings" data-settings>
+        <button
+          type="button"
+          class="deck-settings-trigger"
+          data-settings-toggle
+          aria-expanded="false"
+          aria-haspopup="true"
+        >
+          <i data-lucide="settings" aria-hidden="true"></i>
+          <span>Player Settings</span>
         </button>
+        <div class="deck-settings-panel" data-settings-panel hidden>
+          <label class="deck-setting-row">
+            <span><i data-lucide="palette" aria-hidden="true"></i>Slide Color</span>
+            <input type="checkbox" data-setting="slide-color" checked />
+          </label>
+          <label class="deck-setting-row">
+            <span><i data-lucide="list-ordered" aria-hidden="true"></i>Enumeration</span>
+            <input
+              type="checkbox"
+              data-setting="slide-number"
+              {% if deck.web.show_slide_number %}checked{% endif %}
+            />
+          </label>
+          <label class="deck-setting-row">
+            <span><i data-lucide="clock" aria-hidden="true"></i>Clock</span>
+            <input type="checkbox" data-setting="clock" {% if deck.web.show_clock %}checked{% endif %} />
+          </label>
+        </div>
       </div>
     </div>
   </div>
 
   <aside class="deck-sidebar" aria-label="Slide list">
-    <h2 class="deck-sidebar-title">Slides</h2>
     <ol class="deck-slide-list" role="list">
       {% for slide in slides %}
       <li>
@@ -106,16 +105,6 @@
           data-slide-target="{{ slide.index }}"
           {% if loop.first %}aria-current="true"{% endif %}
         >
-          <div class="deck-slide-head">
-            <span class="deck-slide-title">
-              {{ "%02d. "|format(loop.index) }}{{ slide.name or slide.scene }}
-            </span>
-            {% if slide.duration_s %}
-            <span class="deck-slide-duration">
-              {{ "%d:%02d"|format(slide.duration_s|int // 60, slide.duration_s|int % 60) }}
-            </span>
-            {% endif %}
-          </div>
           <div class="deck-slide-thumb">
             {% if slide.thumbnail %}
             <img
@@ -127,6 +116,16 @@
             {% else %}
             <div class="deck-slide-thumb-empty" aria-hidden="true"></div>
             {% endif %}
+            <div class="deck-slide-overlay">
+              <span class="deck-slide-title">
+                {{ "%02d. "|format(loop.index) }}{{ slide.name or slide.scene }}
+              </span>
+              {% if slide.duration_s %}
+              <span class="deck-slide-duration">
+                {{ "%d:%02d"|format(slide.duration_s|int // 60, slide.duration_s|int % 60) }}
+              </span>
+              {% endif %}
+            </div>
           </div>
         </button>
       </li>

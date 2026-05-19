@@ -1,5 +1,6 @@
 """DeckConfig loading and slug validation."""
 
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -52,3 +53,20 @@ def test_web_chrome_can_be_enabled(tmp_path: Path) -> None:
     cfg = DeckConfig.load(deck_dir)
     assert cfg.web.show_clock is True
     assert cfg.web.show_slide_number is True
+
+
+def test_created_at_and_carousel_gif_options_load(tmp_path: Path) -> None:
+    deck_dir = _write_toml(
+        tmp_path,
+        'slug = "demo"\n'
+        'title = "Demo"\n'
+        'created_at = "2026-05-19"\n'
+        "\n"
+        "[web]\n"
+        'carousel_gif = "preview.gif"\n'
+        "carousel_gif_slides = [1, 3]\n",
+    )
+    cfg = DeckConfig.load(deck_dir)
+    assert cfg.created_at == date(2026, 5, 19)
+    assert cfg.web.carousel_gif == Path("preview.gif")
+    assert cfg.web.carousel_gif_slides == (1, 3)

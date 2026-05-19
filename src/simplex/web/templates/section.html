@@ -1,51 +1,71 @@
 {% extends "base.html" %}
 {% block title %}{{ section.config.title }} -- {{ site.brand }}{% endblock %}
 {% block content %}
-<a href="{{ site.url('/') }}" class="text-sm text-neutral-400 hover:text-white">&larr; All sections</a>
-<h1 class="text-3xl md:text-4xl font-semibold tracking-tight mt-2">
-  {{ section.config.title }}
-</h1>
-{% if section.config.blurb %}
-<p class="text-neutral-400 mt-2 max-w-2xl">{{ section.config.blurb }}</p>
-{% endif %}
+<section class="section-page-heading">
+  <div class="carousel-heading-line">
+    <i data-lucide="rows-3" aria-hidden="true"></i>
+    <h1>{{ section.config.title }}</h1>
+  </div>
+  {% if section.config.blurb %}
+  <p>{{ section.config.blurb }}</p>
+  {% endif %}
+</section>
 
-<ol
-  class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-  role="list"
->
+<ol class="section-deck-grid" role="list">
   {% for deck in section.decks %}
+  {% set thumb = thumbs.get(deck.slug) %}
+  {% set gif = preview_gifs.get(deck.slug) %}
+  {% set created = deck_dates.get(deck.slug) %}
   <li>
     <a
       href="{{ site.url('decks/' + deck.slug + '/') }}"
-      class="block bg-neutral-900 rounded-lg overflow-hidden hover:ring-1 hover:ring-yellow-400 transition"
+      class="carousel-card"
       aria-label="Open {{ deck.title }}"
     >
-      <div class="aspect-video bg-neutral-800 flex items-center justify-center">
-        {% set thumb = thumbs.get(deck.slug) %}
+      <div class="carousel-thumb">
         {% if thumb %}
         <img
           src="{{ site.url('decks/' + deck.slug + '/' + thumb) }}"
+          {% if gif %}data-preview-gif="{{ site.url('decks/' + deck.slug + '/' + gif) }}"{% endif %}
           alt=""
           loading="lazy"
           decoding="async"
-          class="w-full h-full object-cover"
+          width="480"
+          height="270"
         />
         {% else %}
-        <span class="text-3xl text-neutral-600">{{ deck.title[:1] }}</span>
+        <div class="carousel-thumb-empty" aria-hidden="true">
+          <span>{{ deck.title[:1] }}</span>
+        </div>
         {% endif %}
-      </div>
-      <div class="p-4">
-        <h2 class="text-lg font-medium">{{ deck.title }}</h2>
-        {% if deck.summary %}
-        <p class="text-neutral-400 text-sm mt-1 line-clamp-3">{{ deck.summary }}</p>
-        {% endif %}
-        <div class="mt-3 flex flex-wrap gap-2 text-xs">
-          {% if deck.category %}
-          <span class="px-2 py-0.5 bg-neutral-800 rounded">{{ deck.category }}</span>
-          {% endif %}
-          {% for tag in deck.tags %}
-          <span class="px-2 py-0.5 text-neutral-400">#{{ tag }}</span>
-          {% endfor %}
+        <div class="carousel-scrim" aria-hidden="true"></div>
+        <div class="carousel-card-content">
+          <div class="carousel-card-top">
+            {% if deck.category %}
+            <span class="carousel-badge">{{ deck.category }}</span>
+            {% endif %}
+            {% if created %}
+            <span class="carousel-created">
+              <i data-lucide="calendar" aria-hidden="true"></i>
+              {{ created }}
+            </span>
+            {% endif %}
+          </div>
+          <div class="carousel-card-bottom">
+            <h2>{{ deck.title }}</h2>
+            {% if deck.summary %}
+            <p>{{ deck.summary }}</p>
+            {% endif %}
+            <div class="carousel-card-actions">
+              <span class="carousel-play">
+                <i data-lucide="play" aria-hidden="true"></i>
+                Play now
+              </span>
+              {% if deck.duration_minutes %}
+              <span class="carousel-duration">{{ deck.duration_minutes }} min</span>
+              {% endif %}
+            </div>
+          </div>
         </div>
       </div>
     </a>

@@ -25,6 +25,7 @@ REVEAL_VER = "5.1.0"
 HTMX_VER = "1.9.12"
 LATO_VER = "5.0.18"
 MERRIWEATHER_VER = "5.0.13"
+LUCIDE_VER = "1.16.0"
 
 _UNPKG = "https://unpkg.com"
 _JSDELIVR = "https://cdn.jsdelivr.net/npm"
@@ -81,6 +82,7 @@ def _assets() -> tuple[tuple[str, str], ...]:
         (f"{_UNPKG}/reveal.js@{REVEAL_VER}/dist/reveal.css", "reveal.js/reveal.css"),
         (f"{_UNPKG}/reveal.js@{REVEAL_VER}/dist/reset.css", "reveal.js/reset.css"),
         (f"{_UNPKG}/htmx.org@{HTMX_VER}/dist/htmx.min.js", "htmx.min.js"),
+        (f"{_UNPKG}/lucide@{LUCIDE_VER}/dist/umd/lucide.min.js", "lucide/lucide.min.js"),
     ]
     items.extend(
         (f"{_UNPKG}/katex@{KATEX_VER}/dist/fonts/{f}", f"katex/fonts/{f}") for f in _KATEX_FONTS

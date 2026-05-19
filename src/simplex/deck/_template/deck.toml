@@ -6,5 +6,6 @@ theme = "dastimator_dark"
 quality = "high_quality"
 voiceover = false
 category = ""
+created_at = "__CREATED_AT__"
 order = 1000
 entrypoints = ["slides.intro:Intro"]

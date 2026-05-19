@@ -26,6 +26,7 @@ from pathlib import Path
 
 import av
 import av.error
+from PIL import Image
 from PIL.Image import Resampling
 
 from simplex.deck.config import DeckConfig
@@ -33,6 +34,10 @@ from simplex.manifest import DeckManifest, MainSlide, Subsection
 
 DEFAULT_WIDTH = 480
 DEFAULT_SECONDARY_WIDTH = 960
+DEFAULT_GIF_WIDTH = 320
+DEFAULT_GIF_FPS = 6
+DEFAULT_GIF_MAX_FRAMES = 24
+DEFAULT_GIF_COLORS = 64
 PLACEHOLDER_NAME = "_placeholder.svg"
 
 
@@ -40,6 +45,14 @@ def _key(video: Path, slug: str) -> str:
     stat = video.stat()
     raw = f"{slug}:{video.as_posix()}:{stat.st_mtime_ns}:{stat.st_size}"
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
+
+
+def _multi_video_key(videos: tuple[Path, ...], slug: str, suffix: str) -> str:
+    parts = [slug, suffix]
+    for video in videos:
+        stat = video.stat()
+        parts.append(f"{video.as_posix()}:{stat.st_mtime_ns}:{stat.st_size}")
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()[:24]
 
 
 def _extract_frame(
@@ -207,6 +220,122 @@ def generate(
     for main in manifest.main_slides:
         out[main.index] = _one(main, deck, thumbs_dir, cache_root)
     return out
+
+
+def generate_carousel_gif(
+    deck: DeckConfig,
+    manifest: DeckManifest,
+    *,
+    site_deck_dir: Path,
+    cache_dir: Path,
+) -> Path | None:
+    """Return a low-quality GIF preview for deck cards, if configured.
+
+    Resolution order:
+    1. ``[web] carousel_gif = "path/to/preview.gif"`` copies the user asset.
+    2. ``[web] carousel_gif_slides = [1, 3]`` samples rendered videos from
+       those 1-based main-slide indexes and writes a small cached GIF.
+    3. No configured preview returns ``None`` so the portal keeps the static
+       thumbnail only.
+    """
+    previews_dir = site_deck_dir / "previews"
+    cache_root = cache_dir / "carousel-gifs" / deck.slug
+    if deck.web.carousel_gif is not None:
+        return _copy_gif_override(deck, previews_dir)
+
+    selected = set(deck.web.carousel_gif_slides)
+    if not selected:
+        return None
+    videos = tuple(
+        sub.video
+        for main in manifest.main_slides
+        if main.index in selected
+        for sub in [_pick_source(main, -1)]
+        if sub is not None and sub.video is not None and sub.video.exists()
+    )
+    if not videos:
+        return None
+
+    previews_dir.mkdir(parents=True, exist_ok=True)
+    cache_root.mkdir(parents=True, exist_ok=True)
+    key = _multi_video_key(videos, deck.slug, ",".join(str(i) for i in sorted(selected)))
+    cached = cache_root / f"{key}.gif"
+    dest = previews_dir / f"{key}.gif"
+    if cached.exists():
+        if not dest.exists():
+            shutil.copy2(cached, dest)
+        return dest.relative_to(site_deck_dir)
+    if _write_preview_gif(videos, dest):
+        shutil.copy2(dest, cached)
+        return dest.relative_to(site_deck_dir)
+    return None
+
+
+def _copy_gif_override(deck: DeckConfig, previews_dir: Path) -> Path | None:
+    rel = deck.web.carousel_gif
+    if rel is None:
+        return None
+    src = deck.path / rel
+    if not src.exists() or src.suffix.lower() != ".gif":
+        return None
+    previews_dir.mkdir(parents=True, exist_ok=True)
+    key = _multi_video_key((src,), deck.slug, "override")
+    target = previews_dir / f"override_{key}.gif"
+    if not target.exists() or target.stat().st_mtime < src.stat().st_mtime:
+        shutil.copy2(src, target)
+    return target.relative_to(previews_dir.parent)
+
+
+def _write_preview_gif(videos: tuple[Path, ...], dest: Path) -> bool:
+    frames: list[Image.Image] = []
+    per_video = max(1, DEFAULT_GIF_MAX_FRAMES // max(1, len(videos)))
+    for video in videos:
+        frames.extend(_sample_gif_frames(video, max_frames=per_video, width=DEFAULT_GIF_WIDTH))
+        if len(frames) >= DEFAULT_GIF_MAX_FRAMES:
+            frames = frames[:DEFAULT_GIF_MAX_FRAMES]
+            break
+    if not frames:
+        return False
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        frames[0].save(
+            str(dest),
+            save_all=True,
+            append_images=frames[1:],
+            duration=round(1000 / DEFAULT_GIF_FPS),
+            loop=0,
+            optimize=True,
+        )
+    except OSError:
+        return False
+    return dest.exists()
+
+
+def _sample_gif_frames(video: Path, *, max_frames: int, width: int) -> list[Image.Image]:
+    out: list[Image.Image] = []
+    try:
+        with av.open(str(video)) as container:
+            stream = container.streams.video[0]
+            stream.thread_type = "AUTO"
+            rate = float(stream.average_rate or DEFAULT_GIF_FPS)
+            stride = max(1, round(rate / DEFAULT_GIF_FPS))
+            for i, frame in enumerate(container.decode(stream)):
+                if i % stride != 0:
+                    continue
+                out.append(_gif_frame(frame.to_image(), width=width))
+                if len(out) >= max_frames:
+                    break
+    except (av.error.FFmpegError, IndexError, OSError):
+        return []
+    return out
+
+
+def _gif_frame(image: Image.Image, *, width: int) -> Image.Image:
+    src_w, src_h = image.size
+    if src_w > 0 and src_h > 0 and src_w != width:
+        target_h = max(1, round(src_h * width / src_w))
+        image = image.resize((width, target_h), Resampling.LANCZOS)
+    return image.convert("P", palette=Image.Palette.ADAPTIVE, colors=DEFAULT_GIF_COLORS)
 
 
 def _one(

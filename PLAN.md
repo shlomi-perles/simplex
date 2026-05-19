@@ -84,7 +84,7 @@ Slide bases pull the active theme in `setup()` via a `ContextVar`.
 | Concern | Dastimator source | Simplex home |
 |---|---|---|
 | Global preamble (compact math display, custom commands) | `REMOVE_MATH_SPACE_PREAMBLE` (`consts.py:54-58`) | `theme.latex.preamble: str` -> injected into the theme's `TexTemplate` |
-| Per-use environment (e.g. `{minipage}{8cm}`) | `DEFINITION_TEX_ENV` (`consts.py:53`) | `theme.latex.environments: dict[str, str]` |
+| Per-use environment (e.g. `{minipage}{20cm}`) | `DEFINITION_TEX_ENV` (`consts.py:53`) | `theme.latex.environments: dict[str, str]` |
 | Math/text colors, font sizes | scattered across `consts.py` | `theme.palette` + `theme.typography`; applied via `Tex.set_default(...)` |
 
 `engine/defaults.py::apply_theme_defaults(theme)` calls `Tex.set_default(...)`, `MathTex.set_default(...)`, `Text.set_default(...)`, `Line.set_default(...)`, etc. so a deck author writes plain `MathTex(r"\frac{1}{2}")` and gets theme colors + preamble for free.
@@ -193,7 +193,7 @@ Every directory under `src/simplex/`, `decks/`, and `tests/` ships a `README.md`
 
 - Step 1: `uv sync && uv run simplex doctor` exits 0 on a clean Windows box.
 - Step 2: pre-commit fails when any directory under `src/simplex/` lacks a README or exceeds 50 lines.
-- Step 3: `DASTIMATOR_DARK.palette.background == "#242424"`, `theme.latex.environments["definition"] == "{minipage}{8cm}"`, models frozen.
+- Step 3: `DASTIMATOR_DARK.palette.background == "#242424"`, `theme.latex.environments["definition"] == "{minipage}{20cm}"`, models frozen.
 - Step 4: After `apply_theme_defaults`, a vanilla `MathTex(r"x")` has theme color and preamble.
 - Step 5: `Region.full_frame().shrink(top=0.5).center` returns the expected coordinate.
 - Step 6: `Remove(mob)` -> `FadeOut` by default; `set_exit_animation(mob, ShrinkToCenter)` -> `ShrinkToCenter`.

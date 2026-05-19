@@ -9,7 +9,7 @@ from PIL import Image
 
 from simplex.deck.config import DeckConfig
 from simplex.manifest import DeckManifest, MainSlide, Subsection
-from simplex.render.thumbnail import generate
+from simplex.render.thumbnail import generate, generate_carousel_gif
 from simplex.section import SimplexSectionType
 
 
@@ -175,3 +175,57 @@ def test_generate_uses_thumbnail_path_override(tmp_path: Path) -> None:
     target = site_deck_dir / out[1]
     assert target.exists()
     assert target.name.endswith(".png")
+
+
+def test_generate_carousel_gif_from_selected_slide(tmp_path: Path) -> None:
+    deck_dir = tmp_path / "demo"
+    deck_dir.mkdir()
+    (deck_dir / "deck.toml").write_text(
+        'slug = "demo"\n'
+        'title = "Demo"\n'
+        'scenes = ["S1"]\n'
+        "\n"
+        "[web]\n"
+        "carousel_gif_slides = [1]\n",
+        encoding="utf-8",
+    )
+    (deck_dir / "slides.py").write_text("", encoding="utf-8")
+    deck = DeckConfig.load(deck_dir)
+    video = tmp_path / "media" / "s1.mp4"
+    _write_solid_mp4(video, color=(30, 120, 200), frames=20)
+
+    manifest = DeckManifest(
+        deck_slug=deck.slug,
+        main_slides=(
+            MainSlide(
+                index=1,
+                scene="S1",
+                name="Intro",
+                section_type=SimplexSectionType.MAIN,
+                subsections=(
+                    Subsection(
+                        name="Intro",
+                        section_type=SimplexSectionType.MAIN,
+                        video=video,
+                    ),
+                ),
+            ),
+        ),
+    )
+    site_deck_dir = tmp_path / "site" / "decks" / "demo"
+    site_deck_dir.mkdir(parents=True)
+
+    rel = generate_carousel_gif(
+        deck,
+        manifest,
+        site_deck_dir=site_deck_dir,
+        cache_dir=tmp_path / "cache",
+    )
+    assert rel is not None
+    gif = site_deck_dir / rel
+    assert gif.exists()
+    assert gif.suffix == ".gif"
+    with Image.open(gif) as image:
+        image.load()
+        assert image.size[0] == 320
+        assert image.n_frames >= 1

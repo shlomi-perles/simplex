@@ -104,7 +104,7 @@ with active_theme(presets.ACADEMIC_LIGHT):
     ...
 ```
 
-LaTeX preamble lives on `theme.latex.preamble`. Fixed-width prose blocks use the `TexPage` mobject (default 8 cm, override via `width_cm=…` kwarg or a class attribute on a subclass).
+LaTeX preamble lives on `theme.latex.preamble`. Fixed-width prose blocks use the `TexPage` mobject (default 20 cm, override via `width_cm=…` kwarg or a class attribute on a subclass).
 
 ## Style + tooling
 
