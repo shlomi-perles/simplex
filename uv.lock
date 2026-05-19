@@ -1365,7 +1365,7 @@ wheels = [
 ]
 
 [[package]]
-name = "simplex"
+name = "simplex-py"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [

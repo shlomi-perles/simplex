@@ -241,7 +241,7 @@ name = "my-lectures"
 version = "0.0.0"
 description = "Lectures site built with Simplex."
 requires-python = ">=3.14"
-dependencies = ["simplex>=0.2.0"]
+dependencies = ["simplex-py>=0.2.0"]
 ```
 
 `.python-version`:

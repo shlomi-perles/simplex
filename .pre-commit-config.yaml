@@ -1,4 +1,57 @@
+ci:
+  autofix_commit_msg: |
+    chore(fmt): auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autoupdate_commit_msg: 'chore(deps): pre-commit autoupdate'
+
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=512]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+    rev: v2.16.0
+    hooks:
+      - id: pretty-format-yaml
+        args: [--autofix]
+      - id: pretty-format-toml
+        exclude: ^(uv\.lock|poetry\.lock)$
+        args: [--autofix, --trailing-commas]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.20.2
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-requests, types-setuptools]
+        args: [--ignore-missing-imports]
+        files: ^src/
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+        additional_dependencies:
+          - tomli
+        args: [--ignore-words-list=manim,mobjects,mobject,pres]
+        exclude: ^(uv\.lock|.*\.svg|.*\.bib)$
+
   - repo: local
     hooks:
       - id: check-readmes
@@ -7,13 +60,9 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-      - id: ruff-check
-        name: ruff check
-        entry: uv run ruff check .
+      - id: github-issues
+        name: GitHub issues link check
+        description: Check issues (and PR) links are matching number.
+        entry: python .github/scripts/check_github_issues.py
         language: system
-        pass_filenames: false
-      - id: ruff-format
-        name: ruff format
-        entry: uv run ruff format --check .
-        language: system
-        pass_filenames: false
+        types: [markdown]

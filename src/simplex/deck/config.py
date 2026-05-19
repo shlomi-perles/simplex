@@ -68,6 +68,12 @@ class WebOverride(BaseModel):
     progress: bool = True
     hash_navigation: bool = True
 
+    # Slide-presentation chrome. These used to be drawn into each frame
+    # by ``make_chrome(..., page=)``; they now live in the RevealJS host
+    # so toggling them is free (no re-render).
+    show_slide_number: bool = False
+    show_clock: bool = False
+
     # Escape hatches.
     custom_css_path: Path | None = None
     template: Path | None = None
