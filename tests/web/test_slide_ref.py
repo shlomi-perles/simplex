@@ -6,7 +6,8 @@ from simplex.web.notes import render_text
 def test_slide_ref_emits_anchor() -> None:
     html = render_text("See [slide:3] for details.", slide_count=10)
     assert 'class="slide-ref"' in html
-    assert 'data-slide="2"' in html
+    # 1-based to match the sidebar's data-slide-target convention.
+    assert 'data-slide="3"' in html
     assert ">3</a>" in html
 
 
