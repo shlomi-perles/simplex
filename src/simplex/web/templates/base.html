@@ -22,10 +22,10 @@
 </script>
 <script src="{{ static('tailwind.js') }}"></script>
 <link rel="stylesheet" href="{{ static('katex/katex.min.css') }}" />
-<link rel="stylesheet" href="{{ static('simplex.css') }}" />
 {% if palette_css %}
 <style>{{ palette_css|safe }}</style>
 {% endif %}
+<link rel="stylesheet" href="{{ static('simplex.css') }}" />
 {% if site.ga_enabled %}
 <script async src="https://www.googletagmanager.com/gtag/js?id={{ site.ga_tag }}"></script>
 <script>
@@ -41,20 +41,26 @@
 <header class="site-nav-wrap">
   <nav class="site-navbar" aria-label="Primary">
     <a href="{{ site.url('/') }}" class="site-brand" aria-label="{{ site.brand }} home">
-      <i data-lucide="monitor-play" aria-hidden="true"></i>
       <span>{{ site.brand }}</span>
     </a>
     <div class="site-nav-links">
       {% for link in site.nav %}
       {% set label = link.label|lower %}
-      {% set icon = "github" if "github" in label else ("book-open" if "docs" in label else ("home" if "home" in label or "deck" in label else "circle-dot")) %}
+      {% set is_github = "github" in label %}
+      {% set icon = "book-open" if "docs" in label else ("home" if "home" in label or "deck" in label else "circle-dot") %}
       <a
         href="{{ link.href }}"
-        class="site-nav-link"
+        class="site-nav-link{% if is_github %} site-nav-link-icon-only{% endif %}"
+        {% if is_github %}aria-label="GitHub"{% endif %}
         {% if link.href.startswith('http') %}target="_blank" rel="noreferrer"{% endif %}
       >
+        {% if is_github %}
+        <span class="github-square-icon" aria-hidden="true"></span>
+        {% else %}
         <i data-lucide="{{ icon }}" aria-hidden="true"></i>
+        <span class="icon-fallback" aria-hidden="true">{{ link.label[:1] }}</span>
         <span>{{ link.label }}</span>
+        {% endif %}
       </a>
       {% endfor %}
     </div>
@@ -69,6 +75,7 @@
       >
         <i data-lucide="sun" class="theme-icon theme-icon-sun" aria-hidden="true"></i>
         <i data-lucide="moon" class="theme-icon theme-icon-moon" aria-hidden="true"></i>
+        <span class="theme-toggle-fallback icon-fallback" aria-hidden="true">◐</span>
       </button>
     </div>
   </nav>
@@ -77,11 +84,13 @@
   {% block content %}{% endblock %}
 </main>
 <footer class="site-footer">
-  <span>Built with Simplex</span>
-  <a href="https://manim-slides.eertmans.be/" target="_blank" rel="noreferrer">
-    <i data-lucide="external-link" aria-hidden="true"></i>
-    <span>manim-slides</span>
-  </a>
+  {% set footer = namespace(simplex_href='https://github.com/shlomi-perles/simplex') %}
+  {% for link in site.nav %}
+  {% if "github" in link.label|lower %}
+  {% set footer.simplex_href = link.href %}
+  {% endif %}
+  {% endfor %}
+  <span>Built with <a href="{{ footer.simplex_href }}" target="_blank" rel="noreferrer">Simplex</a></span>
 </footer>
 <script src="{{ static('lucide/lucide.min.js') }}" defer></script>
 <script src="{{ static('viewer.js') }}" defer></script>

@@ -78,12 +78,43 @@ def _ffprobe_duration(video: Path) -> float:
     return 0.0
 
 
+def _av_duration(video: Path) -> float:
+    """Return the duration of ``video`` via PyAV, or 0.0 if unavailable."""
+    if not video.exists():
+        return 0.0
+    try:
+        import av
+    except ImportError:
+        return 0.0
+    try:
+        with av.open(str(video)) as container:
+            if container.duration is not None:
+                return float(container.duration / 1_000_000)
+            stream = container.streams.video[0]
+            if stream.duration is not None and stream.time_base is not None:
+                return float(stream.duration * stream.time_base)
+    except (av.error.FFmpegError, IndexError, OSError, ValueError):
+        return 0.0
+    return 0.0
+
+
+def _media_duration(video: Path) -> float:
+    """Return media duration using the fastest available local decoder."""
+    return _ffprobe_duration(video) or _av_duration(video)
+
+
 def _find_sections_json(media_dir: Path, scene: str) -> Path | None:
     """Find ``<media_dir>/videos/*/*/sections/<scene>.json`` (glob over qualities)."""
     if not media_dir.exists():
         return None
     matches = list((media_dir / "videos").glob(f"*/*/sections/{scene}.json"))
     return matches[0] if matches else None
+
+
+def _find_presentation_json(media_dir: Path, scene: str) -> Path | None:
+    """Find ``<media_dir>/slides/<scene>.json`` written by manim-slides."""
+    path = media_dir / "slides" / f"{scene}.json"
+    return path if path.exists() else None
 
 
 def _parse_sections(json_path: Path) -> list[dict[str, object]]:
@@ -104,6 +135,20 @@ def _parse_sections(json_path: Path) -> list[dict[str, object]]:
     return [row for row in data if isinstance(row, dict)]
 
 
+def _parse_presentation_slides(json_path: Path) -> list[dict[str, object]]:
+    """Read manim-slides PresentationConfig rows from ``slides/<scene>.json``."""
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+    except OSError:
+        return []
+    except json.JSONDecodeError:
+        return []
+    slides = data.get("slides") if isinstance(data, dict) else None
+    if not isinstance(slides, list):
+        return []
+    return [row for row in slides if isinstance(row, dict)]
+
+
 def _video_path(row: dict[str, object], sections_dir: Path) -> Path | None:
     """Resolve a section's video file. Manim stores the basename in ``video``."""
     raw = row.get("video")
@@ -115,11 +160,45 @@ def _video_path(row: dict[str, object], sections_dir: Path) -> Path | None:
     return candidate if candidate.exists() else None
 
 
+def _presentation_video_path(row: dict[str, object], media_dir: Path) -> Path | None:
+    """Resolve a manim-slides media path relative to the deck media directory."""
+    raw = row.get("file")
+    if not isinstance(raw, str) or not raw:
+        return None
+    candidate = Path(raw.replace("\\", "/"))
+    if not candidate.is_absolute():
+        candidate = (media_dir / candidate).resolve()
+    return candidate if candidate.exists() else None
+
+
 def _row_duration(row: dict[str, object], video: Path | None) -> float:
     raw = row.get("duration")
     if isinstance(raw, (int, float)):
         return float(raw)
-    return _ffprobe_duration(video) if video is not None else 0.0
+    return _media_duration(video) if video is not None else 0.0
+
+
+def _presentation_subsections(media_dir: Path, scene: str) -> tuple[Subsection, ...]:
+    """Fallback sub-stops from manim-slides JSON when Manim sections are absent."""
+    json_path = _find_presentation_json(media_dir, scene)
+    if json_path is None:
+        return ()
+    subs: list[Subsection] = []
+    for i, row in enumerate(_parse_presentation_slides(json_path), start=1):
+        video = _presentation_video_path(row, media_dir)
+        if video is None:
+            continue
+        subs.append(
+            Subsection(
+                name=f"{scene} {i}",
+                section_type=(
+                    SimplexSectionType.MAIN if i == 1 else SimplexSectionType.SUB
+                ),
+                video=video,
+                duration_s=_media_duration(video),
+            )
+        )
+    return tuple(subs)
 
 
 def _is_main_section(type_str: str, *, is_first_in_scene: bool) -> bool:
@@ -172,13 +251,14 @@ def build_manifest(deck: DeckConfig, *, media_dir: Path) -> DeckManifest:
         json_path = _find_sections_json(media_dir, scene)
         if json_path is None:
             # Pre-render or test mode: synthesize one empty main per scene.
+            subsections = _presentation_subsections(media_dir, scene)
             main_slides.append(
                 MainSlide(
                     index=counter,
                     scene=scene,
                     name=_humanise(scene),
                     section_type=SimplexSectionType.MAIN,
-                    subsections=(),
+                    subsections=subsections,
                 )
             )
             counter += 1

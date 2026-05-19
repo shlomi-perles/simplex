@@ -224,22 +224,29 @@ def serve(
         raise typer.BadParameter("site/ does not exist -- run `simplex build` first")
 
     handler_cls = _make_handler(_SITE)
-    server = socketserver.ThreadingTCPServer(("", port), handler_cls)
-    server.daemon_threads = True
-    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
-    server_thread.start()
+    server = _SimplexTCPServer(("", port), handler_cls)
     console.print(f"Serving http://localhost:{port}")
 
+    server_thread: threading.Thread | None = None
     try:
         if watch:
+            server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+            server_thread.start()
             asyncio.run(_watch_loop())
         else:
-            server_thread.join()
+            server.serve_forever(poll_interval=0.2)
     except KeyboardInterrupt:
         console.print("\n[yellow]stopping[/yellow]")
     finally:
-        server.shutdown()
+        if server_thread is not None:
+            server.shutdown()
+            server_thread.join(timeout=2)
         server.server_close()
+
+
+class _SimplexTCPServer(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
 
 
 def _make_handler(site_dir: Path) -> type[http.server.BaseHTTPRequestHandler]:
