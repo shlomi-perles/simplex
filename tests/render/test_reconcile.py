@@ -79,7 +79,7 @@ def test_manifest_groups_subs_under_main(tmp_path: Path) -> None:
         media_dir,
         "TextHelpers",
         [
-            {"name": "Intro", "type": "simplex.main", "video": "intro.mp4", "duration": 2.0},
+            {"name": "Intro", "type": "simplex.main", "video": "intro.mp4", "duration": "2.0"},
             {"name": "step1", "type": "simplex.sub", "video": "step1.mp4", "duration": 1.0},
             {"name": "step2", "type": "simplex.sub", "video": "step2.mp4", "duration": 1.5},
             {"name": "Setup", "type": "simplex.main", "video": "setup.mp4", "duration": 2.0},

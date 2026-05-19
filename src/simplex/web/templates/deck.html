@@ -128,8 +128,9 @@
               <span class="deck-slide-title">
                 {{ slide.name or slide.scene }}
               </span>
+              {% set duration_seconds = slide.duration_s|round(0, "ceil")|int %}
               <span class="deck-slide-duration">
-                {{ "%d:%02d"|format(slide.duration_s|int // 60, slide.duration_s|int % 60) }}
+                {{ "%d:%02d"|format(duration_seconds // 60, duration_seconds % 60) }}
               </span>
             </div>
           </div>
