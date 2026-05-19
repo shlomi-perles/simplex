@@ -63,7 +63,9 @@ class WebOverride(BaseModel):
     font_size_base: str | None = None
 
     # RevealJS knobs (forwarded to manim_slides.convert.RevealJS kwargs).
-    transition: str = "slide"
+    # Default ``"none"``: the next video replaces the previous one with no
+    # animation. This keeps both desktop and mobile playback direction-free.
+    transition: str = "none"
     controls: bool = True
     progress: bool = True
     hash_navigation: bool = True
