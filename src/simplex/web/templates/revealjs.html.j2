@@ -197,12 +197,30 @@
         disableLayout: true,
         viewDistance: 2,
       }).then(function () {
+        function currentMainIndex() {
+          // Resolve the active 1-based main-slide index from the closest
+          // ancestor ``<section data-main-index>``. Works for both top-level
+          // mains and their vertical sub-stops -- on a sub-slide the
+          // closest() walk still lands on the surrounding main, so the
+          // sidebar stays highlighted on the right thumbnail card while the
+          // user scrubs through sub-stops.
+          const slide = Reveal.getCurrentSlide();
+          if (!slide) return 0;
+          const main = slide.closest('[data-main-index]') || slide;
+          const raw = main.getAttribute('data-main-index');
+          return raw ? parseInt(raw, 10) || 0 : 0;
+        }
         function emit() {
           const idx = Reveal.getIndices();
           const total = {{ main_slide_count }};
           try {
             window.parent.postMessage(
-              { type: 'simplex.slide', idx: idx.h, sub: idx.v || 0, total: total },
+              {
+                type: 'simplex.slide',
+                idx: currentMainIndex(),
+                sub: idx.v || 0,
+                total: total,
+              },
               parentOrigin
             );
           } catch (_) { /* parent gone or different origin */ }
@@ -214,7 +232,10 @@
           const data = e.data || {};
           if (typeof data !== 'object') return;
           if (data.type === 'simplex.goto' && Number.isInteger(data.idx)) {
-            Reveal.slide(data.idx, data.sub || 0);
+            // ``data.idx`` is the 1-based main-slide number from the sidebar
+            // (``data-slide-target``). Reveal's horizontal index is 0-based,
+            // so subtract one before dispatching.
+            Reveal.slide(data.idx - 1, data.sub || 0);
           } else if (data.type === 'simplex.next') {
             Reveal.next();
           } else if (data.type === 'simplex.prev') {
