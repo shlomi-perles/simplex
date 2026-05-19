@@ -36,8 +36,11 @@ ignore = [
 "src/simplex/render/**/*.py" = ["S603", "S607"]
 # Deck authors write vanilla Manim and rough exploratory code; relax the
 # strict style there so the framework's rules don't bleed into user content.
+# The bundled deck template ships as package data but is authored in the same
+# style, so it gets the same relaxed rules.
 "decks/**/slides.py" = ["E402", "F401", "F403", "F405", "N801", "N802", "N803", "N806", "I001", "PLR2004", "T201", "S101"]
 "decks/**/slides/**/*.py" = ["E402", "F401", "F403", "F405", "N801", "N802", "N803", "N806", "I001", "PLR2004", "T201", "S101"]
+"src/simplex/deck/_template/**/*.py" = ["E402", "F401", "F403", "F405", "N801", "N802", "N803", "N806", "I001", "PLR2004", "T201", "S101"]
 
 [lint.flake8-tidy-imports]
 ban-relative-imports = "all"
