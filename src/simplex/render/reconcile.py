@@ -175,6 +175,11 @@ def _row_duration(row: dict[str, object], video: Path | None) -> float:
     raw = row.get("duration")
     if isinstance(raw, (int, float)):
         return float(raw)
+    if isinstance(raw, str):
+        try:
+            return float(raw)
+        except ValueError:
+            pass
     return _media_duration(video) if video is not None else 0.0
 
 
