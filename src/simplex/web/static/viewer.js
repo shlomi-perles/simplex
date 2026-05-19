@@ -67,9 +67,15 @@
       if (!iframe || !iframe.contentWindow) return;
       iframe.contentWindow.postMessage(message, targetOrigin());
     }
+    // ``idx`` is the 1-based main-slide number broadcast by the iframe
+    // (extracted from ``data-main-index`` on the current section's main
+    // ancestor). It matches ``MainSlide.index`` and ``data-slide-target``
+    // on each sidebar card, so highlight + counter share one vocabulary
+    // and the active card stays highlighted while the user scrubs through
+    // sub-stops of the same main slide.
     function setActive(idx) {
       currentIdx = idx;
-      if (counter) counter.textContent = (idx + 1) + " / " + total;
+      if (counter) counter.textContent = idx + " / " + total;
       slideButtons.forEach(function (btn) {
         var t = parseInt(btn.dataset.slideTarget, 10);
         if (t === idx) {
