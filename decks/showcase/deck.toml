@@ -11,6 +11,7 @@ entrypoints = [
     "slides.scenes:CodeHelpers",
     "slides.scenes:GraphAndArray",
     "slides.scenes:RegionAnchors",
+    "slides.scenes:OutlineHelpers",
     "slides.scenes:ExitAnimations",
     "slides.scenes:GeometryHelpers",
     "slides.scenes:GlyphMapTransform",

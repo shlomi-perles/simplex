@@ -35,7 +35,9 @@ from manim import (
     Line,
     MathTex,
     ShrinkToCenter,
+    Square,
     Tex,
+    Triangle,
     Unwrite,
     VGroup,
     Write,
@@ -62,7 +64,7 @@ from simplex.engine.glyph_map import TransformByGlyphMap
 from simplex.engine.scaling import scale_to_fit
 from simplex.engine.text import Caption, TexPage, color_tex
 from simplex.mobjects import ArrayMob, ArrayPointer, Edge, Node
-from simplex.slides import BaseSlide, make_chrome
+from simplex.slides import BaseSlide, OutlinePart, OutlineScene, make_chrome
 from simplex.theme.context import get_active_theme
 
 
@@ -292,6 +294,40 @@ class RegionAnchors(BaseSlide):
         self.region.place(caption, DOWN, buff=0.35)
         self.play(FadeIn(dots), Write(caption))
         self.next_slide()
+
+
+class OutlineHelpers(OutlineScene):
+    """``slides/outline.py`` -- typed outline parts and linspace progress dots."""
+
+    def __init__(self, **kwargs):
+        parts = [
+            OutlinePart(
+                title=Tex(r"\textbf{Typed parts}"),
+                label=Caption(r"Typed\\parts"),
+                visual=VGroup(Circle(radius=0.65), MathTex(r"P_1")).set_color(GOLD),
+            ),
+            OutlinePart(
+                title=Tex(r"\textbf{Progress from Region.linspace}"),
+                label=Caption(r"Region\\linspace"),
+                visual=VGroup(Square(side_length=1.2), MathTex(r"x_i")).set_color(BLUE),
+            ),
+            OutlinePart(
+                title=Tex(r"\textbf{Mobject-native animation}"),
+                label=Caption(r"animate\\set\_index"),
+                visual=VGroup(Triangle(), MathTex(r"\alpha")).set_color(GREEN),
+            ),
+        ]
+        super().__init__(parts=parts, section_name="OutlineHelpers", **kwargs)
+
+    def setup(self) -> None:
+        super().setup()
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header=r"slides/outline.py -- OutlineScene + mobjects/outline.py",
+        )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
 
 class ExitAnimations(BaseSlide):
