@@ -48,6 +48,7 @@ from simplex.engine.animations import register_exit, set_exit_animation
 from simplex.engine.code import (
     code_block,
     code_explain,
+    code_with_math,
     highlight_code_lines,
     transform_code_lines,
 )
@@ -176,6 +177,75 @@ class CodeHelpers(BaseSlide):
         refactor_dst.scale(0.6).move_to(refactor_src)
         self.play(FadeIn(refactor_src))
         self.play(transform_code_lines(refactor_src, refactor_dst, {1: 1, 2: 2}))
+        self.next_slide()
+
+
+class CodeWithMath(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header=r"engine/code.py -- code\_with\_math (inline LaTeX in code)",
+        )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
+
+    def construct(self) -> None:
+        # ``code_with_math`` renders any ``$...$`` regions as MathTex.
+        # The inline math sits at the surrounding code's font size --
+        # the helper calibrates against a cached reference glyph, so big
+        # operators (``\bigcup``) and short symbols (``\infty``) both
+        # land at the right size.
+        pseudo = code_with_math(
+            "def dijkstra(G, s):\n"
+            "    for v in $V_G$:\n"
+            "        d[v] = $\\infty$\n"
+            "    d[s] = $0$\n"
+            "    Q = $V_G$\n"
+            "    while $Q \\neq \\emptyset$:\n"
+            "        u = argmin($d[v] : v \\in Q$)\n"
+            "        Q.remove(u)\n"
+            "        for (u, v) in $E_G$:\n"
+            "            if $d[v] > d[u] + w(u, v)$:\n"
+            "                $d[v] \\gets d[u] + w(u, v)$\n",
+            language="python",
+        )
+        pseudo.scale_to_fit_width(self.region.width * 0.85)
+        self.region.place(pseudo, UP, buff=0.3)
+        self.play(FadeIn(pseudo))
+        self.next_slide(name="CodeWithMath")
+
+        # All the engine/code helpers still work over math-laden blocks
+        # -- highlight, explain, and transform all operate on
+        # ``code_lines`` so the inline-tex substitutions are transparent.
+        result = highlight_code_lines(pseudo, lines=[10, 11])
+        self.play(result.fade)
+        if result.indicate is not None:
+            self.play(result.indicate)
+        self.next_slide()
+
+        mob, anim = code_explain(
+            pseudo,
+            lines=[10, 11],
+            explanation="Edge relaxation",
+        )
+        self.add(mob)
+        self.play(anim)
+        self.next_slide()
+
+        # ``bold_math=True`` wraps each match in ``\boldsymbol{...}`` and
+        # ``math_color`` recolours the rendered math. Useful when the
+        # algorithm's variables are the visual focus of the slide.
+        styled = code_with_math(
+            "norm($x$) = $\\sqrt{\\sum_{i=1}^{n} x_i^2}$",
+            language="python",
+            bold_math=True,
+            math_color=GOLD,
+        )
+        styled.scale_to_fit_width(self.region.width * 0.7)
+        styled.next_to(pseudo, DOWN, buff=0.4)
+        self.play(Write(styled))
         self.next_slide()
 
 
