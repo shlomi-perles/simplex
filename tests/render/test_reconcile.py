@@ -74,6 +74,51 @@ def test_manifest_groups_subs_under_main(tmp_path: Path) -> None:
     assert (code.name, code.index, len(code.subsections)) == ("Code Helpers", 3, 1)
 
 
+def test_leading_default_normal_absorbed_into_explicit_main(tmp_path: Path) -> None:
+    """``self.play(); self.next_slide(name='X')`` -> one main 'X', no phantom."""
+    deck = _deck(tmp_path)
+    media_dir = tmp_path / "media"
+    _write_sections(
+        media_dir,
+        "TextHelpers",
+        [
+            {"name": "autocreated", "type": "default.normal", "video": "auto.mp4", "duration": 0.8},
+            {"name": "Intro", "type": "simplex.main", "video": "intro.mp4", "duration": 2.0},
+            {"name": "step", "type": "simplex.sub", "video": "step.mp4", "duration": 1.0},
+        ],
+    )
+    _write_sections(media_dir, "CodeHelpers", [])
+    manifest = build_manifest(deck, media_dir=media_dir)
+    # One main "Intro" (no phantom from the auto-created default.normal);
+    # the absorbed leading section shows up as the main's first subsection.
+    intro = manifest.main_slides[0]
+    assert intro.name == "Intro"
+    assert [sub.name for sub in intro.subsections] == ["autocreated", "Intro", "step"]
+    # ``thumbnail_section_index=-2`` now points at the explicit main's frame,
+    # which is exactly the user-visible "last visual state of the slide".
+    assert intro.subsections[-2].name == "Intro"
+
+
+def test_default_normal_kept_as_main_without_explicit_marker(tmp_path: Path) -> None:
+    """No ``simplex.main`` follows -> default.normal stays as the implicit main."""
+    deck = _deck(tmp_path)
+    media_dir = tmp_path / "media"
+    _write_sections(
+        media_dir,
+        "TextHelpers",
+        [
+            {"name": "auto", "type": "default.normal", "video": "auto.mp4", "duration": 1.0},
+            {"name": "sub", "type": "simplex.sub", "video": "sub.mp4", "duration": 0.5},
+        ],
+    )
+    _write_sections(media_dir, "CodeHelpers", [])
+    manifest = build_manifest(deck, media_dir=media_dir)
+    main = manifest.main_slides[0]
+    # No explicit marker -> humanised scene name, default kept as the main.
+    assert main.name == "Text Helpers"
+    assert [sub.name for sub in main.subsections] == ["auto", "sub"]
+
+
 def test_manifest_loop_type_preserved(tmp_path: Path) -> None:
     deck = _deck(tmp_path)
     media_dir = tmp_path / "media"

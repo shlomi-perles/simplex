@@ -24,6 +24,10 @@ dependencies = [
     "platformdirs>=4.2",
     "tomli-w>=1.0",
     "watchfiles>=0.24",
+    # Already transitive via manim, but the thumbnail extractor imports them
+    # directly so we pin them here too.
+    "av>=15.0",
+    "pillow>=11.0",
 ]
 
 [project.scripts]
@@ -45,6 +49,13 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/simplex"]
+# Ship the deck template (and its hidden .gitkeep placeholders) inside the
+# wheel so ``simplex new`` works from any user project, not just the simplex
+# checkout. Hatchling otherwise drops dotfiles by default.
+artifacts = [
+    "src/simplex/deck/_template/**/*",
+    "src/simplex/deck/_template/**/.gitkeep",
+]
 
 [tool.hatch.build.targets.wheel.shared-data]
 "src/simplex/web/templates" = "simplex/web/templates"
