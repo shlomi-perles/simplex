@@ -10,8 +10,16 @@
     {{ palette_css|safe }}
   </style>
   <style>
+    :root {
+      --simplex-stage-bg: #2b2b2b;
+      --simplex-stage-progress: rgba(255, 255, 255, 0.08);
+    }
+    :root[data-theme="light"] {
+      --simplex-stage-bg: #f3f5f7;
+      --simplex-stage-progress: rgba(21, 31, 40, 0.14);
+    }
     html, body {
-      background: var(--simplex-bg, #242424);
+      background: var(--simplex-stage-bg);
       color: var(--simplex-text, #f8f8f8);
       height: 100%;
       width: 100%;
@@ -21,7 +29,7 @@
       touch-action: manipulation;
     }
     .reveal, .reveal .slides {
-      background: var(--simplex-bg, #242424);
+      background: var(--simplex-stage-bg);
       width: 100% !important;
       height: 100% !important;
       inset: 0;
@@ -46,7 +54,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--simplex-bg, #242424);
+      background: var(--simplex-stage-bg);
     }
     .reveal video {
       max-width: 100%;
@@ -54,12 +62,12 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      background: var(--simplex-bg, #242424);
+      background: var(--simplex-stage-bg);
       display: block;
     }
     .reveal .controls { display: none !important; }
     .reveal .progress {
-      background: rgba(255,255,255,.08);
+      background: var(--simplex-stage-progress);
       height: 3px;
       color: var(--simplex-accent, #ffd700);
     }
@@ -268,15 +276,21 @@
             const v = document.querySelector('.reveal .slides .present video');
             if (v) {
               try { v.currentTime = 0; } catch (_) { /* */ }
-              if (v.paused) {
-                const p = v.play();
-                if (p && typeof p.catch === 'function') p.catch(function () {});
-              }
+              const p = v.play();
+              if (p && typeof p.catch === 'function') p.catch(function () {});
             }
           } else if (data.type === 'simplex.toggle-play') {
             const v = document.querySelector('.reveal .slides .present video');
             if (v) {
-              if (v.paused) { v.play(); } else { v.pause(); }
+              if (v.paused) {
+                if (v.ended || v.currentTime >= Math.max(0, v.duration - 0.05)) {
+                  try { v.currentTime = 0; } catch (_) { /* */ }
+                }
+                const p = v.play();
+                if (p && typeof p.catch === 'function') p.catch(function () {});
+              } else {
+                v.pause();
+              }
               try {
                 window.parent.postMessage(
                   { type: 'simplex.play-state', playing: !v.paused },
@@ -297,6 +311,9 @@
             if (typeof data.clock === 'boolean') chromeState.clock = data.clock;
             if (typeof data.slideNumber === 'boolean') chromeState.slideNumber = data.slideNumber;
             applyChrome();
+          } else if (data.type === 'simplex.set-theme' && typeof data.theme === 'string') {
+            document.documentElement.dataset.theme = data.theme;
+            document.documentElement.style.colorScheme = data.theme;
           }
         });
 

@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from simplex.deck.config import DeckConfig
 from simplex.render.reconcile import build_manifest
 
@@ -34,6 +36,40 @@ def test_manifest_synthetic_when_no_sections(tmp_path: Path) -> None:
     manifest = build_manifest(deck, media_dir=media_dir)
     assert manifest.slide_count == 2
     assert [m.scene for m in manifest.main_slides] == ["TextHelpers", "CodeHelpers"]
+
+
+def test_manifest_uses_presentation_videos_when_sections_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    deck = _deck(tmp_path)
+    media_dir = tmp_path / "media"
+    files_dir = media_dir / "slides" / "files" / "TextHelpers"
+    files_dir.mkdir(parents=True)
+    (files_dir / "a.mp4").write_bytes(b"fake")
+    (files_dir / "b.mp4").write_bytes(b"fake")
+    slides_dir = media_dir / "slides"
+    (slides_dir / "TextHelpers.json").write_text(
+        json.dumps(
+            {
+                "slides": [
+                    {"type": "video", "file": "slides\\files\\TextHelpers\\a.mp4"},
+                    {"type": "video", "file": "slides\\files\\TextHelpers\\b.mp4"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    def fake_duration(video: Path) -> float:
+        return {"a.mp4": 1.25, "b.mp4": 2.75}[video.name]
+
+    monkeypatch.setattr("simplex.render.reconcile._media_duration", fake_duration)
+
+    manifest = build_manifest(deck, media_dir=media_dir)
+    text = manifest.main_slides[0]
+
+    assert text.duration_s == 4.0
+    assert [sub.duration_s for sub in text.subsections] == [1.25, 2.75]
 
 
 def test_manifest_groups_subs_under_main(tmp_path: Path) -> None:

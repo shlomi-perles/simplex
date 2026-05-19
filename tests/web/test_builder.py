@@ -50,6 +50,8 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     assert "carousel" in index_html
     # Palette CSS injected into <head>.
     assert "--simplex-bg" in index_html
+    # Site CSS loads after palette tokens so deck palettes cannot override body chrome.
+    assert index_html.index("--simplex-bg") < index_html.index("simplex.css")
 
     alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
     assert "Alpha" in alpha_html

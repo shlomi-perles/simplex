@@ -20,7 +20,8 @@ add hash tables to a deck.
 6. delete all commits history
 7. Add date to created posts.
 8. Manim MCP? https://github.com/OMCHOKSI108/MCP-SERVER/blob/f6b6135867d0d33f96c21cf88a6892d539db93e5/MCP_5/main.py -- Maybe crop a single thumbnail?
-
+9. google tag copmatability
+10. social media tag thumbnail
 manimgl good example: 
     https://github.com/Arch-User-0/manimations
     https://discord.com/channels/1453870851807117363/1454686795747950704 -- best one
