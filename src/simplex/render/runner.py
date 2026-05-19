@@ -93,7 +93,9 @@ def render(
     if not deck.caching:
         base_args.append("--disable_caching")
     if write_last_frame:
-        base_args.append("--write_last_frame")
+        # Manim 0.20 renamed the flag from ``--write_last_frame`` to
+        # ``--save_last_frame``; both produce the same single-PNG output.
+        base_args.append("--save_last_frame")
 
     for source_file, scene_names in groups:
         args = [

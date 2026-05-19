@@ -21,30 +21,20 @@ extraction, PDF / PowerPoint export, HTML viewer emission.
 
 ## Smart compilation
 
-The Simplex plugin sets `manim.config.save_sections = True` at every
-`import manim`. Combined with manim's own per-animation hash cache
-(`SceneFileWriter.is_already_cached`), that means re-editing one
-animation in `scenes.py` re-encodes only that animation; sections
-containing only cached animations are stitched from disk.
-
-There is **no separate Simplex render cache**. Editing a deck source
-file invalidates only the affected animation hashes; everything else
-is reused. To force a clean re-render: `uv run simplex clean --deck <slug>`.
+The plugin sets `manim.config.save_sections = True`. Combined with manim's
+per-animation hash cache, re-editing one animation re-encodes only that
+animation; sections of only-cached animations are stitched from disk. No
+separate Simplex render cache -- run `uv run simplex clean --deck <slug>`
+to force a clean re-render.
 
 ## Reconcile
 
-Two JSON sources per scene:
-
-- `media/videos/<src_stem>/<quality>/sections/<Scene>.json` (written by
-  manim when `save_sections=True`). Carries `name`, `type` (our
-  `SimplexSectionType`), `video`, plus ffprobe metadata.
-- `media/slides/<Scene>.json` (written by manim-slides). Used by the PDF /
-  PPTX converters; not read by reconcile directly.
-
-`build_manifest` walks each scene's sections in order: every
-`type.startswith("simplex.main")` (and the auto-created first
-`default.normal`) starts a new `MainSlide`; everything else attaches as
-a `Subsection` of the current main.
+`build_manifest` walks each scene's
+`media/videos/<src>/<q>/sections/<Scene>.json` (written by manim when
+`save_sections=True`): every `type.startswith("simplex.main")` (and the
+auto-created first `default.normal`) starts a new `MainSlide`; everything
+else attaches as a `Subsection` of the current main. The parallel
+`media/slides/<Scene>.json` is consumed only by the PDF / PPTX converters.
 
 ## Don't
 

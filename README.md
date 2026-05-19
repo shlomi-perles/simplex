@@ -11,10 +11,15 @@ Authors write **vanilla Manim** (`MathTex(...)`, `VGroup(...).arrange(RIGHT)`); 
 | Repo | PyPI | Role |
 |---|---|---|
 | [`manim-simplex`](https://github.com/shlomi-perles/manim-simplex) | `manim-simplex` | The manim plugin: mobjects, theme, `BaseSlide`, the `manim.plugins` entry-point. |
-| `simplex` (this repo) | `simplex` | The platform: CLI, deck discovery, render orchestration, web builder. Depends on `manim-simplex`. |
+| `simplex` (this repo) | `simplex-py` | The platform: CLI, deck discovery, render orchestration, web builder. Depends on `manim-simplex`. |
 | [`simplex-lectures-template`](https://github.com/shlomi-perles/simplex-lectures-template) | -- | GitHub Template. Pre-wired user lectures repo. |
 
-Both PyPI distributions ship `src/simplex/` **without** `__init__.py` and let Python's PEP 420 implicit namespace packages merge them at import time, so `from simplex.engine import Remove` and `from simplex.cli.commands import app` resolve regardless of which wheel ships the module.
+The PyPI slot `simplex` was already taken by an unrelated project, so this
+distribution publishes as `simplex-py`. The *import* name is still
+`simplex` -- both wheels ship `src/simplex/` **without** `__init__.py` and
+Python's PEP 420 implicit namespace packages merge them at import time, so
+`from simplex.engine import Remove` and `from simplex.cli.commands import app`
+resolve regardless of which wheel ships the module.
 
 ## Quick start
 
@@ -63,24 +68,29 @@ decks/my-deck/
 `-- assets/
 ```
 
-Inside `slides.py` you write plain Manim -- the framework's only contribution is the base class:
+Inside `slides.py` you write plain Manim -- the framework's only contribution is the base class plus a pure `make_chrome` factory:
 
 ```python
-from manim import MathTex
-from simplex.slides import ContentSlide
+from manim import MathTex, ORIGIN, Write
+from simplex.slides import BaseSlide, make_chrome
+from simplex.theme.context import get_active_theme
 
 
-class FermatLittleTheorem(ContentSlide):
-    header = "Fermat's little theorem"
+class FermatLittleTheorem(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        chrome = make_chrome(get_active_theme(), self.region, header="Fermat's little theorem")
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
-        eq = MathTex(r"a^{p-1} \\equiv 1 \\pmod p")
-        self.region.place(eq, "center")
-        self.add(eq)
-        self.next_slide()
+        eq = MathTex(r"a^{p-1} \equiv 1 \pmod p")
+        self.region.place(eq, ORIGIN)
+        self.play(Write(eq))
+        self.next_slide()  # bare first call -> MAIN named "Fermat Little Theorem"
 ```
 
-No factories, no wrappers, no anti-corruption wall. The theme provides defaults, `self.region` provides bounded layout, and `clear_scene(exclude=...)` provides bulk fade-outs.
+No factories, no wrappers, no anti-corruption wall. The theme provides defaults, `self.region` provides bounded layout, and `clear_scene(exclude=...)` provides bulk fade-outs. Slide numbering / wall clock live in the RevealJS host (toggle via `[web]` in `deck.toml`), not the rendered frames.
 
 ## Theme tokens
 
@@ -94,7 +104,7 @@ with active_theme(presets.ACADEMIC_LIGHT):
     ...
 ```
 
-Latex preamble and per-environment strings (e.g. `{minipage}{8cm}` for definition boxes) live on `theme.latex.preamble` and `theme.latex.environments["definition"]`.
+LaTeX preamble lives on `theme.latex.preamble`. Fixed-width prose blocks use the `TexPage` mobject (default 8 cm, override via `width_cm=…` kwarg or a class attribute on a subclass).
 
 ## Style + tooling
 

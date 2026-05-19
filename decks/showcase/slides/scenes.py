@@ -1,8 +1,13 @@
 """Showcase deck -- exercises every Simplex-specific helper end-to-end.
 
 Each scene targets one module so a reader can correlate the output with the
-source. Scenes call `self.next_slide(name=...)` to start a main slide and
-bare `self.next_slide()` for sub-stops within it.
+source. Scenes call ``self.next_slide(name=...)`` to start a main slide and
+bare ``self.next_slide()`` for sub-stops within it.
+
+Slide chrome (page number, clock) used to be drawn into each frame via
+``make_chrome(..., page=…)``; it now lives in the RevealJS host so the
+showcase only renders **content** chrome (header / footer). Toggle the
+clock or counter from ``[web]`` in ``deck.toml``.
 """
 
 import math
@@ -10,14 +15,19 @@ import math
 import numpy as np
 from manim import (
     BLUE,
+    DL,
     DOWN,
+    DR,
     GOLD,
     GREEN,
     LEFT,
+    ORIGIN,
     PI,
     RED,
     RIGHT,
+    UL,
     UP,
+    UR,
     Arrow,
     Circle,
     Dot,
@@ -25,13 +35,20 @@ from manim import (
     Line,
     MathTex,
     ShrinkToCenter,
+    Tex,
+    Unwrite,
     VGroup,
     Write,
     always_redraw,
 )
 
-from simplex.engine.animations import set_exit_animation
-from simplex.engine.code import code_block, code_explain, highlight_code_lines
+from simplex.engine.animations import register_exit, set_exit_animation
+from simplex.engine.code import (
+    code_block,
+    code_explain,
+    highlight_code_lines,
+    transform_code_lines,
+)
 from simplex.engine.debug import bounding_box, indexx_labels
 from simplex.engine.dynamics import DN, VT
 from simplex.engine.geometry import (
@@ -42,7 +59,8 @@ from simplex.engine.geometry import (
 )
 from simplex.engine.ghost_fade import GhostSlideFade
 from simplex.engine.glyph_map import TransformByGlyphMap
-from simplex.engine.text import BodyText, Caption, Definition, color_tex
+from simplex.engine.scaling import scale_to_fit
+from simplex.engine.text import Caption, TexPage, color_tex
 from simplex.mobjects import ArrayMob, ArrayPointer, Edge, Node
 from simplex.slides import BaseSlide, make_chrome
 from simplex.theme.context import get_active_theme
@@ -54,15 +72,14 @@ class TextHelpers(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header=r"engine/text.py -- BodyText, Caption, Definition, color\_tex",
-            page=1,
+            header=r"engine/text.py -- Tex, Caption, TexPage, color\_tex",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
 
     def construct(self) -> None:
-        body = BodyText(r"Body paragraphs default to \textit{theme.typography.body}: $E = mc^2$.")
-        self.region.place(body, "top", buff=0.3)
+        body = Tex(r"Body paragraphs default to \textit{theme.typography.body}: $E = mc^2$.")
+        self.region.place(body, UP, buff=0.3)
         self.add(body)
         self.next_slide(name="TextHelpers")
 
@@ -71,17 +88,28 @@ class TextHelpers(BaseSlide):
         self.play(Write(cap))
         self.next_slide()
 
-        defn = Definition(
-            r"\textbf{Definition.} A graph is a pair $(V, E)$ where $V$ is a vertex set "
-            r"and $E \subseteq V \times V$ a set of edges. Definition wraps content in the "
-            r"theme's \texttt{definition} environment so long prose stays inside a fixed width."
+        # TexPage wraps long prose in a fixed-width minipage. Default is 8cm
+        # (matches the historical ``Definition``); pass ``width_cm`` per call.
+        defn = TexPage(
+            r"\textbf{TexPage.} A graph is a pair $(V, E)$ where $V$ is a vertex set "
+            r"and $E \subseteq V \times V$ a set of edges. TexPage wraps content in a "
+            r"\texttt{minipage} environment so long prose stays inside a fixed width "
+            r"(default 8 cm; override per-instance with \texttt{width\_cm=...})."
         )
         defn.next_to(cap, DOWN, buff=0.4)
         self.play(Write(defn))
         self.next_slide()
 
+        wide = TexPage(
+            r"\textbf{Same prose, width\_cm=12.} Notice the wider column.",
+            width_cm=12.0,
+        )
+        wide.next_to(defn, DOWN, buff=0.3)
+        self.play(Write(wide))
+        self.next_slide()
+
         formula = MathTex(r"a^2 + b^2 = c^2")
-        formula.next_to(defn, DOWN, buff=0.4)
+        formula.next_to(wide, DOWN, buff=0.4)
         color_tex(formula, {"a": "#FF6B6B", "b": "#4ECDC4", "c": "#FFD93D"}, tex_class=MathTex)
         self.play(Write(formula))
         self.next_slide()
@@ -93,8 +121,7 @@ class CodeHelpers(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header=r"engine/code.py -- code\_block + highlight + explain",
-            page=2,
+            header=r"engine/code.py -- code\_block + highlight + explain + transform",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -114,7 +141,7 @@ class CodeHelpers(BaseSlide):
         )
         code = code_block(snippet, language="python")
         code.scale_to_fit_width(self.region.width * 0.8)
-        self.region.place(code, "top", buff=0.3)
+        self.region.place(code, UP, buff=0.3)
         self.play(FadeIn(code))
         self.next_slide(name="CodeHelpers")
 
@@ -133,6 +160,22 @@ class CodeHelpers(BaseSlide):
         self.play(anim)
         self.next_slide()
 
+        # transform_code_lines morphs one Code block into another by line
+        # mapping. Here we show a refactored two-liner side-by-side.
+        refactor_src = code_block(
+            "for nb in graph[node]:\n    if nb not in visited:\n",
+            language="python",
+        )
+        refactor_dst = code_block(
+            "for nb in graph[node] - visited:\n    visited.add(nb)\n",
+            language="python",
+        )
+        refactor_src.scale(0.6).next_to(code, DOWN, buff=0.4)
+        refactor_dst.scale(0.6).move_to(refactor_src)
+        self.play(FadeIn(refactor_src))
+        self.play(transform_code_lines(refactor_src, refactor_dst, {1: 1, 2: 2}))
+        self.next_slide()
+
 
 class GraphAndArray(BaseSlide):
     def setup(self) -> None:
@@ -141,7 +184,6 @@ class GraphAndArray(BaseSlide):
             get_active_theme(),
             self.region,
             header="Components -- Node, Edge, ArrayMob, ArrayPointer",
-            page=3,
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -173,7 +215,7 @@ class GraphAndArray(BaseSlide):
             name_scale=0.18,
         )
         arr.scale(0.8)
-        self.region.place(arr, "bottom", buff=0.6)
+        self.region.place(arr, DOWN, buff=0.6)
         self.play(Write(arr))
         self.next_slide()
 
@@ -195,37 +237,52 @@ class RegionAnchors(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header="engine/region.py -- anchors + shrink",
-            page=4,
+            header="engine/region.py -- direction anchors + shrink + split",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
 
     def construct(self) -> None:
+        # Anchors are Manim direction vectors -- no strings. UL/UR/DL/DR
+        # use the named diagonals; the literal corner names live on the
+        # mobjects so viewers can read them off.
         markers = []
-        for anchor in (
-            "top-left",
-            "top-right",
-            "bottom-left",
-            "bottom-right",
-            "center",
+        for direction, label in (
+            (UL, "UL"),
+            (UR, "UR"),
+            (DL, "DL"),
+            (DR, "DR"),
+            (ORIGIN, "ORIGIN"),
         ):
-            mob = Caption(anchor)
-            self.region.place(mob, anchor, buff=0.25)
+            mob = Caption(label)
+            self.region.place(mob, direction, buff=0.25)
             markers.append(mob)
         self.play(*(Write(m) for m in markers))
         self.next_slide(name="RegionAnchors")
 
         self.region.shrink(left=2.5, right=2.5)
         sidebar = Caption("shrink(left=2.5, right=2.5) reflows subsequent placements")
-        self.region.place(sidebar, "center")
+        self.region.place(sidebar, ORIGIN)
         self.play(Write(sidebar))
         self.next_slide()
 
         self.region.reset()
         full = Caption("region.reset() restores the full frame")
-        self.region.place(full, "center")
+        self.region.place(full, ORIGIN)
         self.play(Write(full))
+        self.next_slide()
+
+        # Region.split divides the region into k equal sub-regions along
+        # an axis. Here we split horizontally into thirds and drop a
+        # marker into the middle of each piece.
+        self.play(*(Unwrite(m) for m in (*markers, full)))
+        triptych = self.region.split(RIGHT, 3)
+        labels = []
+        for idx, sub in enumerate(triptych, start=1):
+            cap = Caption(rf"split(RIGHT, 3)\\[2pt] piece {idx}")
+            sub.place(cap, ORIGIN)
+            labels.append(cap)
+        self.play(*(Write(label) for label in labels))
         self.next_slide()
 
 
@@ -235,23 +292,31 @@ class ExitAnimations(BaseSlide):
         chrome = make_chrome(
             get_active_theme(),
             self.region,
-            header=r"Remove + set\_exit\_animation + clear\_scene",
-            page=5,
+            header=r"Remove + set\_exit\_animation + register\_exit + clear\_scene",
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
 
     def construct(self) -> None:
-        keep = BodyText("survives via clear\\_scene(exclude=[this])")
-        fade = BodyText("default exit: Unwrite (Tex default)")
-        shrink = BodyText("custom exit via set\\_exit\\_animation(mob, ShrinkToCenter)")
+        keep = Tex(r"survives via clear\_scene(exclude=[this])")
+        fade = Tex(r"default exit: Unwrite (Tex default)")
+        shrink = Tex(r"per-instance: set\_exit\_animation(mob, ShrinkToCenter)")
+        registered = Circle(radius=0.6, color=RED)
+
+        # Per-type override: every Circle in this scene exits via FadeIn-reversed
+        # (we cheat with ShrinkToCenter to keep things simple).
+        register_exit(Circle, ShrinkToCenter)
+
         set_exit_animation(shrink, ShrinkToCenter)
 
-        keep.shift(UP * 1.8)
+        keep.shift(UP * 2.4)
         shrink.shift(DOWN * 1.8)
-        self.add(keep, fade, shrink)
+        registered.next_to(shrink, DOWN, buff=0.6)
+        self.add(keep, fade, shrink, registered)
         self.next_slide(name="ExitAnimations")
 
+        # clear_scene dispatches through exit_for, which checks per-instance
+        # overrides first, then walks the type MRO, then falls back to FadeOut.
         self.clear_scene(exclude=[keep])
         self.next_slide()
 
@@ -263,7 +328,6 @@ class GeometryHelpers(BaseSlide):
             get_active_theme(),
             self.region,
             header="engine/geometry.py -- convex hull + surrounding rect",
-            page=6,
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -302,7 +366,6 @@ class GlyphMapTransform(BaseSlide):
             get_active_theme(),
             self.region,
             header="engine/glyph_map.py -- TransformByGlyphMap",
-            page=7,
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -310,7 +373,7 @@ class GlyphMapTransform(BaseSlide):
     def construct(self) -> None:
         eq1 = MathTex("f(x) = 4x^2 + 5x + 6").scale(1.4)
         eq2 = MathTex("f(-3) = 4(-3)^2 + 5(-3) + 6").scale(1.4)
-        self.region.place(eq1, "center")
+        self.region.place(eq1, ORIGIN)
         eq2.move_to(eq1)
         self.add(eq1)
         self.next_slide(name="GlyphMapTransform")
@@ -349,7 +412,6 @@ class TrackingHelpers(BaseSlide):
             get_active_theme(),
             self.region,
             header="engine/dynamics.py -- VT, DN + engine/geometry.py Vcis",
-            page=8,
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -378,7 +440,7 @@ class TrackingHelpers(BaseSlide):
             unit=r"^{\circ}",
         )
         readout.scale(0.9).next_to(face, DOWN, buff=0.5)
-        self.region.place(face, "center")
+        self.region.place(face, ORIGIN)
         self.add(face, ticks, hand, readout)
         self.next_slide(name="TrackingHelpers")
 
@@ -398,7 +460,6 @@ class ShapeAndDebug(BaseSlide):
             get_active_theme(),
             self.region,
             header="engine/geometry.py SurroundingRectangleUnion + engine/debug.py",
-            page=9,
         )
         self.add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
@@ -431,7 +492,7 @@ class ShapeAndDebug(BaseSlide):
                 for indices, color in groups
             )
         )
-        self.region.place(grid, "center")
+        self.region.place(grid, ORIGIN)
         unions.move_to(grid)
         self.play(FadeIn(grid))
         self.play(*(Write(u) for u in unions))
@@ -454,4 +515,39 @@ class ShapeAndDebug(BaseSlide):
         # GhostSlideFade: drift+fade cue that cleans itself up.
         ghost = MathTex(r"\swarrow").scale(1.6).move_to(grid.get_corner(UP + RIGHT))
         self.play(GhostSlideFade(ghost, shift_vector=DOWN + LEFT, lifetime=1.5))
+        self.next_slide()
+
+
+class ScalingHelpers(BaseSlide):
+    """``engine/scaling.py`` -- multi-axis fit + stroke-aware scaling."""
+
+    def setup(self) -> None:
+        super().setup()
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header=r"engine/scaling.py -- scale\_to\_fit + scale\_with\_stroke\_width",
+        )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
+
+    def construct(self) -> None:
+        # Split the body into two columns: original on the left, fit on the right.
+        left, right = self.region.split(RIGHT, 2)
+
+        eq = MathTex(r"\int_{-\infty}^{\infty} e^{-x^{2}}\,dx = \sqrt{\pi}")
+        left.place(eq, ORIGIN)
+        original_caption = Caption("original").next_to(eq, DOWN, buff=0.4)
+        self.add(eq, original_caption)
+        self.next_slide(name="ScalingHelpers")
+
+        # ``scale_to_fit`` keeps aspect, picks the smallest required factor
+        # to fit inside *all* supplied lengths, and subtracts a buff.
+        fit = eq.copy()
+        scale_to_fit(fit, len_x=right.width, len_y=right.height, buff=0.4)
+        right.place(fit, ORIGIN)
+        fit_caption = Caption("scale\\_to\\_fit(len\\_x, len\\_y, buff)").next_to(
+            fit, DOWN, buff=0.4
+        )
+        self.play(FadeIn(fit), Write(fit_caption))
         self.next_slide()
