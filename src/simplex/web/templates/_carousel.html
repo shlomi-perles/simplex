@@ -1,52 +1,67 @@
-{# Carousel for one section. Receives `section`, `site`, `thumbs` from caller. #}
+{# Carousel for one section. Receives `section`, `site`, `thumbs`,
+   `preview_gifs`, `deck_dates`, and optional `carousel_variant`. #}
 <section
   id="{{ section.config.slug }}"
-  class="mb-12 carousel-section"
+  class="carousel-section{% if carousel_variant == 'latest' %} carousel-section-latest{% endif %}"
   data-section="{{ section.config.slug }}"
   aria-labelledby="hdr-{{ section.config.slug }}"
 >
-  <header class="flex items-end justify-between mb-4 gap-4">
+  <header class="carousel-heading">
     <div>
-      <h2
-        id="hdr-{{ section.config.slug }}"
-        class="text-2xl md:text-3xl font-semibold tracking-tight"
-      >{{ section.config.title }}</h2>
+      <div class="carousel-heading-line">
+        <i
+          data-lucide="{% if carousel_variant == 'latest' %}sparkles{% else %}rows-3{% endif %}"
+          aria-hidden="true"
+        ></i>
+        <h2 id="hdr-{{ section.config.slug }}">{{ section.config.title }}</h2>
+      </div>
       {% if section.config.blurb %}
-      <p class="text-neutral-500 text-sm mt-1 max-w-xl">{{ section.config.blurb }}</p>
+      <p>{{ section.config.blurb }}</p>
       {% endif %}
     </div>
+    {% if carousel_variant != "latest" %}
     <a
       href="{{ site.url('sections/' + section.config.slug + '/') }}"
-      class="text-sm text-neutral-400 hover:text-white whitespace-nowrap"
-    >View all &rarr;</a>
+      class="carousel-section-link"
+    >
+      <span>View all</span>
+      <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+    </a>
+    {% endif %}
   </header>
 
-  <div class="relative">
+  <div class="carousel-shell">
     <button
       class="carousel-arrow carousel-arrow-prev"
       data-dir="prev"
       aria-label="Scroll {{ section.config.title }} left"
+      title="Previous"
       type="button"
-    >&larr;</button>
+    >
+      <i data-lucide="chevron-left" aria-hidden="true"></i>
+    </button>
 
     <ol
       class="carousel-track"
       role="list"
       tabindex="0"
-      aria-label="{{ section.config.title }} decks"
+      aria-label="{% if carousel_variant == 'latest' %}Latest decks{% else %}{{ section.config.title }} decks{% endif %}"
     >
       {% for deck in section.decks %}
+      {% set thumb = thumbs.get(deck.slug) %}
+      {% set gif = preview_gifs.get(deck.slug) %}
+      {% set created = deck_dates.get(deck.slug) %}
       <li class="carousel-card-wrap">
         <a
           href="{{ site.url('decks/' + deck.slug + '/') }}"
-          class="carousel-card group"
+          class="carousel-card"
           aria-label="Open {{ deck.title }}"
         >
           <div class="carousel-thumb">
-            {% set thumb = thumbs.get(deck.slug) %}
             {% if thumb %}
             <img
               src="{{ site.url('decks/' + deck.slug + '/' + thumb) }}"
+              {% if gif %}data-preview-gif="{{ site.url('decks/' + deck.slug + '/' + gif) }}"{% endif %}
               alt=""
               loading="lazy"
               decoding="async"
@@ -58,23 +73,35 @@
               <span>{{ deck.title[:1] }}</span>
             </div>
             {% endif %}
-            <div class="carousel-overlay">
-              <div class="carousel-meta">
+            <div class="carousel-scrim" aria-hidden="true"></div>
+            <div class="carousel-card-content">
+              <div class="carousel-card-top">
                 {% if deck.category %}
                 <span class="carousel-badge">{{ deck.category }}</span>
                 {% endif %}
-                {% if deck.duration_minutes %}
-                <span class="carousel-duration">{{ deck.duration_minutes }} min</span>
+                {% if created %}
+                <span class="carousel-created">
+                  <i data-lucide="calendar" aria-hidden="true"></i>
+                  {{ created }}
+                </span>
                 {% endif %}
               </div>
-              <div class="carousel-cta">Play now &rarr;</div>
+              <div class="carousel-card-bottom">
+                <h3>{{ deck.title }}</h3>
+                {% if deck.summary %}
+                <p>{{ deck.summary }}</p>
+                {% endif %}
+                <div class="carousel-card-actions">
+                  <span class="carousel-play">
+                    <i data-lucide="play" aria-hidden="true"></i>
+                    Play now
+                  </span>
+                  {% if deck.duration_minutes %}
+                  <span class="carousel-duration">{{ deck.duration_minutes }} min</span>
+                  {% endif %}
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="carousel-text">
-            <h3 class="carousel-title">{{ deck.title }}</h3>
-            {% if deck.summary %}
-            <p class="carousel-sub">{{ deck.summary }}</p>
-            {% endif %}
           </div>
         </a>
       </li>
@@ -85,7 +112,10 @@
       class="carousel-arrow carousel-arrow-next"
       data-dir="next"
       aria-label="Scroll {{ section.config.title }} right"
+      title="Next"
       type="button"
-    >&rarr;</button>
+    >
+      <i data-lucide="chevron-right" aria-hidden="true"></i>
+    </button>
   </div>
 </section>

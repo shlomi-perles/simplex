@@ -90,13 +90,13 @@ class TextHelpers(BaseSlide):
         self.play(Write(cap))
         self.next_slide()
 
-        # TexPage wraps long prose in a fixed-width minipage. Default is 8cm
-        # (matches the historical ``Definition``); pass ``width_cm`` per call.
+        # TexPage wraps long prose in a fixed-width minipage. Default is 20cm;
+        # pass ``width_cm`` per call when a narrower column is useful.
         defn = TexPage(
             r"\textbf{TexPage.} A graph is a pair $(V, E)$ where $V$ is a vertex set "
             r"and $E \subseteq V \times V$ a set of edges. TexPage wraps content in a "
             r"\texttt{minipage} environment so long prose stays inside a fixed width "
-            r"(default 8 cm; override per-instance with \texttt{width\_cm=...})."
+            r"(default 20 cm; override per-instance with \texttt{width\_cm=...})."
         )
         defn.next_to(cap, DOWN, buff=0.4)
         self.play(Write(defn))

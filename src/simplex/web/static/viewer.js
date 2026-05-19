@@ -10,6 +10,94 @@
 (function () {
   "use strict";
 
+  function initIcons() {
+    if (!window.lucide || typeof window.lucide.createIcons !== "function") return;
+    window.lucide.createIcons({
+      attrs: {
+        "stroke-width": 1.9,
+        "aria-hidden": "true",
+      },
+    });
+  }
+
+  function initTheme() {
+    var root = document.documentElement;
+    var button = document.querySelector("[data-theme-toggle]");
+    var media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+    function storedTheme() {
+      try { return localStorage.getItem("simplex-theme"); }
+      catch (_) { return null; }
+    }
+    function systemTheme() {
+      return media && media.matches ? "dark" : "light";
+    }
+    function apply(theme, persist) {
+      root.dataset.theme = theme;
+      root.style.colorScheme = theme;
+      if (persist) {
+        try { localStorage.setItem("simplex-theme", theme); } catch (_) {}
+      }
+      if (button) {
+        button.setAttribute(
+          "aria-label",
+          theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+        );
+        button.setAttribute(
+          "title",
+          theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+        );
+      }
+    }
+
+    apply(storedTheme() || root.dataset.theme || systemTheme(), false);
+    if (button) {
+      button.addEventListener("click", function () {
+        apply(root.dataset.theme === "dark" ? "light" : "dark", true);
+      });
+    }
+    if (media && typeof media.addEventListener === "function") {
+      media.addEventListener("change", function () {
+        if (!storedTheme()) apply(systemTheme(), false);
+      });
+    }
+  }
+
+  function initPreviewGifs() {
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var saveData = navigator.connection && navigator.connection.saveData;
+    if (reduce || saveData) return;
+
+    var images = Array.prototype.slice.call(document.querySelectorAll("img[data-preview-gif]"));
+    if (!images.length) return;
+
+    function load() {
+      images.forEach(function (img) {
+        var src = img.dataset.previewGif;
+        if (!src || img.dataset.previewLoaded === "true") return;
+        img.dataset.previewLoaded = "true";
+        var gif = new Image();
+        gif.decoding = "async";
+        gif.onload = function () {
+          img.src = src;
+          img.classList.add("is-preview-gif");
+        };
+        gif.src = src;
+      });
+    }
+
+    function schedule() {
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(load, { timeout: 1800 });
+      } else {
+        window.setTimeout(load, 500);
+      }
+    }
+
+    if (document.readyState === "complete") schedule();
+    else window.addEventListener("load", schedule, { once: true });
+  }
+
   // ------------------------------------------------------------------
   // Carousel (home page).
   // ------------------------------------------------------------------
@@ -55,6 +143,12 @@
     var slideButtons = deck.querySelectorAll("[data-slide-target]");
     var controls = deck.querySelectorAll("[data-control]");
     var slideRefs = deck.querySelectorAll(".slide-ref[data-slide]");
+    var settings = deck.querySelector("[data-settings]");
+    var settingsToggle = deck.querySelector("[data-settings-toggle]");
+    var settingsPanel = deck.querySelector("[data-settings-panel]");
+    var colorSetting = deck.querySelector('[data-setting="slide-color"]');
+    var slideNumberSetting = deck.querySelector('[data-setting="slide-number"]');
+    var clockSetting = deck.querySelector('[data-setting="clock"]');
     var total = parseInt(deck.dataset.slideCount || "0", 10) || slideButtons.length;
     var currentIdx = 0;
 
@@ -94,6 +188,37 @@
       if (!playBtn) return;
       playBtn.dataset.state = playing ? "playing" : "paused";
       playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+      playBtn.setAttribute("title", playing ? "Pause" : "Play");
+    }
+
+    function boolAttr(name) {
+      return deck.dataset[name] === "true";
+    }
+
+    function syncChromeSettings() {
+      send({
+        type: "simplex.set-chrome",
+        slideNumber: !!(slideNumberSetting && slideNumberSetting.checked),
+        clock: !!(clockSetting && clockSetting.checked),
+      });
+    }
+
+    function syncColorSetting() {
+      if (!colorSetting) return;
+      deck.classList.toggle("is-grayscale", !colorSetting.checked);
+    }
+
+    function closeSettings() {
+      if (!settingsPanel || !settingsToggle) return;
+      settingsPanel.hidden = true;
+      settingsToggle.setAttribute("aria-expanded", "false");
+    }
+
+    function toggleSettings() {
+      if (!settingsPanel || !settingsToggle) return;
+      var open = settingsPanel.hidden;
+      settingsPanel.hidden = !open;
+      settingsToggle.setAttribute("aria-expanded", open ? "true" : "false");
     }
 
     window.addEventListener("message", function (e) {
@@ -162,6 +287,7 @@
         var ctl = btn.dataset.control;
         if (ctl === "next") send({ type: "simplex.next" });
         else if (ctl === "prev") send({ type: "simplex.prev" });
+        else if (ctl === "restart") send({ type: "simplex.restart" });
         else if (ctl === "toggle-play") send({ type: "simplex.toggle-play" });
         else if (ctl === "fullscreen") toggleFullscreen();
       });
@@ -187,14 +313,43 @@
       if (e.key === "ArrowRight") { e.preventDefault(); send({ type: "simplex.next" }); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); send({ type: "simplex.prev" }); }
     });
+
+    if (colorSetting) {
+      colorSetting.checked = true;
+      colorSetting.addEventListener("change", syncColorSetting);
+      syncColorSetting();
+    }
+    if (slideNumberSetting) {
+      slideNumberSetting.checked = boolAttr("defaultSlideNumber");
+      slideNumberSetting.addEventListener("change", syncChromeSettings);
+    }
+    if (clockSetting) {
+      clockSetting.checked = boolAttr("defaultClock");
+      clockSetting.addEventListener("change", syncChromeSettings);
+    }
+    if (iframe) iframe.addEventListener("load", syncChromeSettings);
+    if (settingsToggle) settingsToggle.addEventListener("click", toggleSettings);
+    document.addEventListener("click", function (e) {
+      if (!settings || settings.contains(e.target)) return;
+      closeSettings();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeSettings();
+    });
   }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
+      initTheme();
+      initIcons();
+      initPreviewGifs();
       initCarousels();
       initDeck();
     });
   } else {
+    initTheme();
+    initIcons();
+    initPreviewGifs();
     initCarousels();
     initDeck();
   }

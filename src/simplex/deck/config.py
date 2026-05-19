@@ -20,6 +20,7 @@ Three nested override types tune per-deck or per-main-slide behaviour:
 
 import re
 import tomllib
+from datetime import date
 from pathlib import Path
 from typing import Self
 
@@ -76,6 +77,20 @@ class WebOverride(BaseModel):
     show_slide_number: bool = False
     show_clock: bool = False
 
+    # Homepage/section carousel preview. ``carousel_gif`` points to a
+    # user-authored GIF relative to the deck directory. When omitted,
+    # ``carousel_gif_slides`` can select 1-based main-slide indexes to
+    # synthesize a small progressive preview from rendered video segments.
+    carousel_gif: Path | None = None
+    carousel_gif_slides: tuple[int, ...] = ()
+
+    @field_validator("carousel_gif_slides")
+    @classmethod
+    def _carousel_gif_slides_positive(cls, value: tuple[int, ...]) -> tuple[int, ...]:
+        if any(i < 1 for i in value):
+            raise ValueError("carousel_gif_slides uses 1-based slide indexes")
+        return value
+
     # Escape hatches.
     custom_css_path: Path | None = None
     template: Path | None = None
@@ -94,6 +109,7 @@ class DeckConfig(BaseModel):
     voiceover: bool = False
     category: str | None = None
     duration_minutes: int | None = None
+    created_at: date | None = None
     order: int = 1000
     path: Path
     section_slug: str = "featured"

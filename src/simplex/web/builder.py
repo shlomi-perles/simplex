@@ -20,6 +20,7 @@ No render cache. Manim's per-animation cache + ``save_sections=True``
 import contextlib
 import shutil
 import subprocess
+from datetime import UTC, datetime, time
 from pathlib import Path
 from typing import Any, cast
 
@@ -27,6 +28,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 
 from simplex.deck.config import DeckConfig
 from simplex.deck.registry import Section, SectionedRegistry, discover
+from simplex.deck.section import SectionConfig
 from simplex.render import html, pdf, reconcile, runner, thumbnail
 from simplex.theme.web_css import render_web_css
 from simplex.web import notes, vendor
@@ -112,6 +114,40 @@ def _site_thumb(deck_out: Path, thumbs: dict[int, Path]) -> str | None:
     return first.as_posix()
 
 
+def _deck_created_timestamp(deck: DeckConfig) -> float:
+    """Sort key for "latest" decks: explicit creation date, then file mtime."""
+    if deck.created_at is not None:
+        return datetime.combine(deck.created_at, time.min, tzinfo=UTC).timestamp()
+    toml = deck.path / "deck.toml"
+    with contextlib.suppress(OSError):
+        return toml.stat().st_mtime
+    return 0.0
+
+
+def _deck_created_label(deck: DeckConfig) -> str:
+    if deck.created_at is not None:
+        return deck.created_at.strftime("%b %d, %Y")
+    toml = deck.path / "deck.toml"
+    with contextlib.suppress(OSError):
+        return datetime.fromtimestamp(toml.stat().st_mtime, UTC).strftime("%b %d, %Y")
+    return ""
+
+
+def _latest_section(registry: SectionedRegistry, *, limit: int = 12) -> Section | None:
+    decks = sorted(registry.all_decks, key=_deck_created_timestamp, reverse=True)
+    if not decks:
+        return None
+    return Section(
+        config=SectionConfig(
+            slug="latest",
+            title="Latest decks",
+            blurb="Newest work first.",
+            order=-1,
+        ),
+        decks=tuple(decks[:limit]),
+    )
+
+
 def _build_deck(
     deck: DeckConfig,
     *,
@@ -121,8 +157,8 @@ def _build_deck(
     render: bool,
     scenes: tuple[str, ...] = (),
     watch: bool = False,
-) -> str | None:
-    """Render one deck. Returns the cover thumbnail href (relative)."""
+) -> tuple[str | None, str | None]:
+    """Render one deck. Returns ``(cover thumbnail, carousel gif)`` hrefs."""
     deck_out = site_dir / "decks" / deck.slug
     deck_out.mkdir(parents=True, exist_ok=True)
 
@@ -130,6 +166,12 @@ def _build_deck(
 
     manifest = reconcile.build_manifest(deck, media_dir=deck_out)
     thumbs = thumbnail.generate(deck, manifest, site_deck_dir=deck_out, cache_dir=deck_out)
+    preview_gif = thumbnail.generate_carousel_gif(
+        deck,
+        manifest,
+        site_deck_dir=deck_out,
+        cache_dir=deck_out,
+    )
 
     enriched = tuple(
         main.model_copy(update={"thumbnail": thumbs.get(main.index)})
@@ -166,7 +208,10 @@ def _build_deck(
         palette_css=render_web_css(deck.resolved_web_palette()),
     )
     (deck_out / "index.html").write_text(page, encoding="utf-8")
-    return _site_thumb(deck_out, thumbs)
+    return (
+        _site_thumb(deck_out, thumbs),
+        preview_gif.as_posix() if preview_gif is not None else None,
+    )
 
 
 def _build_section_page(
@@ -174,12 +219,18 @@ def _build_section_page(
     site_dir: Path,
     env: Environment,
     thumbs: dict[str, str | None],
+    preview_gifs: dict[str, str | None],
+    deck_dates: dict[str, str],
     palette_css: str,
 ) -> None:
     out = site_dir / "sections" / section.config.slug
     out.mkdir(parents=True, exist_ok=True)
     page = env.get_template("section.html").render(
-        section=section, thumbs=thumbs, palette_css=palette_css
+        section=section,
+        thumbs=thumbs,
+        preview_gifs=preview_gifs,
+        deck_dates=deck_dates,
+        palette_css=palette_css,
     )
     (out / "index.html").write_text(page, encoding="utf-8")
 
@@ -189,10 +240,17 @@ def _build_index(
     site_dir: Path,
     env: Environment,
     thumbs: dict[str, str | None],
+    preview_gifs: dict[str, str | None],
+    deck_dates: dict[str, str],
     palette_css: str,
 ) -> None:
     page = env.get_template("index.html").render(
-        registry=registry, thumbs=thumbs, palette_css=palette_css
+        registry=registry,
+        latest_section=_latest_section(registry),
+        thumbs=thumbs,
+        preview_gifs=preview_gifs,
+        deck_dates=deck_dates,
+        palette_css=palette_css,
     )
     (site_dir / "index.html").write_text(page, encoding="utf-8")
 
@@ -224,11 +282,13 @@ def build(
 
     only_set = set(only)
     deck_thumbs: dict[str, str | None] = {}
+    deck_preview_gifs: dict[str, str | None] = {}
+    deck_dates = {deck.slug: _deck_created_label(deck) for deck in registry.all_decks}
     for section in registry.sections:
         for deck in section.decks:
             if only_set and deck.slug not in only_set:
                 continue
-            deck_thumbs[deck.slug] = _build_deck(
+            deck_thumbs[deck.slug], deck_preview_gifs[deck.slug] = _build_deck(
                 deck,
                 site_dir=site_dir,
                 site_cfg=site_cfg,
@@ -240,6 +300,22 @@ def build(
 
     site_palette_css = _site_palette_css(site_cfg)
     for section in registry.sections:
-        _build_section_page(section, site_dir, env, deck_thumbs, site_palette_css)
+        _build_section_page(
+            section,
+            site_dir,
+            env,
+            deck_thumbs,
+            deck_preview_gifs,
+            deck_dates,
+            site_palette_css,
+        )
 
-    _build_index(registry, site_dir, env, deck_thumbs, site_palette_css)
+    _build_index(
+        registry,
+        site_dir,
+        env,
+        deck_thumbs,
+        deck_preview_gifs,
+        deck_dates,
+        site_palette_css,
+    )

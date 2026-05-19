@@ -1,19 +1,18 @@
 {% extends "base.html" %}
 {% block title %}{{ site.brand }} -- Decks{% endblock %}
 {% block content %}
-{% if site.tagline %}
-<section class="mb-10">
-  <h1 class="text-4xl md:text-5xl font-semibold tracking-tight">{{ site.brand }}</h1>
-  <p class="mt-3 text-neutral-400 max-w-2xl">{{ site.tagline }}</p>
-</section>
-{% endif %}
-
 {% if not registry.sections %}
 <p class="text-neutral-400">
   No decks yet. Run <code class="px-1 bg-neutral-800 rounded">simplex new my-deck</code>
   to create one.
 </p>
 {% else %}
+{% if latest_section %}
+{% set section = latest_section %}
+{% set carousel_variant = "latest" %}
+{% include "_carousel.html" %}
+{% endif %}
+{% set carousel_variant = "section" %}
 {% for section in registry.sections %}
 {% include "_carousel.html" %}
 {% endfor %}

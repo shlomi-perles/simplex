@@ -9,11 +9,12 @@ checkout. Callers can still pass an explicit ``template_dir`` to override.
 """
 
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 
 from simplex.deck.section import FEATURED_SLUG
 
-_TOKENS = ("__SLUG__", "__SECTION__", "__TITLE__")
+_TOKENS = ("__SLUG__", "__SECTION__", "__TITLE__", "__CREATED_AT__")
 _BUNDLED_TEMPLATE = Path(__file__).resolve().parent / "_template"
 
 
@@ -38,6 +39,7 @@ def _substitute_tokens(path: Path, slug: str, section: str) -> None:
         text.replace("__SLUG__", slug)
         .replace("__SECTION__", section)
         .replace("__TITLE__", _humanise(slug))
+        .replace("__CREATED_AT__", datetime.now(UTC).date().isoformat())
     )
     if replaced != text:
         path.write_text(replaced, encoding="utf-8")

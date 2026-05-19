@@ -153,12 +153,18 @@
   <button class="tap-zone next" aria-hidden="true" tabindex="-1"
           data-tap="next"></button>
 
-  {% if show_clock %}
-  <div class="simplex-chrome clock" id="simplex-clock" aria-hidden="true"></div>
-  {% endif %}
-  {% if show_slide_number %}
-  <div class="simplex-chrome slide-number" id="simplex-slide-number" aria-hidden="true"></div>
-  {% endif %}
+  <div
+    class="simplex-chrome clock"
+    id="simplex-clock"
+    aria-hidden="true"
+    {% if not show_clock %}hidden{% endif %}
+  ></div>
+  <div
+    class="simplex-chrome slide-number"
+    id="simplex-slide-number"
+    aria-hidden="true"
+    {% if not show_slide_number %}hidden{% endif %}
+  ></div>
 
   <script src="{{ static_prefix }}/reveal.js/reveal.js"></script>
   <script>
@@ -168,6 +174,10 @@
       const parentOrigin = (function () {
         try { return window.parent.location.origin || '*'; } catch (_) { return '*'; }
       })();
+      const chromeState = {
+        clock: {% if show_clock %}true{% else %}false{% endif %},
+        slideNumber: {% if show_slide_number %}true{% else %}false{% endif %},
+      };
 
       Reveal.initialize({
         embedded: true,
@@ -213,6 +223,7 @@
         function emit() {
           const idx = Reveal.getIndices();
           const total = {{ main_slide_count }};
+          renderSlideNumber();
           try {
             window.parent.postMessage(
               {
@@ -225,8 +236,21 @@
             );
           } catch (_) { /* parent gone or different origin */ }
         }
+        function renderSlideNumber() {
+          const el = document.getElementById('simplex-slide-number');
+          if (!el) return;
+          el.textContent = currentMainIndex() + ' / ' + {{ main_slide_count }};
+        }
+        function applyChrome() {
+          const clock = document.getElementById('simplex-clock');
+          const slideNumber = document.getElementById('simplex-slide-number');
+          if (clock) clock.hidden = !chromeState.clock;
+          if (slideNumber) slideNumber.hidden = !chromeState.slideNumber;
+          renderSlideNumber();
+        }
         Reveal.on('slidechanged', emit);
         Reveal.on('ready', emit);
+        applyChrome();
 
         window.addEventListener('message', function (e) {
           const data = e.data || {};
@@ -240,6 +264,15 @@
             Reveal.next();
           } else if (data.type === 'simplex.prev') {
             Reveal.prev();
+          } else if (data.type === 'simplex.restart') {
+            const v = document.querySelector('.reveal .slides .present video');
+            if (v) {
+              try { v.currentTime = 0; } catch (_) { /* */ }
+              if (v.paused) {
+                const p = v.play();
+                if (p && typeof p.catch === 'function') p.catch(function () {});
+              }
+            }
           } else if (data.type === 'simplex.toggle-play') {
             const v = document.querySelector('.reveal .slides .present video');
             if (v) {
@@ -260,6 +293,10 @@
               if (inFs) { if (exit) { exit.call(document); } }
               else if (fn) { fn.call(el); }
             } catch (_) { /* */ }
+          } else if (data.type === 'simplex.set-chrome') {
+            if (typeof data.clock === 'boolean') chromeState.clock = data.clock;
+            if (typeof data.slideNumber === 'boolean') chromeState.slideNumber = data.slideNumber;
+            applyChrome();
           }
         });
 
@@ -295,7 +332,6 @@
         }
       });
 
-      {% if show_clock %}
       // Wall clock in the corner. Updates once per second; pad single
       // digits so the layout doesn't reflow.
       (function () {
@@ -309,19 +345,6 @@
         tick();
         setInterval(tick, 1000);
       })();
-      {% endif %}
-
-      {% if show_slide_number %}
-      // 1-based slide counter "current / total" updated on every slide change.
-      (function () {
-        const el = document.getElementById('simplex-slide-number');
-        if (!el) return;
-        const total = {{ main_slide_count }};
-        const render = (h) => { el.textContent = (h + 1) + ' / ' + total; };
-        Reveal.on('slidechanged', (ev) => render(ev.indexh));
-        Reveal.on('ready', (ev) => render(ev.indexh));
-      })();
-      {% endif %}
 
       {% if watch %}
       // --watch mode: subscribe to SSE for live reload on render.
