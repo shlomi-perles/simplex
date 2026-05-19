@@ -16,5 +16,12 @@ entrypoints = [
     "slides.scenes:GlyphMapTransform",
     "slides.scenes:TrackingHelpers",
     "slides.scenes:ShapeAndDebug",
+    "slides.scenes:ScalingHelpers",
 ]
 voiceover = false
+
+# Slide chrome lives in the RevealJS host, not the rendered frames.
+# Toggling these on costs nothing -- no re-render needed.
+[web]
+show_slide_number = true
+show_clock = true

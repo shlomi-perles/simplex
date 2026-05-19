@@ -86,6 +86,16 @@
       padding: 2rem;
       text-align: center;
     }
+    .simplex-chrome {
+      position: fixed;
+      z-index: 40;
+      font-family: var(--simplex-font-sans, ui-sans-serif, system-ui, sans-serif);
+      font-size: 1rem;
+      color: var(--simplex-text-muted, rgba(255,255,255,.65));
+      pointer-events: none;
+    }
+    .simplex-chrome.clock { bottom: 10px; left: 10px; }
+    .simplex-chrome.slide-number { bottom: 10px; right: 10px; }
   </style>
   {% if deck_custom_css %}
   <style>
@@ -142,6 +152,13 @@
           data-tap="prev"></button>
   <button class="tap-zone next" aria-hidden="true" tabindex="-1"
           data-tap="next"></button>
+
+  {% if show_clock %}
+  <div class="simplex-chrome clock" id="simplex-clock" aria-hidden="true"></div>
+  {% endif %}
+  {% if show_slide_number %}
+  <div class="simplex-chrome slide-number" id="simplex-slide-number" aria-hidden="true"></div>
+  {% endif %}
 
   <script src="{{ static_prefix }}/reveal.js/reveal.js"></script>
   <script>
@@ -247,6 +264,34 @@
           });
         }
       });
+
+      {% if show_clock %}
+      // Wall clock in the corner. Updates once per second; pad single
+      // digits so the layout doesn't reflow.
+      (function () {
+        const el = document.getElementById('simplex-clock');
+        if (!el) return;
+        const pad = (n) => String(n).padStart(2, '0');
+        const tick = () => {
+          const now = new Date();
+          el.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+        };
+        tick();
+        setInterval(tick, 1000);
+      })();
+      {% endif %}
+
+      {% if show_slide_number %}
+      // 1-based slide counter "current / total" updated on every slide change.
+      (function () {
+        const el = document.getElementById('simplex-slide-number');
+        if (!el) return;
+        const total = {{ main_slide_count }};
+        const render = (h) => { el.textContent = (h + 1) + ' / ' + total; };
+        Reveal.on('slidechanged', (ev) => render(ev.indexh));
+        Reveal.on('ready', (ev) => render(ev.indexh));
+      })();
+      {% endif %}
 
       {% if watch %}
       // --watch mode: subscribe to SSE for live reload on render.
