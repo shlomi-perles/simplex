@@ -34,7 +34,7 @@ from manim import (
 from simplex.engine.text import BodyText
 from simplex.slides import ContentSlide
 
-from common import (  # noqa: I001
+from common import (
     C_AXIS,
     C_GD,
     C_OPTIMUM,

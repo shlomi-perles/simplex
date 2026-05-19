@@ -3,8 +3,9 @@
 from pathlib import Path
 
 from simplex.deck.config import DeckConfig
+from simplex.manifest import DeckManifest, MainSlide, Subsection
 from simplex.render.html import render_html
-from simplex.render.reconcile import DeckManifest, MainSlide, Subsection
+from simplex.section import SimplexSectionType
 
 
 def _deck(tmp_path: Path) -> DeckConfig:
@@ -27,8 +28,8 @@ def test_render_html_writes_slides_html(tmp_path: Path) -> None:
                 index=1,
                 scene="S1",
                 name="Hello",
-                section_type="simplex.main",
-                subsections=(Subsection(name="Hello", type_="simplex.main"),),
+                section_type=SimplexSectionType.MAIN,
+                subsections=(Subsection(name="Hello", section_type=SimplexSectionType.MAIN),),
             ),
         ),
     )
@@ -55,8 +56,10 @@ def test_render_html_copies_videos_when_present(tmp_path: Path) -> None:
                 index=1,
                 scene="S1",
                 name="Hi",
-                section_type="simplex.main",
-                subsections=(Subsection(name="Hi", type_="simplex.main", video=fake_video),),
+                section_type=SimplexSectionType.MAIN,
+                subsections=(
+                    Subsection(name="Hi", section_type=SimplexSectionType.MAIN, video=fake_video),
+                ),
             ),
         ),
     )
@@ -77,10 +80,10 @@ def test_render_html_renders_vertical_subsections(tmp_path: Path) -> None:
                 index=1,
                 scene="S1",
                 name="M",
-                section_type="simplex.main",
+                section_type=SimplexSectionType.MAIN,
                 subsections=(
-                    Subsection(name="M", type_="simplex.main"),
-                    Subsection(name="step2", type_="simplex.sub"),
+                    Subsection(name="M", section_type=SimplexSectionType.MAIN),
+                    Subsection(name="step2", section_type=SimplexSectionType.SUB),
                 ),
             ),
         ),

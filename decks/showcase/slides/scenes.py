@@ -40,24 +40,25 @@ from simplex.engine.geometry import (
     get_convex_hull_polygon,
     get_surrounding_rectangle,
 )
+from simplex.engine.ghost_fade import GhostSlideFade
+from simplex.engine.glyph_map import TransformByGlyphMap
 from simplex.engine.text import BodyText, Caption, Definition, color_tex
-from simplex.engine.transforms import GhostSlideFade, TransformByGlyphMap
+from simplex.mobjects import ArrayMob, ArrayPointer, Edge, Node
 from simplex.slides import BaseSlide, make_chrome
-from simplex.slides.components import ArrayMob, ArrayPointer, Edge, Node
 from simplex.theme.context import get_active_theme
 
 
 class TextHelpers(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        self.add_to_canvas(
-            **make_chrome(
-                get_active_theme(),
-                self.region,
-                header=r"engine/text.py -- BodyText, Caption, Definition, color\_tex",
-                page=1,
-            )
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header=r"engine/text.py -- BodyText, Caption, Definition, color\_tex",
+            page=1,
         )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
         body = BodyText(r"Body paragraphs default to \textit{theme.typography.body}: $E = mc^2$.")
@@ -89,14 +90,14 @@ class TextHelpers(BaseSlide):
 class CodeHelpers(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        self.add_to_canvas(
-            **make_chrome(
-                get_active_theme(),
-                self.region,
-                header=r"engine/code.py -- code\_block + highlight + explain",
-                page=2,
-            )
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header=r"engine/code.py -- code\_block + highlight + explain",
+            page=2,
         )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
         snippet = (
@@ -117,9 +118,10 @@ class CodeHelpers(BaseSlide):
         self.play(FadeIn(code))
         self.next_slide(name="CodeHelpers")
 
-        fade, indicate = highlight_code_lines(code, lines=[5, 6, 7, 8, 9])
-        self.play(fade)
-        self.play(indicate)
+        result = highlight_code_lines(code, lines=[5, 6, 7, 8, 9])
+        self.play(result.fade)
+        if result.indicate is not None:
+            self.play(result.indicate)
         self.next_slide()
 
         mob, anim = code_explain(
@@ -135,14 +137,14 @@ class CodeHelpers(BaseSlide):
 class GraphAndArray(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        self.add_to_canvas(
-            **make_chrome(
-                get_active_theme(),
-                self.region,
-                header="Components -- Node, Edge, ArrayMob, ArrayPointer",
-                page=3,
-            )
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header="Components -- Node, Edge, ArrayMob, ArrayPointer",
+            page=3,
         )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
         n1 = Node("1")
@@ -190,14 +192,14 @@ class GraphAndArray(BaseSlide):
 class RegionAnchors(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        self.add_to_canvas(
-            **make_chrome(
-                get_active_theme(),
-                self.region,
-                header="engine/region.py -- anchors + shrink",
-                page=4,
-            )
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header="engine/region.py -- anchors + shrink",
+            page=4,
         )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
         markers = []
@@ -230,14 +232,14 @@ class RegionAnchors(BaseSlide):
 class ExitAnimations(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        self.add_to_canvas(
-            **make_chrome(
-                get_active_theme(),
-                self.region,
-                header=r"Remove + set\_exit\_animation + clear\_scene",
-                page=5,
-            )
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header=r"Remove + set\_exit\_animation + clear\_scene",
+            page=5,
         )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
         keep = BodyText("survives via clear\\_scene(exclude=[this])")
@@ -257,14 +259,14 @@ class ExitAnimations(BaseSlide):
 class GeometryHelpers(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        self.add_to_canvas(
-            **make_chrome(
-                get_active_theme(),
-                self.region,
-                header="engine/geometry.py -- convex hull + surrounding rect",
-                page=6,
-            )
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header="engine/geometry.py -- convex hull + surrounding rect",
+            page=6,
         )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
         points = np.array(
@@ -296,14 +298,14 @@ class GeometryHelpers(BaseSlide):
 class GlyphMapTransform(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        self.add_to_canvas(
-            **make_chrome(
-                get_active_theme(),
-                self.region,
-                header="engine/transforms.py -- TransformByGlyphMap",
-                page=7,
-            )
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header="engine/glyph_map.py -- TransformByGlyphMap",
+            page=7,
         )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
         eq1 = MathTex("f(x) = 4x^2 + 5x + 6").scale(1.4)
@@ -343,14 +345,14 @@ class GlyphMapTransform(BaseSlide):
 class TrackingHelpers(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        self.add_to_canvas(
-            **make_chrome(
-                get_active_theme(),
-                self.region,
-                header="engine/dynamics.py -- VT, DN + engine/geometry.py Vcis",
-                page=8,
-            )
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header="engine/dynamics.py -- VT, DN + engine/geometry.py Vcis",
+            page=8,
         )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
         # A clock-style pointer driven by a VT angle.
@@ -392,14 +394,14 @@ class TrackingHelpers(BaseSlide):
 class ShapeAndDebug(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        self.add_to_canvas(
-            **make_chrome(
-                get_active_theme(),
-                self.region,
-                header="engine/geometry.py SurroundingRectangleUnion + engine/debug.py",
-                page=9,
-            )
+        chrome = make_chrome(
+            get_active_theme(),
+            self.region,
+            header="engine/geometry.py SurroundingRectangleUnion + engine/debug.py",
+            page=9,
         )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
 
     def construct(self) -> None:
         # 6x4 grid of dots; group three subsets and surround each with a single

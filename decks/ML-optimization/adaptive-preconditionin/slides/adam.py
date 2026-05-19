@@ -23,7 +23,7 @@ from manim import (
 from simplex.engine.text import BodyText, Caption
 from simplex.slides import ContentSlide
 
-from common import (  # noqa: I001
+from common import (
     C_ADAM,
     C_GD,
     C_MOMENTUM,
