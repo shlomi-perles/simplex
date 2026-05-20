@@ -9,6 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: shlomi-perles/manim-simplex
+          path: ../manim-simplex
       - name: Install system dependencies
         run: |
           sudo apt-get update
