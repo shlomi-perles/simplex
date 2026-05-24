@@ -125,12 +125,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: |
           sudo apt-get update
           sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended \
                                   ffmpeg libcairo2-dev libpango1.0-dev
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v8
       - run: uv sync
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -153,8 +153,8 @@ jobs:
     environment: pypi
     permissions: { id-token: write }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8
       - run: uv build
       - uses: pypa/gh-action-pypi-publish@release/v1
 ```
@@ -287,7 +287,7 @@ base_url = "/"
 ```
 
 `.github/workflows/deploy.yml` (this is the single CI file the user
-needs; uses `actions/deploy-pages@v4` with no `gh-pages` branch):
+needs; uses `actions/deploy-pages@v5` with no `gh-pages` branch):
 
 ```yaml
 name: Deploy
@@ -308,14 +308,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: |
           sudo apt-get update
           sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended \
                                   ffmpeg libcairo2-dev libpango1.0-dev
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v8
       - run: uv sync
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             site/decks/*/media
@@ -323,7 +323,7 @@ jobs:
           key: simplex-${{ hashFiles('uv.lock', 'decks/**/deck.toml', 'decks/**/slides/**/*.py', 'decks/**/manim.cfg') }}
           restore-keys: simplex-
       - run: uv run simplex build
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with: { path: site }
   deploy:
     needs: build
@@ -333,7 +333,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 ```
 
 `README.md`:

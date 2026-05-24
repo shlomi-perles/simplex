@@ -77,7 +77,7 @@ Module surface under same PEP 420 namespace `simplex/`:
 ### Repo C — `simplex-lectures-template` (GitHub Template)
 
 Pre-wired user lectures repo. `pyproject.toml` pins `simplex>=0.2`,
-`.github/workflows/deploy.yml` uses `actions/deploy-pages@v4`, one
+`.github/workflows/deploy.yml` uses `actions/deploy-pages@v5`, one
 minimal example deck. Users `gh repo create my-lectures
 --template shlomi-perles/simplex-lectures-template`.
 
@@ -317,7 +317,7 @@ custom_css_path = "extra.css"
 | `simplex test`                           | NEW      | `manim --write_last_frame --quality l` smoke for every deck              |
 | `simplex clean [slug]`                   | keep     | wipe `media/`, `site/` (and `.simplex_cache/` while it still exists)     |
 | `simplex init [target_dir]`              | NEW      | `gh repo create --template shlomi-perles/simplex-lectures-template`      |
-| ~~`simplex deploy`~~                     | DROPPED  | replaced by `actions/deploy-pages@v4` in the template repo               |
+| ~~`simplex deploy`~~                     | DROPPED  | replaced by `actions/deploy-pages@v5` in the template repo               |
 | ~~`simplex thumbs`~~                     | DROPPED  | thumbnails come from sections JSON                                       |
 | ~~`simplex render --force`~~             | DROPPED  | manim's per-animation cache is enough                                    |
 
@@ -332,7 +332,7 @@ Lint, type-check, test, plus a render-smoke step that runs
 
 ### `simplex-lectures-template/.github/workflows/deploy.yml`
 
-Uses `actions/upload-pages-artifact@v3` + `actions/deploy-pages@v4`. No
+Uses `actions/upload-pages-artifact@v5` + `actions/deploy-pages@v5`. No
 `gh-pages` branch, no `ghp-import`, no `peaceiris/actions-gh-pages`.
 
 ```yaml
@@ -343,22 +343,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8
       - run: sudo apt-get install -y texlive-latex-extra texlive-fonts-extra ffmpeg
       - run: uv sync
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: [ "media/", "~/.cache/uv" ]
           key: simplex-${{ hashFiles('uv.lock','decks/**/deck.toml','decks/**/slides/**/*.py','decks/**/manim.cfg') }}
       - run: uv run simplex build
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with: { path: site }
   deploy:
     needs: build
     runs-on: ubuntu-latest
     environment: { name: github-pages, url: ${{ steps.deployment.outputs.page_url }} }
-    steps: [ { uses: actions/deploy-pages@v4, id: deployment } ]
+    steps: [ { uses: actions/deploy-pages@v5, id: deployment } ]
 ```
 
 ---
@@ -505,7 +505,7 @@ Each phase is independently revertible. Verification steps:
 - `Unwrite`, `ShrinkToCenter`, `Uncreate`, `FadeOut` all accept a single
   mobject and don't choke on `VGroup`. If `Unwrite` fails on non-`Tex`
   subclasses, restrict the registry to exact-type matches.
-- `actions/deploy-pages@v4` requires repo Pages source set to "GitHub
+- `actions/deploy-pages@v5` requires repo Pages source set to "GitHub
   Actions" (not a branch). Template README must call this out.
 - `watchfiles.awatch` debounces by default (~100ms). Confirm SSE doesn't
   spam the browser on bulk saves.
