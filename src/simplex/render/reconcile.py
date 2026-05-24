@@ -84,6 +84,7 @@ def _av_duration(video: Path) -> float:
         return 0.0
     try:
         import av
+        from av.error import FFmpegError
     except ImportError:
         return 0.0
     try:
@@ -93,7 +94,7 @@ def _av_duration(video: Path) -> float:
             stream = container.streams.video[0]
             if stream.duration is not None and stream.time_base is not None:
                 return float(stream.duration * stream.time_base)
-    except (av.error.FFmpegError, IndexError, OSError, ValueError):
+    except (FFmpegError, IndexError, OSError, ValueError):
         return 0.0
     return 0.0
 

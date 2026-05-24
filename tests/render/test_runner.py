@@ -1,6 +1,5 @@
 """runner.render: subprocess invocation, --save_sections flag, scene filtering."""
 
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +28,7 @@ def _deck(tmp_path: Path) -> DeckConfig:
 
 
 @pytest.fixture
-def captured(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, Any]]]:
+def captured(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     calls: list[dict[str, Any]] = []
 
     def fake_run(args: list[str], **kwargs: Any) -> Any:

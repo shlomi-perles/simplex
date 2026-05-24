@@ -26,5 +26,7 @@ def export(deck: DeckConfig, *, output_dir: Path) -> Path:
         list(scenes),
         media_dir / "slides",
     )
-    PowerPoint(presentation_configs=presentation_configs).convert_to(pptx_path)
+    PowerPoint(presentation_configs=presentation_configs).convert_to(  # pyright: ignore[reportCallIssue]
+        pptx_path
+    )
     return pptx_path
