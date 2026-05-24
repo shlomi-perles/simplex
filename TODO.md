@@ -1,11 +1,11 @@
 add hash tables to a deck.
 # remove uv.lock?
 0. change default minipage to 20.
-1. Rremove pallete colors instructions in skills
-2. Add a button for dark/light theme and auto detect whats the browser prefer.
+1. Rremove palette colors instructions in skills
+2. Add a button for dark/light theme and auto detect what's the browser prefer.
 3. Make sure all functionality in the showcase.
 4. Fix glymps.
-5. change page layout similiar to dastflix
+5. change page layout similar to dastflix
 6. change deck to `post`
 7. Gifs (first of all thumbnails and than gifs download).
 8. add paper animation - get a pdf/url, get 3 first pages as image. Add shadow on Left-buttom. Animation of stack them on left-buttom exes.
@@ -23,11 +23,11 @@ add hash tables to a deck.
 20. Manim MCP? https://github.com/OMCHOKSI108/MCP-SERVER/blob/f6b6135867d0d33f96c21cf88a6892d539db93e5/MCP_5/main.py -- Maybe crop a single thumbnail?
 21. google tag copmatability
 22. social media tag thumbnail
-23. 
-manimgl good example: 
+23.
+manimgl good example:
     https://github.com/Arch-User-0/manimations
     https://discord.com/channels/1453870851807117363/1454686795747950704 -- best one
     Best working examples - in my playgarden
-    
+
 merge with this skill:
     https://github.com/adithya-s-k/manim_skill?ref=explainx
