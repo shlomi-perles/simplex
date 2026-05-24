@@ -18,6 +18,7 @@ No render cache. Manim's per-animation cache + ``save_sections=True``
 """
 
 import contextlib
+import hashlib
 import shutil
 import subprocess
 from datetime import UTC, datetime, time
@@ -36,6 +37,28 @@ from simplex.web.bibliography import Bibliography
 from simplex.web.site_config import SiteConfig
 
 
+def _static_source_dir() -> Path:
+    return Path(__file__).parent / "static"
+
+
+def _file_version(path: Path) -> str:
+    """Short content hash for cache-busting generated asset URLs."""
+    if not path.exists() or not path.is_file():
+        return ""
+    digest = hashlib.blake2s(digest_size=6)
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _with_version(url: str, version: str) -> str:
+    if not version:
+        return url
+    separator = "&" if "?" in url else "?"
+    return f"{url}{separator}v={version}"
+
+
 def _jinja(site_cfg: SiteConfig) -> Environment:
     env = Environment(
         loader=PackageLoader("simplex.web", "templates"),
@@ -45,7 +68,9 @@ def _jinja(site_cfg: SiteConfig) -> Environment:
     )
 
     def static(path: str) -> str:
-        return site_cfg.url("static/" + path.lstrip("/"))
+        clean = path.lstrip("/")
+        url = site_cfg.url("static/" + clean)
+        return _with_version(url, _file_version(_static_source_dir() / clean))
 
     globals_: dict[str, Any] = cast(dict[str, Any], env.globals)
     globals_["static"] = static
@@ -55,7 +80,7 @@ def _jinja(site_cfg: SiteConfig) -> Environment:
 
 def _copy_static(site_dir: Path) -> None:
     """Copy bundled static assets into ``site/static/``."""
-    src = Path(__file__).parent / "static"
+    src = _static_source_dir()
     src.mkdir(parents=True, exist_ok=True)
     vendor.ensure(src)
     dst = site_dir / "static"
@@ -178,7 +203,7 @@ def _build_deck(
         for main in manifest.main_slides
     )
 
-    html.render_html(
+    slides_html = html.render_html(
         deck,
         manifest.model_copy(update={"main_slides": enriched}),
         output_dir=deck_out,
@@ -206,6 +231,7 @@ def _build_deck(
         has_notes_pdf=_has_notes_pdf(deck_out),
         notes_html=notes_html,
         palette_css=render_web_css(deck.resolved_web_palette()),
+        slides_version=_file_version(slides_html),
     )
     (deck_out / "index.html").write_text(page, encoding="utf-8")
     return (

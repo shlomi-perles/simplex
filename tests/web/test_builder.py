@@ -52,11 +52,15 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     assert "--simplex-bg" in index_html
     # Site CSS loads after palette tokens so deck palettes cannot override body chrome.
     assert index_html.index("--simplex-bg") < index_html.index("simplex.css")
+    assert "simplex.css?v=" in index_html
+    assert "viewer.js?v=" in index_html
+    assert "notes.js?v=" in index_html
 
     alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
     assert "Alpha" in alpha_html
     assert 'class="math inline"' in alpha_html
     assert 'class="slide-ref"' in alpha_html
+    assert 'src="slides.html?v=' in alpha_html
     slides_html = (site_dir / "decks" / "alpha" / "slides.html").read_text(encoding="utf-8")
     assert "Reveal" in slides_html
     assert "--simplex-bg" in slides_html
@@ -88,7 +92,7 @@ def test_build_resolves_nav_links_against_base_url_and_moves_github_to_footer(
     assert 'href="/simplex-lectures-template/"' in index_html
     assert 'class="site-nav-link site-nav-link-icon-only"' not in index_html
     assert 'class="site-footer-github"' in index_html
-    assert 'https://github.com/example/project' in index_html
+    assert "https://github.com/example/project" in index_html
     assert 'class="site-footer-simplex"' in index_html
 
 

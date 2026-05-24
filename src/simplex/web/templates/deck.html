@@ -35,7 +35,7 @@
   <div class="deck-viewer">
     <div class="deck-viewer-frame">
       <iframe
-        src="slides.html"
+        src="slides.html{% if slides_version %}?v={{ slides_version }}{% endif %}"
         title="{{ deck.title }} presentation"
         allowfullscreen
         allow="autoplay; fullscreen"
