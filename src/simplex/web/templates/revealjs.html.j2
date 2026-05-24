@@ -256,6 +256,13 @@
           if (slideNumber) slideNumber.hidden = !chromeState.slideNumber;
           renderSlideNumber();
         }
+        function playCurrentVideoFromStart() {
+          const v = document.querySelector('.reveal .slides .present video');
+          if (!v) return;
+          try { v.currentTime = 0; } catch (_) { /* */ }
+          const p = v.play();
+          if (p && typeof p.catch === 'function') p.catch(function () {});
+        }
         Reveal.on('slidechanged', emit);
         Reveal.on('ready', emit);
         applyChrome();
@@ -273,12 +280,10 @@
           } else if (data.type === 'simplex.prev') {
             Reveal.prev();
           } else if (data.type === 'simplex.restart') {
-            const v = document.querySelector('.reveal .slides .present video');
-            if (v) {
-              try { v.currentTime = 0; } catch (_) { /* */ }
-              const p = v.play();
-              if (p && typeof p.catch === 'function') p.catch(function () {});
-            }
+            const main = currentMainIndex();
+            if (main > 0) Reveal.slide(main - 1, 0);
+            playCurrentVideoFromStart();
+            window.setTimeout(playCurrentVideoFromStart, 50);
           } else if (data.type === 'simplex.toggle-play') {
             const v = document.querySelector('.reveal .slides .present video');
             if (v) {

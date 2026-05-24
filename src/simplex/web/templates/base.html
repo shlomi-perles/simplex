@@ -48,20 +48,17 @@
       {% set label = link.label|lower %}
       {% set is_github = "github" in label %}
       {% set icon = "book-open" if "docs" in label else ("home" if "home" in label or "deck" in label else "circle-dot") %}
+      {% if not is_github %}
       <a
-        href="{{ link.href }}"
-        class="site-nav-link{% if is_github %} site-nav-link-icon-only{% endif %}"
-        {% if is_github %}aria-label="GitHub"{% endif %}
-        {% if link.href.startswith('http') %}target="_blank" rel="noreferrer"{% endif %}
+        href="{{ site.nav_url(link.href) }}"
+        class="site-nav-link"
+        {% if site.is_external_url(link.href) %}target="_blank" rel="noreferrer"{% endif %}
       >
-        {% if is_github %}
-        <span class="github-square-icon" aria-hidden="true"></span>
-        {% else %}
         <i data-lucide="{{ icon }}" aria-hidden="true"></i>
         <span class="icon-fallback" aria-hidden="true">{{ link.label[:1] }}</span>
         <span>{{ link.label }}</span>
-        {% endif %}
       </a>
+      {% endif %}
       {% endfor %}
     </div>
     <div class="site-nav-actions">
@@ -84,13 +81,31 @@
   {% block content %}{% endblock %}
 </main>
 <footer class="site-footer">
-  {% set footer = namespace(simplex_href='https://github.com/shlomi-perles/simplex') %}
+  {% set footer = namespace(github_href='https://github.com/shlomi-perles/simplex') %}
   {% for link in site.nav %}
   {% if "github" in link.label|lower %}
-  {% set footer.simplex_href = link.href %}
+  {% set footer.github_href = link.href %}
   {% endif %}
   {% endfor %}
-  <span>Built with <a href="{{ footer.simplex_href }}" target="_blank" rel="noreferrer">Simplex</a></span>
+  <span class="site-footer-built">
+    Built with
+    <a
+      href="https://github.com/shlomi-perles/simplex"
+      class="site-footer-simplex"
+      target="_blank"
+      rel="noreferrer"
+    >Simplex</a>
+  </span>
+  <a
+    href="{{ site.nav_url(footer.github_href) }}"
+    class="site-footer-github"
+    aria-label="GitHub"
+    title="GitHub"
+    target="_blank"
+    rel="noreferrer"
+  >
+    <span class="github-square-icon" aria-hidden="true"></span>
+  </a>
 </footer>
 <script src="{{ static('lucide/lucide.min.js') }}" defer></script>
 <script src="{{ static('viewer.js') }}" defer></script>

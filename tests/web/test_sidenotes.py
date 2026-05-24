@@ -7,6 +7,8 @@ def test_inline_footnote_becomes_sidenote() -> None:
     html = render_text("Some text^[a marginal aside] continues.")
     # Tufte structure: inline ref + aside + no footnotes section.
     assert 'class="sidenote-ref"' in html
+    assert 'role="button"' in html
+    assert 'aria-expanded="false"' in html
     assert 'class="sidenote"' in html
     assert "marginal aside" in html
     # The reference label sits between the body text and the aside.

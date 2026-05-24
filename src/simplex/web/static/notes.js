@@ -50,6 +50,115 @@
     for (var i = 0; i < hosts.length; i++) fitOne(hosts[i]);
   }
 
+  function initSidenotePopovers() {
+    var refs = document.querySelectorAll(".sidenote-ref[for]");
+    if (!refs.length) return;
+
+    var narrow = window.matchMedia ? window.matchMedia("(max-width: 1279px)") : null;
+    var popover = null;
+    var activeRef = null;
+
+    function isNarrow() {
+      return !narrow || narrow.matches;
+    }
+
+    function noteFor(ref) {
+      var input = document.getElementById(ref.getAttribute("for") || "");
+      var note = input && input.nextElementSibling;
+      if (!note || !note.classList || !note.classList.contains("sidenote")) return null;
+      return note;
+    }
+
+    function ensurePopover() {
+      if (popover) return popover;
+      popover = document.createElement("div");
+      popover.className = "sidenote-popover";
+      popover.setAttribute("role", "dialog");
+      popover.setAttribute("aria-modal", "true");
+      popover.setAttribute("aria-hidden", "true");
+      popover.innerHTML =
+        '<button type="button" class="sidenote-popover-backdrop" data-sidenote-close aria-label="Close note"></button>' +
+        '<div class="sidenote-popover-sheet">' +
+        '<div class="sidenote-popover-header">' +
+        '<span data-sidenote-title>Note</span>' +
+        '<button type="button" class="sidenote-popover-close" data-sidenote-close aria-label="Close note">x</button>' +
+        "</div>" +
+        '<div class="sidenote-popover-content" data-sidenote-content></div>' +
+        "</div>";
+      document.body.appendChild(popover);
+      popover.querySelectorAll("[data-sidenote-close]").forEach(function (btn) {
+        btn.addEventListener("click", close);
+      });
+      return popover;
+    }
+
+    function close() {
+      if (!popover) return;
+      popover.classList.remove("is-open");
+      popover.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("sidenote-popover-open");
+      if (activeRef) {
+        activeRef.setAttribute("aria-expanded", "false");
+        try { activeRef.focus({ preventScroll: true }); } catch (_) { activeRef.focus(); }
+      }
+      activeRef = null;
+    }
+
+    function open(ref) {
+      var note = noteFor(ref);
+      if (!note) return;
+      var sheet = ensurePopover();
+      var content = sheet.querySelector("[data-sidenote-content]");
+      var title = sheet.querySelector("[data-sidenote-title]");
+      var closeBtn = sheet.querySelector(".sidenote-popover-close");
+      if (content) content.innerHTML = note.innerHTML;
+      if (title) title.textContent = "Note " + ref.textContent.trim();
+      activeRef = ref;
+      ref.setAttribute("aria-expanded", "true");
+      sheet.classList.add("is-open");
+      sheet.setAttribute("aria-hidden", "false");
+      document.body.classList.add("sidenote-popover-open");
+      if (content && window.renderMathInElement) {
+        try {
+          window.renderMathInElement(content, {
+            delimiters: [
+              { left: "\\[", right: "\\]", display: true },
+              { left: "\\(", right: "\\)", display: false },
+            ],
+            throwOnError: false,
+            ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+          });
+        } catch (_) {}
+      }
+      if (closeBtn) {
+        try { closeBtn.focus({ preventScroll: true }); } catch (_) { closeBtn.focus(); }
+      }
+    }
+
+    refs.forEach(function (ref) {
+      ref.addEventListener("click", function (e) {
+        if (!isNarrow()) return;
+        e.preventDefault();
+        open(ref);
+      });
+      ref.addEventListener("keydown", function (e) {
+        if (!isNarrow()) return;
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        open(ref);
+      });
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") close();
+    });
+    if (narrow && typeof narrow.addEventListener === "function") {
+      narrow.addEventListener("change", function () {
+        if (!isNarrow()) close();
+      });
+    }
+  }
+
   // Expose for the KaTeX onload hook in base.html to call once math is
   // typeset.
   window.simplexFitMath = fitAll;
@@ -65,4 +174,10 @@
   }
   window.addEventListener("resize", schedule);
   window.addEventListener("load", schedule);
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initSidenotePopovers);
+  } else {
+    initSidenotePopovers();
+  }
 })();
