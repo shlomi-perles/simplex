@@ -32,7 +32,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "manim-simplex>=0.2.0",
+  "manim-simplex>=0.2.1",
   "manim-slides>=5.1.7",
   "pydantic>=2.7",
   "pydantic-settings>=2.3",
@@ -72,7 +72,7 @@ license-files = ["LICENSE"]
 name = "simplex-web"
 readme = "README.md"
 requires-python = ">=3.13"
-version = "0.2.1"
+version = "0.2.2"
 
 [project.scripts]
 simplex = "simplex.cli.commands:app"
