@@ -34,8 +34,6 @@ jobs:
       uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
     - name: Sync
       run: uv sync --locked
-    - name: Vendor static assets
-      run: bash scripts/vendor.sh
     - name: Cache manim render output
       uses: actions/cache@v4
       with:
