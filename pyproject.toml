@@ -32,7 +32,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "manim-simplex>=0.2.1",
+  "manim-simplex>=0.2.2",
   "manim-slides>=5.1.7",
   "pydantic>=2.7",
   "pydantic-settings>=2.3",
