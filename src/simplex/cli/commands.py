@@ -179,7 +179,7 @@ def test(
         typer.Option("--only", help="Only test this deck slug. Repeatable."),
     ] = None,
 ) -> None:
-    """Smoke-render every deck with ``--write_last_frame --quality l``.
+    """Smoke-render every deck by rendering only the first animation.
 
     Used in CI: catches scene-construction errors without paying for full
     video encoding. Exits non-zero on the first deck that fails to render.

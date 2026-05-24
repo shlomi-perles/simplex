@@ -474,29 +474,16 @@ wheels = [
 [[package]]
 name = "manim-simplex"
 version = "0.2.0"
-source = { editable = "../manim-simplex" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "manim" },
     { name = "manim-slides" },
     { name = "pydantic" },
     { name = "pygments" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "manim", specifier = ">=0.20.1" },
-    { name = "manim-slides", specifier = ">=5.1.7" },
-    { name = "pydantic", specifier = ">=2.7" },
-    { name = "pygments", specifier = ">=2.18" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "basedpyright", specifier = ">=1.13" },
-    { name = "pre-commit", specifier = ">=3.7" },
-    { name = "pytest", specifier = ">=8" },
-    { name = "ruff", specifier = ">=0.6" },
-    { name = "syrupy", specifier = ">=4.6" },
+sdist = { url = "https://files.pythonhosted.org/packages/97/e9/badef1f7ae6d1178f5b03171f9873a554c9b340e5109ed1b59cc756e67ec/manim_simplex-0.2.0.tar.gz", hash = "sha256:5db4a7ebd129d20494e941dee6c0c029b3bb9e679eb17ca382bed9ab0985d6cc", size = 140740, upload-time = "2026-05-24T12:20:55.859Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/76/04/882d7ff08325bb599698103c254309fc7f5d4a059b8297e12f8e20078f80/manim_simplex-0.2.0-py3-none-any.whl", hash = "sha256:d61747cdcd5da25a33424b572a4b7cab9fdedb66510c5ce6ab242dc0d527609b", size = 60163, upload-time = "2026-05-24T12:20:54.228Z" },
 ]
 
 [[package]]
@@ -1401,7 +1388,7 @@ dev = [
 requires-dist = [
     { name = "av", specifier = ">=15.0" },
     { name = "jinja2", specifier = ">=3.1" },
-    { name = "manim-simplex", editable = "../manim-simplex" },
+    { name = "manim-simplex", specifier = ">=0.2.0" },
     { name = "manim-slides", specifier = ">=5.1.7" },
     { name = "markdown-it-py", specifier = ">=3.0" },
     { name = "mdit-py-plugins", specifier = ">=0.4" },

@@ -80,8 +80,9 @@ def test_render_write_last_frame_adds_flag(tmp_path: Path, captured: list[dict[s
     deck = _deck(tmp_path)
     runner.render(deck, output_dir=tmp_path / "out", write_last_frame=True)
     args = captured[0]["args"]
-    # Manim 0.20 spells the smoke-render flag ``--save_last_frame``.
-    assert "--save_last_frame" in args
+    assert "--from_animation_number" in args
+    assert args[args.index("--from_animation_number") + 1] == "0,0"
+    assert "--save_last_frame" not in args
 
 
 def test_render_caching_disabled_adds_flag(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
