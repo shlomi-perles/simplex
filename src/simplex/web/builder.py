@@ -61,7 +61,7 @@ def _copy_static(site_dir: Path) -> None:
     dst = site_dir / "static"
     dst.mkdir(parents=True, exist_ok=True)
     for entry in src.iterdir():
-        if entry.name in {"README.md", ".gitkeep"}:
+        if entry.name in {"README.md", ".gitkeep", "tailwind.input.css"}:
             continue
         target = dst / entry.name
         if entry.is_dir():

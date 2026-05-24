@@ -6,11 +6,15 @@ Vendored runtime assets, copied verbatim to `site/static/` at build time.
 
 - `simplex.css` -- site-specific styles (carousel, deck page, academic
   notes typography, Tufte sidenotes, citations, bibliography).
-- `viewer.js` -- parent-page bridge for the deck iframe + carousel arrows.
+- `tailwind.input.css` -- Tailwind v4 source (CSS-first config + `@source`
+  globs). Compiled to `tailwind.css` by `simplex.web.vendor`.
+- `viewer.js`, `notes.js` -- parent-page bridge for the deck iframe + carousel
+  arrows, and the standalone notes view.
 
 ## Vendored for builds (not committed)
 
-- `tailwind.js` (Tailwind Play CDN -- JIT runtime, required for arbitrary-value classes)
+- `tailwind.css` (compiled from `tailwind.input.css` by the Tailwind v4
+  standalone CLI; binary cached per-user, not shipped in the wheel)
 - `katex/` (CSS + fonts + JS + auto-render)
 - `reveal.js/` (`reveal.js`, `reveal.css`, `reset.css`)
 - `htmx.min.js` (optional, kept for future progressive enhancement)
@@ -20,4 +24,5 @@ Vendored runtime assets, copied verbatim to `site/static/` at build time.
 ## Don't
 
 - Don't load these via CDN -- vendoring keeps Pages offline-safe.
-- Don't edit the vendored files; upgrade them with `scripts/vendor.sh`.
+- Don't edit the vendored files; bump pinned versions in
+  `simplex/web/vendor.py` and let the next build refetch.

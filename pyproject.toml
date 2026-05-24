@@ -109,7 +109,7 @@ artifacts = [
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",
   "src/simplex/web/static/reveal.js/**/*",
-  "src/simplex/web/static/tailwind.js",
+  "src/simplex/web/static/tailwind.input.css",
 ]
 only-include = [
   "LICENSE",
@@ -130,7 +130,7 @@ artifacts = [
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",
   "src/simplex/web/static/reveal.js/**/*",
-  "src/simplex/web/static/tailwind.js",
+  "src/simplex/web/static/tailwind.input.css",
 ]
 packages = ["src/simplex"]
 

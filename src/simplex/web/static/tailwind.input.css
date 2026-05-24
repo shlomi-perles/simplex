@@ -1,0 +1,16 @@
+/* Tailwind CSS v4 source for the Simplex portal.
+ *
+ * Compiled to `tailwind.css` (gitignored) by `simplex.web.vendor` at build
+ * time using the v4 standalone CLI. Sources below are scanned for class
+ * names; only the utilities actually used in the templates end up in the
+ * output, so the shipped stylesheet stays tiny.
+ *
+ * To add new sources (e.g. user-deck HTML), append more `@source` lines.
+ * Theme tweaks belong in a `@theme { ... }` block here -- not in a
+ * `tailwind.config.js`, which v4 has replaced with CSS-first config.
+ */
+
+@import "tailwindcss";
+
+@source "../templates/**/*.html";
+@source "../templates/**/*.j2";
