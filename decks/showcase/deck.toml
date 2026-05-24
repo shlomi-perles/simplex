@@ -19,6 +19,7 @@ entrypoints = [
     "slides.scenes:TrackingHelpers",
     "slides.scenes:ShapeAndDebug",
     "slides.scenes:ScalingHelpers",
+    # "slides.paper_showcase:PaperShowcase",  # requires manim-simplex >= 0.3
 ]
 voiceover = false
 
