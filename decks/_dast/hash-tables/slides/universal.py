@@ -53,9 +53,7 @@ class UniversalHashFamilies(BaseSlide):
         self.play(Write(title))
 
         hash_family_text = (
-            Tex(r"hash family ($\mathcal{H}$)")
-            .match_y(array_text)
-            .set_x(-array_text.get_x())
+            Tex(r"hash family ($\mathcal{H}$)").match_y(array_text).set_x(-array_text.get_x())
         )
         hash_family = get_funcs_bowl().move_to(frame_center).match_x(hash_family_text)
         self.play(Write(hash_family_text))
@@ -142,9 +140,7 @@ class UniversalHashFamilies(BaseSlide):
 
         self.play(Unwrite(whole_family), Unwrite(definition[0][:prob_eq_start]))
         self.play(
-            prob_eq.animate.scale(0.9)
-            .next_to(title, DOWN, buff=1.2)
-            .set_x(frame_center[0]),
+            prob_eq.animate.scale(0.9).next_to(title, DOWN, buff=1.2).set_x(frame_center[0]),
         )
         self.play(Write(hashs_tab))
 
@@ -153,7 +149,9 @@ class UniversalHashFamilies(BaseSlide):
         down_buff = 0.6
         down_arrow = Tex(r"$\Downarrow$").scale(1.3).next_to(prob_eq, DOWN, buff=down_buff)
         for_x_y = Tex(r"for ", "$x_1$", ", ", "$x_4$", "\\ \\ :").next_to(
-            down_arrow, DOWN, buff=down_buff,
+            down_arrow,
+            DOWN,
+            buff=down_buff,
         )
         first_key = for_x_y[1].set_color(SELECT_KEY_COLOR)
         second_key = for_x_y[3].set_color(SELECT_KEY_COLOR)
@@ -184,7 +182,10 @@ class UniversalHashFamilies(BaseSlide):
                 VGroup(
                     *[
                         hashs_tab.get_highlighted_cell(
-                            (j, i), color=PROB_BG_CELL_COLOR, fill_opacity=0, z_index=-20,
+                            (j, i),
+                            color=PROB_BG_CELL_COLOR,
+                            fill_opacity=0,
+                            z_index=-20,
                         )
                         for i in range(1, hashs_tab.row_dim + 1)
                     ]
@@ -204,12 +205,18 @@ class UniversalHashFamilies(BaseSlide):
                     continue
                 anims = animate_collision_prob(i, j, hashs_tab, bg_cells)
                 new_first = (
-                    MathTex(rf"x_{{{LAST_IDX if i == keys_size - 1 else i + 1}}}", color=SELECT_KEY_COLOR)
+                    MathTex(
+                        rf"x_{{{LAST_IDX if i == keys_size - 1 else i + 1}}}",
+                        color=SELECT_KEY_COLOR,
+                    )
                     .move_to(first_key)
                     .align_to(first_key, LEFT)
                 )
                 new_second = (
-                    MathTex(rf"x_{{{LAST_IDX if j == keys_size - 1 else j + 1}}}", color=SELECT_KEY_COLOR)
+                    MathTex(
+                        rf"x_{{{LAST_IDX if j == keys_size - 1 else j + 1}}}",
+                        color=SELECT_KEY_COLOR,
+                    )
                     .move_to(second_key)
                     .align_to(second_key, LEFT + UP)
                 )
@@ -229,8 +236,18 @@ class UniversalHashFamilies(BaseSlide):
         self.play(
             *[
                 Unwrite(o)
-                for o in (down_arrow, for_x_y, alt_def, prob_sq, first_key, second_key,
-                         title, hashs_tab, prob_eq, bg_cells)
+                for o in (
+                    down_arrow,
+                    for_x_y,
+                    alt_def,
+                    prob_sq,
+                    first_key,
+                    second_key,
+                    title,
+                    hashs_tab,
+                    prob_eq,
+                    bg_cells,
+                )
             ],
         )
         self.wait()

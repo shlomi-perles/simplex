@@ -70,11 +70,7 @@ class HashTable(VGroup):
             *[
                 ArrayEntry(
                     r"$\vdots$" if i == array_size - 1 else "",
-                    "m"
-                    if i == array_size
-                    else ""
-                    if i == array_size - 1
-                    else i,
+                    "m" if i == array_size else "" if i == array_size - 1 else i,
                     index_scale=1.4,
                 )
                 for i in range(1, array_size + 1)
@@ -131,7 +127,7 @@ class HashTable(VGroup):
         bottom.next_to(self.keys[-2].frame.get_bottom(), UP, buff=0)
         bottom.become(Difference(bottom_round, bottom))
 
-    def rehash(self, hash_func: Callable[[int], int]) -> "HashTable":
+    def rehash(self, hash_func: Callable[[int], int]) -> HashTable:
         self.hash_func = hash_func
         for i in range(self.keys_size):
             if i == self.keys_size - 2:
@@ -167,9 +163,7 @@ class HashTable(VGroup):
             )
             linked_lists[array_idx] += (
                 ArrayEntry(
-                    r"$x_{\left|U\right|}$"
-                    if i == self.keys_size - 1
-                    else rf"$x_{{{i + 1}}}$",
+                    r"$x_{\left|U\right|}$" if i == self.keys_size - 1 else rf"$x_{{{i + 1}}}$",
                     "",
                 )
                 .scale_to_fit_width(array_entry.width * 0.7)

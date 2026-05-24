@@ -196,9 +196,7 @@ def _presentation_subsections(media_dir: Path, scene: str) -> tuple[Subsection, 
         subs.append(
             Subsection(
                 name=f"{scene} {i}",
-                section_type=(
-                    SimplexSectionType.MAIN if i == 1 else SimplexSectionType.SUB
-                ),
+                section_type=(SimplexSectionType.MAIN if i == 1 else SimplexSectionType.SUB),
                 video=video,
                 duration_s=_media_duration(video),
             )

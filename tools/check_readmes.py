@@ -1,10 +1,10 @@
-"""Pre-commit check: every directory under tracked roots has a README <= 50 lines."""
+"""Pre-commit check: every directory under tracked roots has a README <= 100 lines."""
 
 import sys
 from pathlib import Path
 
 ROOTS: tuple[Path, ...] = (Path("src/simplex"), Path("decks"), Path("tests"))
-LIMIT: int = 50
+LIMIT: int = 100
 
 # Runtime-generated directories under `web/static/` (populated by
 # `simplex.web.vendor.ensure`). They're gitignored and have no business

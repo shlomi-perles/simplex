@@ -34,7 +34,7 @@ def _small_hash_table() -> HashTable:
     ht.keys[1].set_opacity(0)
     ht.keys[-1].next_to(ht.keys[0], DOWN, buff=0)
     ht.keys.match_y(ht.array)
-    for key, val in zip([0, 2], [0, 1]):
+    for key, val in zip([0, 2], [0, 1], strict=True):
         ht.keys[key].set_value(val)
     ht.array[0].value_mob.set_opacity(0)
     for idx in range(2):
@@ -49,8 +49,12 @@ class UniversalHashExamples(BaseSlide):
         self.play(Write(title))
 
         family = VGroup(_small_hash_table(), _small_hash_table()).arrange(DOWN, buff=1)
-        h1 = MathTex(r"h_1", color=FUNCS_COLOR).next_to(family[0], UP, buff=HASH_TABLE_FUNCS_TITLE_BUFF)
-        h2 = MathTex(r"h_2", color=FUNCS_COLOR).next_to(family[1], UP, buff=HASH_TABLE_FUNCS_TITLE_BUFF)
+        h1 = MathTex(r"h_1", color=FUNCS_COLOR).next_to(
+            family[0], UP, buff=HASH_TABLE_FUNCS_TITLE_BUFF
+        )
+        h2 = MathTex(r"h_2", color=FUNCS_COLOR).next_to(
+            family[1], UP, buff=HASH_TABLE_FUNCS_TITLE_BUFF
+        )
         family += VGroup(h1, h2)
         family[0].rehash(lambda x: 0 if x == 2 else 1)
         family[1].rehash(lambda x: 1 if x == 2 else 0)
@@ -58,8 +62,12 @@ class UniversalHashExamples(BaseSlide):
 
         self.region.update(top=title, right=family)
         frame_center = self.region.center
-        q = Tex(r"Is $\mathcal{H}$ a universal hash family?").next_to(title, DOWN, buff=0.65).set_x(
-            frame_center[0],
+        q = (
+            Tex(r"Is $\mathcal{H}$ a universal hash family?")
+            .next_to(title, DOWN, buff=0.65)
+            .set_x(
+                frame_center[0],
+            )
         )
         self.play(Write(q))
         self.play(Write(family))

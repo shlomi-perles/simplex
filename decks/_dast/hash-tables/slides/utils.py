@@ -61,13 +61,16 @@ DEFINITION_TEX_ENV = "{minipage}{8cm}"
 
 # ------------------------------ definitions -------------------------------
 
+
 def get_universal_hash_family_def() -> MathTex:
     eq = MathTex(
         r"\forall x\neq y\in U,"
         r"\underset{h\in\mathcal{H}}{\mathbb{P}}"
         r"\left[h\left(x\right)=h\left(y\right)\right]\leq\frac{1}{m}",
     )
-    color_tex(eq, {"x": SELECT_KEY_COLOR, "y": SELECT_KEY_COLOR, "h": FUNCS_COLOR}, tex_class=MathTex)
+    color_tex(
+        eq, {"x": SELECT_KEY_COLOR, "y": SELECT_KEY_COLOR, "h": FUNCS_COLOR}, tex_class=MathTex
+    )
     return eq
 
 
@@ -105,14 +108,20 @@ def get_univ_def_reminder() -> VGroup:
 
 # --------------------------- bowl of hash functions -----------------------
 
-def get_funcs_bowl(num_format=int, last_func_idx: str = r"\left|\mathcal{H}\right|", gaps=None) -> VGroup:
+
+def get_funcs_bowl(
+    num_format=int, last_func_idx: str = r"\left|\mathcal{H}\right|", gaps=None
+) -> VGroup:
     gaps = gaps if gaps is not None else [7, 5]
     bowl = Arc(start_angle=PI, angle=PI).scale(3)
 
     row1 = VGroup(*[MathTex(rf"h_{{{num_format(i)}}}").scale(1.3) for i in range(1, 1 + gaps[0])])
     row1.arrange(RIGHT)
     row2 = VGroup(
-        *[MathTex(rf"h_{{{num_format(i)}}}").scale(1.3) for i in range(1 + gaps[0], 1 + gaps[0] + gaps[1])]
+        *[
+            MathTex(rf"h_{{{num_format(i)}}}").scale(1.3)
+            for i in range(1 + gaps[0], 1 + gaps[0] + gaps[1])
+        ]
     )
     row2.arrange(RIGHT).next_to(row1, DOWN)
 
@@ -125,6 +134,7 @@ def get_funcs_bowl(num_format=int, last_func_idx: str = r"\left|\mathcal{H}\righ
 
 
 # --------------------------- main hash table example ----------------------
+
 
 def get_main_hash_table_example(title) -> tuple[np.ndarray, HashTable]:
     """Centered hash table + frame center of the body region below ``title``."""
@@ -163,7 +173,10 @@ def get_hash_table_subtitles(ht: HashTable) -> tuple[Text, Text, MathTex]:
 
 # ------------------------- hash family probability table -------------------
 
-def get_hash_family_table(array_size: int, keys_size: int, *, table_size: int = DEFAULT_HASH_FAMILY_TABLE_SIZE, seed=None) -> MobjectTable:
+
+def get_hash_family_table(
+    array_size: int, keys_size: int, *, table_size: int = DEFAULT_HASH_FAMILY_TABLE_SIZE, seed=None
+) -> MobjectTable:
     if seed is not None:
         np.random.seed(seed)
     mapping = [
@@ -216,7 +229,9 @@ def animate_collision_prob(
             *[
                 VGroup(
                     *[
-                        hashs_tab.get_highlighted_cell((j_t, i_t), color=cell_color, fill_opacity=0, z_index=-20)
+                        hashs_tab.get_highlighted_cell(
+                            (j_t, i_t), color=cell_color, fill_opacity=0, z_index=-20
+                        )
                         for i_t in range(1, hashs_tab.row_dim + 1)
                     ]
                 )
@@ -244,11 +259,15 @@ def animate_collision_prob(
             collide_specific = ht.hash_func(i) == i_1 and ht.hash_func(j) == i_2
             if collide_simple or collide_specific:
                 animations.append(
-                    bg_cells[i_tab - 1][j_tab - 1].animate.set_fill(color=cell_color, opacity=cells_opacity),
+                    bg_cells[i_tab - 1][j_tab - 1].animate.set_fill(
+                        color=cell_color, opacity=cells_opacity
+                    ),
                 )
                 for idx in (i, j):
                     colored.append(ht.get_arrow(idx))
-                    animations.append(ht.get_arrow(idx).animate.set_color(SELECT_KEY_COLOR).set_z_index(10))
+                    animations.append(
+                        ht.get_arrow(idx).animate.set_color(SELECT_KEY_COLOR).set_z_index(10)
+                    )
                     animations.append(ht.keys[idx].value_mob.animate.set_color(SELECT_KEY_COLOR))
             elif change_others_opacity:
                 animations.append(bg_cells[i_tab - 1][j_tab - 1].animate.set_fill(opacity=0))
@@ -263,6 +282,7 @@ def animate_collision_prob(
 
 # ----------------------------- base-changing -------------------------------
 
+
 def get_hash_func(p: int, k: int, a: int):
     return lambda x: int(sum((a // p**i % p) * (x // p**i % p) for i in range(k))) % p
 
@@ -270,7 +290,9 @@ def get_hash_func(p: int, k: int, a: int):
 class IntegerBase(Integer):
     """An ``Integer`` mobject that renders in an arbitrary base with leading-zero padding."""
 
-    def __init__(self, value, base, *, zeroes_padding: int = 8, zeroes_opacity: float = 0.3, **kwargs):
+    def __init__(
+        self, value, base, *, zeroes_padding: int = 8, zeroes_opacity: float = 0.3, **kwargs
+    ):
         self.base = base
         self.zeroes_padding = zeroes_padding
         self.zeroes_opacity = zeroes_opacity
@@ -307,7 +329,9 @@ class IntegerBase(Integer):
 class Count(Animation):
     """Linearly interpolate the displayed value of a ``DecimalNumber``."""
 
-    def __init__(self, number: DecimalNumber, start: float, end: float, align=None, **kwargs) -> None:
+    def __init__(
+        self, number: DecimalNumber, start: float, end: float, align=None, **kwargs
+    ) -> None:
         super().__init__(number, **kwargs)
         self.start = start
         self.end = end
@@ -320,7 +344,9 @@ class Count(Animation):
             self.mobject.align_to(self.origin_mob, self.align)
 
 
-def get_base_convert_calc(number: IntegerBase, number_color: str, base_color: str, *, no_padding: bool = True) -> MathTex:
+def get_base_convert_calc(
+    number: IntegerBase, number_color: str, base_color: str, *, no_padding: bool = True
+) -> MathTex:
     s = number._get_num_string(number.get_value())
     if no_padding:
         s = s.lstrip("0")
@@ -338,7 +364,9 @@ def get_base_convert_calc(number: IntegerBase, number_color: str, base_color: st
     return out
 
 
-def get_hash_func_calc(p: int, k: int, a: int, x: int, base_color, keys_color, hash_color) -> tuple[MathTex, MathTex]:
+def get_hash_func_calc(
+    p: int, k: int, a: int, x: int, base_color, keys_color, hash_color
+) -> tuple[MathTex, MathTex]:
     fmt = IntegerBase(x, p, zeroes_padding=k)._get_num_string
     a_str, x_str = fmt(a), fmt(x)
     parts = [rf"h_{{{a_str}}}\left({x_str}\right)="]
@@ -360,11 +388,16 @@ def get_hash_func_calc(p: int, k: int, a: int, x: int, base_color, keys_color, h
 
 # ----------------------------- union bound icon ----------------------------
 
+
 def get_unit_bound() -> VGroup:
     bg = Square(fill_color=PROBABILITY_SPACE_BACK_COLOR, fill_opacity=1).set_z_index(-10)
     right = VGroup(bg.copy(), MathTex(r"+").scale(1.5), bg.copy()).set_z_index(-10)
     leq = MathTex(r"\leq").scale(1.5)
-    e1 = Square(stroke_color=GREEN, fill_color=PROB_BG_CELL_COLOR, fill_opacity=1).scale(0.6).align_to(bg, LEFT + UP)
+    e1 = (
+        Square(stroke_color=GREEN, fill_color=PROB_BG_CELL_COLOR, fill_opacity=1)
+        .scale(0.6)
+        .align_to(bg, LEFT + UP)
+    )
     e2 = e1.copy().align_to(bg, RIGHT + DOWN)
     bg.add(Union(e1, e2, color=PROB_BG_CELL_COLOR, fill_opacity=1).set_stroke(GREEN))
     right[0].add(e1)
@@ -374,6 +407,7 @@ def get_unit_bound() -> VGroup:
 
 
 # ------------------------ Function-call text helper -----------------------
+
 
 def get_func_text(string: str, blue_args: list | None = None, **kwargs):
     """A monospace string with name in yellow, integer/listed args in blue."""
@@ -389,7 +423,7 @@ def get_func_text(string: str, blue_args: list | None = None, **kwargs):
             func_name: YELLOW,
             ",": "#FFA500",  # ORANGE
             **{str(n): BLUE for n in numbers},
-            **{arg: BLUE for arg in blue_args},
+            **dict.fromkeys(blue_args, BLUE),
         },
         **kwargs,
     )
@@ -400,7 +434,9 @@ def get_func_text(string: str, blue_args: list | None = None, **kwargs):
 CODE_MATH_SCALE = 0.9
 
 
-def compile_code_tex_line(line_mob, line_str: str, line_start_idx: int = 0, *, bold_math: bool = True):
+def compile_code_tex_line(
+    line_mob, line_str: str, line_start_idx: int = 0, *, bold_math: bool = True
+):
     """Replace ``$...$`` substrings in a rendered Text with Tex math glyphs."""
     import re
 
@@ -408,7 +444,7 @@ def compile_code_tex_line(line_mob, line_str: str, line_start_idx: int = 0, *, b
     spans = [("$" + m + "$", line_str.index("$" + m + "$")) for m in matches]
     for s, idx in spans:
         idx += line_start_idx
-        replace_word = line_mob[idx:idx + len(s)]
+        replace_word = line_mob[idx : idx + len(s)]
         body = s.strip("$")
         tex_src = rf"$\boldsymbol{{{body}}}$" if bold_math else f"${body}$"
         tex = (
@@ -421,4 +457,4 @@ def compile_code_tex_line(line_mob, line_str: str, line_start_idx: int = 0, *, b
         replace_word[-1].become(tex)
         replace_word[:-1].become(VGroup().scale(0).move_to(tex.get_right()))
         replace_word.set_stroke(width=0, opacity=0)
-        line_mob[idx + len(s):].next_to(replace_word[-1], buff=0.05)
+        line_mob[idx + len(s) :].next_to(replace_word[-1], buff=0.05)

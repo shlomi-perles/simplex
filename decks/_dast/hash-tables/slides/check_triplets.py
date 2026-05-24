@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from manim import (
     BLUE,
     DOWN,
@@ -36,7 +38,7 @@ REMOVE_MATH_SPACE = ""
 
 
 class CheckTriplets(BaseSlide):
-    example_lst = [5, 9, 4, 1, 2]
+    example_lst: ClassVar[list[int]] = [5, 9, 4, 1, 2]
 
     def construct(self) -> None:
         self.next_slide(name="Question - Check Triplets")
@@ -47,27 +49,36 @@ class CheckTriplets(BaseSlide):
         self.wait()
 
     def _show_question(self) -> None:
-        question = BulletedList(
-            r"\textbf{Algorithm:}",
-            r"\textbf{Input:} Array $A$ of n integers.",
-            REMOVE_MATH_SPACE
-            + r"\textbf{Output:} Determine if there exists a triplet forming an arithmetic"
-            r" sequence of length $3$: \[\exists d\ s.t.\ \forall i\ \ a_{i+1}-a_{i}=d\]",
-            "If such a triplet exists, return it.",
-            r"\textbf{Expected Runtime:} $O\left(n^{2}\right)$",
-            tex_environment=DEFINITION_TEX_ENV,
-            dot_scale_factor=3,
-            buff=0.18,
-        ).scale(0.8).next_to(self.title, DOWN).align_to(self.title, LEFT)
+        question = (
+            BulletedList(
+                r"\textbf{Algorithm:}",
+                r"\textbf{Input:} Array $A$ of n integers.",
+                REMOVE_MATH_SPACE
+                + r"\textbf{Output:} Determine if there exists a triplet forming an arithmetic"
+                r" sequence of length $3$: \[\exists d\ s.t.\ \forall i\ \ a_{i+1}-a_{i}=d\]",
+                "If such a triplet exists, return it.",
+                r"\textbf{Expected Runtime:} $O\left(n^{2}\right)$",
+                tex_environment=DEFINITION_TEX_ENV,
+                dot_scale_factor=3,
+                buff=0.18,
+            )
+            .scale(0.8)
+            .next_to(self.title, DOWN)
+            .align_to(self.title, LEFT)
+        )
         color_tex(question, {"A": BLUE}, tex_class=MathTex)
         question_func = (
-            get_func_text("CheckTriplets(A)", ["A"]).match_height(question[0]).next_to(question[0], RIGHT)
+            get_func_text("CheckTriplets(A)", ["A"])
+            .match_height(question[0])
+            .next_to(question[0], RIGHT)
         )
         self.play(Write(question), Write(question_func))
 
         # ---- example ------------------------------------------------
         self.next_slide()
-        example = Tex("Example:").scale(1.2).next_to(question, DOWN, buff=0.4).align_to(question, LEFT)
+        example = (
+            Tex("Example:").scale(1.2).next_to(question, DOWN, buff=0.4).align_to(question, LEFT)
+        )
         arr = ArrayMob("A=", *[str(v) for v in self.example_lst]).match_height(example)
         arr.name_mob[0][0].set_color(BLUE)
         func_call = question_func.copy().match_height(arr.name_mob)
@@ -97,14 +108,23 @@ class CheckTriplets(BaseSlide):
         subtitle = Text("Solution").scale(1.2).next_to(self.title, DOWN).align_to(self.title, LEFT)
         self.play(Write(subtitle))
 
-        naive_title = Text("Naive Solution").scale(0.8).next_to(subtitle, DOWN, buff=0.5).align_to(subtitle, LEFT)
-        naive = BulletedList(
-            r"Use three nested loops to check all possible triplets.",
-            r"\textbf{Runtime:} $O\left(n^{3}\right)$",
-            tex_environment=DEFINITION_TEX_ENV,
-            dot_scale_factor=3,
-            buff=0.18,
-        ).next_to(naive_title, DOWN).align_to(naive_title, LEFT)
+        naive_title = (
+            Text("Naive Solution")
+            .scale(0.8)
+            .next_to(subtitle, DOWN, buff=0.5)
+            .align_to(subtitle, LEFT)
+        )
+        naive = (
+            BulletedList(
+                r"Use three nested loops to check all possible triplets.",
+                r"\textbf{Runtime:} $O\left(n^{3}\right)$",
+                tex_environment=DEFINITION_TEX_ENV,
+                dot_scale_factor=3,
+                buff=0.18,
+            )
+            .next_to(naive_title, DOWN)
+            .align_to(naive_title, LEFT)
+        )
         self.play(Write(VGroup(naive_title, naive[:-1])))
 
         self.next_slide()
@@ -114,19 +134,30 @@ class CheckTriplets(BaseSlide):
         self.next_slide()
         self.play(Unwrite(VGroup(naive_title, naive)))
 
-        observation_title = Text("Observation").scale(0.8).next_to(subtitle, DOWN, buff=0.5).align_to(subtitle, LEFT)
-        observation = BulletedList(
-            REMOVE_MATH_SPACE
-            + r"An arithmetic sequence of length $3$ is determined by its first two elements:"
-            + r"\[\begin{matrix}1)\ b-a=d\\2)\ c-b=d\end{matrix}\overset{2-1}{\Longrightarrow}"
-            r"c=b+\left(b-a\right)=2b-a\]",
-            r"Thus, for each $a, b$ pair, we can check if $2b-a$ exists in $A$ (or even better,"
-            r" in a hash table!).",
-            tex_environment=DEFINITION_TEX_ENV,
-            dot_scale_factor=3,
-            buff=0.4,
-        ).next_to(naive_title, DOWN).align_to(naive_title, LEFT)
-        color_tex(observation, {"a": YELLOW, "b": YELLOW, "c": YELLOW, "A": BLUE}, tex_class=MathTex)
+        observation_title = (
+            Text("Observation")
+            .scale(0.8)
+            .next_to(subtitle, DOWN, buff=0.5)
+            .align_to(subtitle, LEFT)
+        )
+        observation = (
+            BulletedList(
+                REMOVE_MATH_SPACE
+                + r"An arithmetic sequence of length $3$ is determined by its first two elements:"
+                + r"\[\begin{matrix}1)\ b-a=d\\2)\ c-b=d\end{matrix}\overset{2-1}{\Longrightarrow}"
+                r"c=b+\left(b-a\right)=2b-a\]",
+                r"Thus, for each $a, b$ pair, we can check if $2b-a$ exists in $A$ (or even better,"
+                r" in a hash table!).",
+                tex_environment=DEFINITION_TEX_ENV,
+                dot_scale_factor=3,
+                buff=0.4,
+            )
+            .next_to(naive_title, DOWN)
+            .align_to(naive_title, LEFT)
+        )
+        color_tex(
+            observation, {"a": YELLOW, "b": YELLOW, "c": YELLOW, "A": BLUE}, tex_class=MathTex
+        )
         self.play(Write(VGroup(observation_title, observation[:-1])))
 
         self.next_slide()
@@ -135,21 +166,23 @@ class CheckTriplets(BaseSlide):
         # ---- algorithm steps --------------------------------------
         self.next_slide()
         self.play(Unwrite(VGroup(observation_title, observation)))
-        steps = BulletedList(
-            r"Initalize hash table $T$ and insert all elements of $A$.",
-            r"For each $a<b$ pair, check if $2b-a$ exists in $T$.",
-            r"\textbf{Expected Runtime:}",
-            tex_environment=DEFINITION_TEX_ENV,
-            dot_scale_factor=3,
-            buff=0.4,
-        ).next_to(subtitle, DOWN).align_to(subtitle, LEFT)
+        steps = (
+            BulletedList(
+                r"Initialize hash table $T$ and insert all elements of $A$.",
+                r"For each $a<b$ pair, check if $2b-a$ exists in $T$.",
+                r"\textbf{Expected Runtime:}",
+                tex_environment=DEFINITION_TEX_ENV,
+                dot_scale_factor=3,
+                buff=0.4,
+            )
+            .next_to(subtitle, DOWN)
+            .align_to(subtitle, LEFT)
+        )
         color_tex(steps, {"a": YELLOW, "b": YELLOW, "A": BLUE}, tex_class=MathTex)
         self.play(Write(steps[:-1]))
 
         example = (
-            Tex("Example:").scale(1.2)
-            .next_to(steps[:-1], DOWN, buff=0.4)
-            .align_to(steps, LEFT)
+            Tex("Example:").scale(1.2).next_to(steps[:-1], DOWN, buff=0.4).align_to(steps, LEFT)
         )
         self.region.update(top=example)
         arr = (
