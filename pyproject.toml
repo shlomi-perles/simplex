@@ -14,6 +14,23 @@ dev = [
 
 [project]
 authors = [{name = "Shlomi Perles"}]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Education",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Education",
+  "Topic :: Internet :: WWW/HTTP :: Site Management",
+  "Topic :: Multimedia :: Graphics",
+  "Topic :: Multimedia :: Video",
+  "Topic :: Scientific/Engineering :: Visualization",
+  "Typing :: Typed",
+]
 dependencies = [
   "manim-simplex>=0.2.0",
   "manim-slides>=5.1.7",
@@ -35,17 +52,35 @@ dependencies = [
   "pillow>=11.0",
 ]
 description = "Manim-slides presentation framework with a generated web portal."
-license = {text = "MIT"}
+keywords = [
+  "manim",
+  "manim-slides",
+  "animation",
+  "presentation",
+  "lecture",
+  "education",
+  "math",
+  "computer-science",
+  "static-site",
+]
+license = "MIT"
+license-files = ["LICENSE"]
 # PyPI distribution name. The import name stays ``simplex`` (a PEP 420
-# namespace shared with ``manim-simplex``); only the wheel/sdist on PyPI
-# carries the ``-py`` suffix because the bare ``simplex`` slot is taken.
-name = "simplex-py"
+# namespace shared with ``manim-simplex``); the wheel/sdist uses a longer
+# brand name because the bare ``simplex`` slot is taken and short variants
+# are rejected by PyPI's name-similarity guard.
+name = "simplex-web"
 readme = "README.md"
 requires-python = ">=3.13"
 version = "0.2.0"
 
 [project.scripts]
 simplex = "simplex.cli.commands:app"
+
+[project.urls]
+Homepage = "https://github.com/shlomi-perles/simplex"
+Issues = "https://github.com/shlomi-perles/simplex/issues"
+Repository = "https://github.com/shlomi-perles/simplex"
 
 [tool.basedpyright]
 include = ["src", "tests"]
@@ -68,19 +103,36 @@ reportUnknownMemberType = false
 reportUnknownVariableType = false
 typeCheckingMode = "strict"
 
+[tool.hatch.build.targets.sdist]
+artifacts = [
+  "src/simplex/web/static/fonts/**/*",
+  "src/simplex/web/static/htmx.min.js",
+  "src/simplex/web/static/katex/**/*",
+  "src/simplex/web/static/reveal.js/**/*",
+  "src/simplex/web/static/tailwind.js",
+]
+only-include = [
+  "LICENSE",
+  "README.md",
+  "pyproject.toml",
+  "src",
+  "tests",
+]
+
 [tool.hatch.build.targets.wheel]
-# Ship the deck template (and its hidden .gitkeep placeholders) inside the
-# wheel so ``simplex new`` works from any user project, not just the simplex
-# checkout. Hatchling otherwise drops dotfiles by default.
+# Ship the deck template and vendored runtime assets inside the wheel so
+# ``simplex new`` and ``simplex build`` work from installed environments.
+# Hatchling otherwise drops ignored files and dotfile placeholders by default.
 artifacts = [
   "src/simplex/deck/_template/**/*",
   "src/simplex/deck/_template/**/.gitkeep",
+  "src/simplex/web/static/fonts/**/*",
+  "src/simplex/web/static/htmx.min.js",
+  "src/simplex/web/static/katex/**/*",
+  "src/simplex/web/static/reveal.js/**/*",
+  "src/simplex/web/static/tailwind.js",
 ]
 packages = ["src/simplex"]
-
-[tool.hatch.build.targets.wheel.shared-data]
-"src/simplex/web/static" = "simplex/web/static"
-"src/simplex/web/templates" = "simplex/web/templates"
 
 [tool.pytest.ini_options]
 addopts = "-q"
