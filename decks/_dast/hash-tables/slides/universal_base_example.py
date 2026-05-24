@@ -77,15 +77,19 @@ class UniversalHashBaseExample(BaseSlide):
         sub_title = Text("Introduction to Base Changing").scale(0.8).next_to(self.title, DOWN)
 
         base_values = [2, 4, 6, 8, 10, 16]
-        bases = VGroup(
-            *[
-                VGroup(
-                    Tex("Base ", f"{b}", ":"),
-                    IntegerBase(0, b, color=self.numbers_color),
-                ).arrange(RIGHT, buff=0.5)
-                for b in base_values
-            ]
-        ).arrange(DOWN, buff=0.5).next_to(sub_title, DOWN, buff=0.7)
+        bases = (
+            VGroup(
+                *[
+                    VGroup(
+                        Tex("Base ", f"{b}", ":"),
+                        IntegerBase(0, b, color=self.numbers_color),
+                    ).arrange(RIGHT, buff=0.5)
+                    for b in base_values
+                ]
+            )
+            .arrange(DOWN, buff=0.5)
+            .next_to(sub_title, DOWN, buff=0.7)
+        )
         for base in bases:
             base.align_to(bases[0], RIGHT)
             base[0][1].set_color(self.bases_color)
@@ -118,10 +122,16 @@ class UniversalHashBaseExample(BaseSlide):
 
         self.play(bases.animate.to_edge(LEFT))
         calc_arrow = Arrow(
-            bases.get_right() + LEFT, bases_calc.get_left() + RIGHT, buff=0.5,
+            bases.get_right() + LEFT,
+            bases_calc.get_left() + RIGHT,
+            buff=0.5,
         ).next_to(bases[3], RIGHT)
-        sum_eq = MathTex(r"\underset{i=0}{\overset{n}{\sum}}a_{i}b^{i}").next_to(calc_arrow, UP, buff=0)
-        color_tex(sum_eq, {"a_{i}": self.numbers_color, "b^{i}": self.bases_color}, tex_class=MathTex)
+        sum_eq = MathTex(r"\underset{i=0}{\overset{n}{\sum}}a_{i}b^{i}").next_to(
+            calc_arrow, UP, buff=0
+        )
+        color_tex(
+            sum_eq, {"a_{i}": self.numbers_color, "b^{i}": self.bases_color}, tex_class=MathTex
+        )
         self.play(FadeIn(calc_arrow, shift=RIGHT), Write(sum_eq))
 
         # ---- show calculation: base 2 + base 16 -------------------
@@ -136,14 +146,19 @@ class UniversalHashBaseExample(BaseSlide):
         # ---- exit bases section -----------------------------------
         self.next_slide()
         self.play(
-            Unwrite(sub_title), Unwrite(bases), Unwrite(bases_calc),
-            Unwrite(calc_arrow), Unwrite(sum_eq),
+            Unwrite(sub_title),
+            Unwrite(bases),
+            Unwrite(bases_calc),
+            Unwrite(calc_arrow),
+            Unwrite(sum_eq),
         )
 
     def _animate_base_calc(self, base_idx: int, bases: VGroup, bases_calc: VGroup) -> None:
         int_base = bases[base_idx][1]
         bases_calc[base_idx][::4].set_opacity(0)
-        zeroes = int_base.zeroes_padding - len(int_base._get_num_string(int_base.get_value()).lstrip("0"))
+        zeroes = int_base.zeroes_padding - len(
+            int_base._get_num_string(int_base.get_value()).lstrip("0")
+        )
         base_cp = bases[base_idx][1].copy()[zeroes:]
         self.play(
             base_cp.animate.move_to(bases_calc[base_idx]).match_height(bases_calc[base_idx][0]),
@@ -199,9 +214,15 @@ class UniversalHashBaseExample(BaseSlide):
     def _play_U_example(self, example_tex, last_U_def_idx: int) -> None:
         self.next_slide()
         p, k = 2, 5
-        params = Tex(f"Example: $p={p}$, $k={k}$").next_to(
-            example_tex[0][:last_U_def_idx], DOWN, buff=0.7,
-        ).to_edge(LEFT)
+        params = (
+            Tex(f"Example: $p={p}$, $k={k}$")
+            .next_to(
+                example_tex[0][:last_U_def_idx],
+                DOWN,
+                buff=0.7,
+            )
+            .to_edge(LEFT)
+        )
         color_tex(params, {"p": self.bases_color, "k": self.k_color}, tex_class=MathTex)
 
         self.region.update(top=params)
@@ -288,13 +309,21 @@ class UniversalHashBaseExample(BaseSlide):
             color=GREEN,
             stroke_width=6,
         )
-        select_text = MathTex(r"h", f"_{{{fmt(a)}}}", color=YELLOW).next_to(select_arrow, UP, buff=0.1)
+        select_text = MathTex(r"h", f"_{{{fmt(a)}}}", color=YELLOW).next_to(
+            select_arrow, UP, buff=0.1
+        )
         select_arrow.add(select_text)
 
-        params = Tex(f"Example: $p={p}$, $k={k}$").next_to(funcs_bowl, DOWN).align_to(self.title, LEFT)
+        params = (
+            Tex(f"Example: $p={p}$, $k={k}$").next_to(funcs_bowl, DOWN).align_to(self.title, LEFT)
+        )
         color_tex(params, {"p": self.bases_color, "k": self.k_color}, tex_class=MathTex)
 
-        self.play(self.hash_func_def.animate.next_to(self.title, DOWN, buff=0.2).align_to(self.title, LEFT))
+        self.play(
+            self.hash_func_def.animate.next_to(self.title, DOWN, buff=0.2).align_to(
+                self.title, LEFT
+            )
+        )
         self.play(Write(params), Write(ht), Write(funcs_bowl))
         self.play(Write(select_arrow))
 
@@ -327,16 +356,22 @@ class UniversalHashBaseExample(BaseSlide):
 
         self.next_slide()
         self.play(
-            Unwrite(params), Unwrite(ht), Unwrite(funcs_bowl), Unwrite(select_arrow),
-            Unwrite(eq2), Unwrite(mod),
+            Unwrite(params),
+            Unwrite(ht),
+            Unwrite(funcs_bowl),
+            Unwrite(select_arrow),
+            Unwrite(eq2),
+            Unwrite(mod),
         )
 
     # ---------------------------------------------------------------- proof
     def _proof_of_universal_hash_family(self) -> None:
         self.next_slide(name="Universal Hash Families Example 3 - Proof")
-        question = Tex(
-            r"Is $\mathcal{H}=\left\{ h_{a}\middle|a\in U\right\}$ a universal hash family?"
-        ).next_to(self.title, DOWN).align_to(self.title, LEFT)
+        question = (
+            Tex(r"Is $\mathcal{H}=\left\{ h_{a}\middle|a\in U\right\}$ a universal hash family?")
+            .next_to(self.title, DOWN)
+            .align_to(self.title, LEFT)
+        )
         color_tex(question, {"h_{a}": FUNCS_COLOR}, tex_class=MathTex)
         reminder = get_univ_def_reminder().scale(0.7).to_edge(DL, buff=0.3)
         self.play(self.hash_func_def.animate.next_to(reminder, UP))
@@ -345,40 +380,49 @@ class UniversalHashBaseExample(BaseSlide):
 
         # ---- proof equations ---------------------------------------
         self.next_slide()
-        proof = VGroup(
-            MathTex(
-                r"P\left[h_{a}(x)=h_{a}(y)\right]",
-                r"=&P\left[\sum_{i=1}^{k}a_{i}\cdot x_{i}=\sum_{i=1}^{k}a_{i}\cdot y_{i}"
-                r"\ \left(\bmod\ p\right)\right]",
-            ),
-            MathTex(
-                r"=P\left[\sum_{i=1}^{k}a_{i}\cdot\left(x_{i}-y_{i}\right)=0"
-                r"\ \left(\bmod\ p\right)\right]"
-            ),
-            MathTex(
-                r"=P\left[\sum_{i\neq j}a_{i}\cdot\left(x_{i}-y_{i}\right)"
-                r"+a_{j}\left(x_{j}-y_{j}\right)=0\ \left(\bmod\ p\right)\right]"
-            ),
-            MathTex(
-                r"=P\left[\sum_{i\neq j}a_{i}\cdot\left(x_{i}-y_{i}\right)"
-                r"=a_{j}\left(y_{j}-x_{j}\right)\ \left(\bmod\ p\right)\right]"
-            ),
-            MathTex(
-                r"=P\left[\frac{\sum_{i\neq j}a_{i}\cdot\left(x_{i}-y_{i}\right)}"
-                r"{\left(y_{j}-x_{j}\right)}=a_{j}\ \left(\bmod\ p\right)\right]",
-                r"=\frac{1}{p}",
-            ),
-        ).arrange(DOWN, buff=0.3).scale_to_fit_height(
-            (config.frame_height - question.get_bottom()[1]) * 0.95,
+        proof = (
+            VGroup(
+                MathTex(
+                    r"P\left[h_{a}(x)=h_{a}(y)\right]",
+                    r"=&P\left[\sum_{i=1}^{k}a_{i}\cdot x_{i}=\sum_{i=1}^{k}a_{i}\cdot y_{i}"
+                    r"\ \left(\bmod\ p\right)\right]",
+                ),
+                MathTex(
+                    r"=P\left[\sum_{i=1}^{k}a_{i}\cdot\left(x_{i}-y_{i}\right)=0"
+                    r"\ \left(\bmod\ p\right)\right]"
+                ),
+                MathTex(
+                    r"=P\left[\sum_{i\neq j}a_{i}\cdot\left(x_{i}-y_{i}\right)"
+                    r"+a_{j}\left(x_{j}-y_{j}\right)=0\ \left(\bmod\ p\right)\right]"
+                ),
+                MathTex(
+                    r"=P\left[\sum_{i\neq j}a_{i}\cdot\left(x_{i}-y_{i}\right)"
+                    r"=a_{j}\left(y_{j}-x_{j}\right)\ \left(\bmod\ p\right)\right]"
+                ),
+                MathTex(
+                    r"=P\left[\frac{\sum_{i\neq j}a_{i}\cdot\left(x_{i}-y_{i}\right)}"
+                    r"{\left(y_{j}-x_{j}\right)}=a_{j}\ \left(\bmod\ p\right)\right]",
+                    r"=\frac{1}{p}",
+                ),
+            )
+            .arrange(DOWN, buff=0.3)
+            .scale_to_fit_height(
+                (config.frame_height - question.get_bottom()[1]) * 0.95,
+            )
         )
         for i, line in enumerate(proof):
             color_tex(
                 line,
                 {
-                    "x": SELECT_KEY_COLOR, "y": SELECT_KEY_COLOR,
-                    "x_{i}": SELECT_KEY_COLOR, "y_{i}": SELECT_KEY_COLOR,
-                    "x_{j}": SELECT_KEY_COLOR, "y_{j}": SELECT_KEY_COLOR,
-                    "a_{i}": FUNCS_COLOR, "a_{j}": FUNCS_COLOR, "h_{a}": FUNCS_COLOR,
+                    "x": SELECT_KEY_COLOR,
+                    "y": SELECT_KEY_COLOR,
+                    "x_{i}": SELECT_KEY_COLOR,
+                    "y_{i}": SELECT_KEY_COLOR,
+                    "x_{j}": SELECT_KEY_COLOR,
+                    "y_{j}": SELECT_KEY_COLOR,
+                    "a_{i}": FUNCS_COLOR,
+                    "a_{j}": FUNCS_COLOR,
+                    "h_{a}": FUNCS_COLOR,
                     "p": self.bases_color,
                 },
                 tex_class=MathTex,
@@ -407,6 +451,9 @@ class UniversalHashBaseExample(BaseSlide):
         # ---- exit --------------------------------------------------
         self.next_slide()
         self.play(
-            Unwrite(proof), Unwrite(question), Unwrite(reminder),
-            Unwrite(self.hash_func_def), Unwrite(self.title),
+            Unwrite(proof),
+            Unwrite(question),
+            Unwrite(reminder),
+            Unwrite(self.hash_func_def),
+            Unwrite(self.title),
         )

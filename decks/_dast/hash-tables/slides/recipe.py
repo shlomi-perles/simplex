@@ -83,7 +83,9 @@ class HashTableRecipe(BaseSlide):
         )
 
         h_def = MathTex(r"h", r":U\rightarrow\left[m\right]").next_to(
-            ht, UP, buff=HASH_TABLE_FUNCS_TITLE_BUFF,
+            ht,
+            UP,
+            buff=HASH_TABLE_FUNCS_TITLE_BUFF,
         )
         h_def[0].set_color(FUNCS_COLOR)
         self.play(Write(h_def))
@@ -116,9 +118,14 @@ class HashTableRecipe(BaseSlide):
 
         # ---- note about O(1) -----------------------------------------
         self.next_slide()
-        note = Tex("Note: $h$ required to be computed in $O(1)$ time").scale_to_fit_width(
-            ht.width * 1.5,
-        ).to_edge(LEFT + DOWN).to_edge(DOWN, buff=0.2)
+        note = (
+            Tex("Note: $h$ required to be computed in $O(1)$ time")
+            .scale_to_fit_width(
+                ht.width * 1.5,
+            )
+            .to_edge(LEFT + DOWN)
+            .to_edge(DOWN, buff=0.2)
+        )
         color_tex(note, {"h": FUNCS_COLOR}, tex_class=MathTex)
         self.play(Write(note))
 
@@ -170,8 +177,12 @@ class HashTableRecipe(BaseSlide):
             ht.arrows.animate.set_opacity(1),
             ht.keys[2].value_mob.animate.set_color(WHITE),
         )
-        q1 = Tex(r"What if $\left|U\right| \leq m$?").next_to(brace, DOWN, buff=0.7).set_x(
-            -config.frame_width / 4,
+        q1 = (
+            Tex(r"What if $\left|U\right| \leq m$?")
+            .next_to(brace, DOWN, buff=0.7)
+            .set_x(
+                -config.frame_width / 4,
+            )
         )
         self.play(Write(q1))
         self.next_slide()
@@ -200,7 +211,7 @@ class HashTableRecipe(BaseSlide):
         )
         self.play(
             Unwrite(brace),
-            *[Transform(op[-2], x_i) for op, x_i in zip(operations, x_i_texs)],
+            *[Transform(op[-2], x_i) for op, x_i in zip(operations, x_i_texs, strict=True)],
         )
 
         brace_avg = BraceLabel(
@@ -210,7 +221,9 @@ class HashTableRecipe(BaseSlide):
         )
         brace_avg.label.scale(0.6)
         brace_avg.brace.put_at_tip(brace_avg.label)
-        insert_rt = MathTex(r"O\left(1\right)").match_y(operations[0]).align_to(brace_avg.label, LEFT)
+        insert_rt = (
+            MathTex(r"O\left(1\right)").match_y(operations[0]).align_to(brace_avg.label, LEFT)
+        )
         self.play(Write(insert_rt))
         self.next_slide()
         self.play(Write(brace_avg))
@@ -222,11 +235,15 @@ class HashTableRecipe(BaseSlide):
             Unwrite(chain_lbl),
             VGroup(operations, brace_avg, insert_rt).animate.align_to(array_text, UP),
         )
-        ll_req = Tex(
-            r"If\ \  $\mathbb{E}\left[\begin{matrix}\text{linked}\\\text{list's}\\"
-            r"\text{length}\end{matrix}\right]=O\left(1\right)$\ \  ",
-            "then:",
-        ).next_to(operations, DOWN, buff=0.2).align_to(operations, LEFT)
+        ll_req = (
+            Tex(
+                r"If\ \  $\mathbb{E}\left[\begin{matrix}\text{linked}\\\text{list's}\\"
+                r"\text{length}\end{matrix}\right]=O\left(1\right)$\ \  ",
+                "then:",
+            )
+            .next_to(operations, DOWN, buff=0.2)
+            .align_to(operations, LEFT)
+        )
         self.play(Write(ll_req))
 
         # ---- medal --------------------------------------------------

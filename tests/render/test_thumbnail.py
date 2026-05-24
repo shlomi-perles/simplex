@@ -181,12 +181,7 @@ def test_generate_carousel_gif_from_selected_slide(tmp_path: Path) -> None:
     deck_dir = tmp_path / "demo"
     deck_dir.mkdir()
     (deck_dir / "deck.toml").write_text(
-        'slug = "demo"\n'
-        'title = "Demo"\n'
-        'scenes = ["S1"]\n'
-        "\n"
-        "[web]\n"
-        "carousel_gif_slides = [1]\n",
+        'slug = "demo"\ntitle = "Demo"\nscenes = ["S1"]\n\n[web]\ncarousel_gif_slides = [1]\n',
         encoding="utf-8",
     )
     (deck_dir / "slides.py").write_text("", encoding="utf-8")
