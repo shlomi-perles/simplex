@@ -473,7 +473,7 @@ wheels = [
 
 [[package]]
 name = "manim-simplex"
-version = "0.2.0"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "manim" },
@@ -481,9 +481,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/97/e9/badef1f7ae6d1178f5b03171f9873a554c9b340e5109ed1b59cc756e67ec/manim_simplex-0.2.0.tar.gz", hash = "sha256:5db4a7ebd129d20494e941dee6c0c029b3bb9e679eb17ca382bed9ab0985d6cc", size = 140740, upload-time = "2026-05-24T12:20:55.859Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/fd/78ea50d7998fd5c32db465df6add2c5a4b8684cce796e6d524f743b5731d/manim_simplex-0.2.1.tar.gz", hash = "sha256:485373b0dc801042570ffac25656dd20a00119d6fd5795fa00c765842d2f8243", size = 141402, upload-time = "2026-05-24T20:49:12.134Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/04/882d7ff08325bb599698103c254309fc7f5d4a059b8297e12f8e20078f80/manim_simplex-0.2.0-py3-none-any.whl", hash = "sha256:d61747cdcd5da25a33424b572a4b7cab9fdedb66510c5ce6ab242dc0d527609b", size = 60163, upload-time = "2026-05-24T12:20:54.228Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/0f/307695a4f3decb1f8d9a753d0fc105cd14de6917ad045f0c777f88b08374/manim_simplex-0.2.1-py3-none-any.whl", hash = "sha256:fc6df3377925b5573b869a3c8a212ead2cb0def6189956bff38a3162c2429c08", size = 60472, upload-time = "2026-05-24T20:49:10.528Z" },
 ]
 
 [[package]]
@@ -1353,7 +1353,7 @@ wheels = [
 
 [[package]]
 name = "simplex-web"
-version = "0.2.1"
+version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "av" },
@@ -1388,7 +1388,7 @@ dev = [
 requires-dist = [
     { name = "av", specifier = ">=15.0" },
     { name = "jinja2", specifier = ">=3.1" },
-    { name = "manim-simplex", specifier = ">=0.2.0" },
+    { name = "manim-simplex", specifier = ">=0.2.1" },
     { name = "manim-slides", specifier = ">=5.1.7" },
     { name = "markdown-it-py", specifier = ">=3.0" },
     { name = "mdit-py-plugins", specifier = ">=0.4" },
