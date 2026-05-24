@@ -11,11 +11,12 @@ Authors write **vanilla Manim** (`MathTex(...)`, `VGroup(...).arrange(RIGHT)`); 
 | Repo | PyPI | Role |
 |---|---|---|
 | [`manim-simplex`](https://github.com/shlomi-perles/manim-simplex) | `manim-simplex` | The manim plugin: mobjects, theme, `BaseSlide`, the `manim.plugins` entry-point. |
-| `simplex` (this repo) | `simplex-py` | The platform: CLI, deck discovery, render orchestration, web builder. Depends on `manim-simplex`. |
+| [`simplex`](https://github.com/shlomi-perles/simplex) | `simplex-web` | The platform: CLI, deck discovery, render orchestration, web builder. Depends on `manim-simplex`. |
 | [`simplex-lectures-template`](https://github.com/shlomi-perles/simplex-lectures-template) | -- | GitHub Template. Pre-wired user lectures repo. |
 
-The PyPI slot `simplex` was already taken by an unrelated project, so this
-distribution publishes as `simplex-py`. The *import* name is still
+The PyPI slot `simplex` was already taken by an unrelated project, and PyPI's
+name-similarity guard rejects short variants, so this distribution publishes
+as `simplex-web`. The *import* name is still
 `simplex` -- both wheels ship `src/simplex/` **without** `__init__.py` and
 Python's PEP 420 implicit namespace packages merge them at import time, so
 `from simplex.engine import Remove` and `from simplex.cli.commands import app`
@@ -24,6 +25,9 @@ resolve regardless of which wheel ships the module.
 ## Quick start
 
 ```bash
+# Install from PyPI:
+pip install simplex-web
+
 # Bootstrap a fresh checkout (Linux / macOS):
 ./scripts/bootstrap.sh
 
@@ -108,7 +112,7 @@ LaTeX preamble lives on `theme.latex.preamble`. Fixed-width prose blocks use the
 
 ## Style + tooling
 
-- Python **3.14+**, env + lockfile via **uv**, lint + format via **ruff**, types via **basedpyright --strict**.
+- Python **3.13+**, env + lockfile via **uv**, lint + format via **ruff**, types via **basedpyright --strict**.
 - Configuration through frozen **Pydantic v2** models. No bare `dict[str, Any]`.
 - See `STYLE.md` for the full rule set.
 

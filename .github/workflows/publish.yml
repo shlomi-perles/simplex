@@ -1,0 +1,54 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+    - v*
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended \
+                                ffmpeg libcairo2-dev libpango1.0-dev
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b   # v8.1.0
+
+    - name: Sync
+      run: uv sync --locked
+
+    - name: README structure
+      run: python tools/check_readmes.py
+
+    - name: Lint
+      run: uv run --locked ruff check .
+
+    - name: Format check
+      run: uv run --locked ruff format --check .
+
+    - name: Type check
+      run: uv run --locked basedpyright
+
+    - name: Tests
+      run: uv run --locked pytest -q
+
+    - name: Build distributions
+      run: uv build --clear --no-sources
+
+    - name: Publish distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
