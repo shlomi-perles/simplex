@@ -60,3 +60,11 @@ def test_url_resolves_against_base() -> None:
     assert cfg.url("decks/foo/") == "/sub/decks/foo/"
     cfg = SiteConfig(base_url="/sub/")
     assert cfg.url("/decks/foo/") == "/sub/decks/foo/"
+
+
+def test_nav_url_preserves_external_and_hash_links() -> None:
+    cfg = SiteConfig(base_url="/lectures")
+    assert cfg.nav_url("/") == "/lectures/"
+    assert cfg.nav_url("decks/foo/") == "/lectures/decks/foo/"
+    assert cfg.nav_url("https://example.com/repo") == "https://example.com/repo"
+    assert cfg.nav_url("#main") == "#main"

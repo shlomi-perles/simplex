@@ -69,7 +69,9 @@ def _extract_bodies(html: str) -> dict[str, str]:
 
 def _render_sidenote(n: str, num: str, body: str) -> str:
     return (
-        f'<label for="sn-toggle-{n}" class="sidenote-ref" id="snref-{n}">{num}</label>'
+        f'<label for="sn-toggle-{n}" class="sidenote-ref" id="snref-{n}" '
+        f'role="button" tabindex="0" aria-controls="sn-{n}" aria-expanded="false">'
+        f"{num}</label>"
         f'<input type="checkbox" id="sn-toggle-{n}" class="sidenote-toggle" '
         'aria-hidden="true" />'
         f'<aside class="sidenote" id="sn-{n}" role="note">{body}</aside>'

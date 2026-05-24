@@ -9,6 +9,7 @@ import os
 import tomllib
 from pathlib import Path
 from typing import Any, Self
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict
 
@@ -43,6 +44,17 @@ class SiteConfig(BaseModel):
         if not base:
             return f"/{clean}"
         return f"{base}/{clean}"
+
+    def is_external_url(self, href: str) -> bool:
+        """Return true for links that should not be prefixed by `base_url`."""
+        parsed = urlparse(href)
+        return bool(parsed.scheme or parsed.netloc)
+
+    def nav_url(self, href: str) -> str:
+        """Resolve a committed nav href without breaking external links."""
+        if self.is_external_url(href) or href.startswith("#"):
+            return href
+        return self.url(href)
 
     @classmethod
     def load(cls, repo_root: Path | None = None) -> Self:

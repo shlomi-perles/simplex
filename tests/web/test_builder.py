@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from simplex.web.builder import build
-from simplex.web.site_config import SiteConfig
+from simplex.web.site_config import NavLink, SiteConfig
 
 
 def _write_deck(root: Path, slug: str, title: str, *, scenes: tuple[str, ...] = ()) -> None:
@@ -60,6 +60,36 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     slides_html = (site_dir / "decks" / "alpha" / "slides.html").read_text(encoding="utf-8")
     assert "Reveal" in slides_html
     assert "--simplex-bg" in slides_html
+
+
+def test_build_resolves_nav_links_against_base_url_and_moves_github_to_footer(
+    tmp_path: Path,
+) -> None:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
+
+    site_dir = tmp_path / "site"
+    build(
+        decks_dir=decks_dir,
+        site_dir=site_dir,
+        render=False,
+        site_cfg=SiteConfig(
+            brand="Simplex",
+            base_url="/simplex-lectures-template",
+            nav=(
+                NavLink(label="Decks", href="/"),
+                NavLink(label="GitHub", href="https://github.com/example/project"),
+            ),
+        ),
+    )
+
+    index_html = (site_dir / "index.html").read_text(encoding="utf-8")
+    assert 'href="/simplex-lectures-template/"' in index_html
+    assert 'class="site-nav-link site-nav-link-icon-only"' not in index_html
+    assert 'class="site-footer-github"' in index_html
+    assert 'https://github.com/example/project' in index_html
+    assert 'class="site-footer-simplex"' in index_html
 
 
 def test_build_emits_section_pages_and_orders(tmp_path: Path) -> None:

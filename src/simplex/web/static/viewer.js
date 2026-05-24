@@ -269,7 +269,7 @@
 
     function syncColorSetting() {
       if (!colorSetting) return;
-      deck.classList.toggle("is-grayscale", !colorSetting.checked);
+      deck.classList.toggle("is-light-preview", colorSetting.checked);
     }
 
     function closeSettings() {

@@ -188,6 +188,9 @@ nav = [
 ]
 ```
 
+Links labeled `GitHub` are shown as the footer GitHub icon, next to the
+`Built with Simplex` mark.
+
 Deployment-only settings are read from environment variables:
 
 - `SIMPLEX_BASE_URL`
