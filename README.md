@@ -1,120 +1,230 @@
 # Simplex
 
-A Manim-slides presentation framework with a generated web portal.
+[![PyPI version](https://img.shields.io/pypi/v/simplex-web.svg)](https://pypi.org/project/simplex-web/)
+[![Python](https://img.shields.io/pypi/pyversions/simplex-web.svg)](https://pypi.org/project/simplex-web/)
+[![CI](https://github.com/shlomi-perles/simplex/actions/workflows/ci.yml/badge.svg)](https://github.com/shlomi-perles/simplex/actions/workflows/ci.yml)
+[![License](https://img.shields.io/pypi/l/simplex-web.svg)](https://github.com/shlomi-perles/simplex/blob/main/LICENSE)
 
-Authors write **vanilla Manim** (`MathTex(...)`, `VGroup(...).arrange(RIGHT)`); Simplex configures defaults underneath via frozen theme tokens. A `simplex new` command scaffolds a new deck; `simplex build` renders every deck and produces a static portal for GitHub Pages.
+Simplex is a Manim presentation workflow with a generated static web portal.
+Write normal Manim scenes, mark slide boundaries with `manim-slides`, and let
+Simplex render the deck, reconcile slide metadata, build thumbnails, render
+notes, and publish a browsable site.
 
-## The three repos
+The PyPI distribution is `simplex-web`. It installs the `simplex` command and
+imports into the `simplex.*` namespace.
 
-`simplex` is one of three packages that together make up the v0.2.0 toolkit:
+## Why Simplex?
 
-| Repo | PyPI | Role |
+- Author scenes with standard Manim objects such as `MathTex`, `VGroup`,
+  `Axes`, and `Animation`.
+- Use `manim-simplex` slide bases, layout regions, theme tokens, and mobjects.
+- Organize decks under `decks/` with a small `deck.toml`.
+- Build a static portal with deck pages, notes, citations, math rendering,
+  thumbnails, RevealJS playback, and optional live reload.
+- Keep the rendered video frames clean; navigation chrome lives in the web
+  viewer where it can be changed without re-rendering videos.
+
+## Packages
+
+Simplex is split into a small toolkit:
+
+| Repository | PyPI | Purpose |
 |---|---|---|
-| [`manim-simplex`](https://github.com/shlomi-perles/manim-simplex) | `manim-simplex` | The manim plugin: mobjects, theme, `BaseSlide`, the `manim.plugins` entry-point. |
-| [`simplex`](https://github.com/shlomi-perles/simplex) | `simplex-web` | The platform: CLI, deck discovery, render orchestration, web builder. Depends on `manim-simplex`. |
-| [`simplex-lectures-template`](https://github.com/shlomi-perles/simplex-lectures-template) | -- | GitHub Template. Pre-wired user lectures repo. |
+| [`manim-simplex`](https://github.com/shlomi-perles/manim-simplex) | `manim-simplex` | Manim plugin, themes, slide bases, mobjects, and manifest schema. |
+| [`simplex`](https://github.com/shlomi-perles/simplex) | `simplex-web` | CLI, deck discovery, render orchestration, static portal builder. |
+| [`simplex-lectures-template`](https://github.com/shlomi-perles/simplex-lectures-template) | - | Starter lectures repository. |
 
-The PyPI slot `simplex` was already taken by an unrelated project, and PyPI's
-name-similarity guard rejects short variants, so this distribution publishes
-as `simplex-web`. The *import* name is still
-`simplex` -- both wheels ship `src/simplex/` **without** `__init__.py` and
-Python's PEP 420 implicit namespace packages merge them at import time, so
-`from simplex.engine import Remove` and `from simplex.cli.commands import app`
-resolve regardless of which wheel ships the module.
+The import namespace is still `simplex`. Both `manim-simplex` and
+`simplex-web` intentionally use a PEP 420 namespace package so their modules
+merge at runtime.
 
-## Quick start
+## Requirements
+
+- Python 3.13 or newer
+- FFmpeg
+- A LaTeX distribution
+- Manim's native dependencies, including Cairo and Pango on Linux
+
+Typical system packages:
 
 ```bash
-# Install from PyPI:
+# Ubuntu / Debian
+sudo apt-get install texlive-latex-extra texlive-fonts-recommended ffmpeg \
+                     libcairo2-dev libpango1.0-dev
+```
+
+```powershell
+# Windows
+winget install MiKTeX.MiKTeX
+winget install Gyan.FFmpeg
+```
+
+After installation, run:
+
+```bash
+simplex doctor
+```
+
+## Install
+
+```bash
 pip install simplex-web
-
-# Bootstrap a fresh checkout (Linux / macOS):
-./scripts/bootstrap.sh
-
-# Or on Windows:
-.\\scripts\\bootstrap.ps1
-
-# Scaffold a new deck and render it:
-uv run simplex new my-first-deck
-uv run simplex render my-first-deck
-
-# Generate the portal and preview it locally:
-uv run simplex build
-uv run simplex serve
 ```
 
-## Repository layout
+With `uv`:
 
-```
-simplex/
-|-- src/simplex/          (no __init__.py -- PEP 420 namespace)
-|   |-- deck/             DeckConfig, discovery, scaffolder
-|   |-- render/           runner, reconcile, html/pdf/pptx, thumbnail
-|   |-- web/              markdown notes + Jinja portal + SSE reload
-|   `-- cli/              Typer entry point
-|-- decks/                author content (one directory per deck)
-`-- tests/
-
-# Plugin half (mobjects, theme, slide bases) lives in manim-simplex.
+```bash
+uv add simplex-web
 ```
 
-Every directory ships a short `README.md` (<=50 lines) covering *scope*, *public surface*, and *don'ts*. Only this root README is long-form.
+For local development in this repository:
 
-## Authoring a deck
-
-A deck is three files plus optional assets:
-
-```
-decks/my-deck/
-|-- deck.toml      slug, title, summary, tags, theme, scenes, quality
-|-- slides.py      vanilla Manim, subclassing simplex.slides.*
-|-- notes.md       English notes rendered into the portal
-`-- assets/
+```bash
+uv sync
+uv run simplex doctor
 ```
 
-Inside `slides.py` you write plain Manim -- the framework's only contribution is the base class plus a pure `make_chrome` factory:
+## Quick Start
+
+Create a new deck in an existing project:
+
+```bash
+simplex new algorithms/hash-tables
+simplex render hash-tables
+simplex build
+simplex serve
+```
+
+Then open:
+
+```text
+http://localhost:8000
+```
+
+To start from the GitHub template instead:
+
+```bash
+simplex init my-lectures
+cd my-lectures
+simplex new first-deck
+simplex build
+simplex serve
+```
+
+## Deck Layout
+
+`simplex new hash-tables` creates a deck like this:
+
+```text
+decks/hash-tables/
+|-- deck.toml
+|-- manim.cfg
+|-- notes.md
+|-- refs.bib
+|-- assets/
+`-- slides/
+    |-- __init__.py
+    `-- intro.py
+```
+
+The important fields in `deck.toml` are:
+
+```toml
+slug = "hash-tables"
+title = "Hash Tables"
+summary = "A one-line deck summary."
+theme = "dastimator_dark"
+quality = "high_quality"
+entrypoints = ["slides.intro:Intro"]
+```
+
+`entrypoints` points to scene classes inside the deck directory. Legacy
+`scenes = ["Intro"]` is still accepted for single-file `slides.py` decks, but
+`entrypoints` is the preferred layout.
+
+## Authoring Slides
+
+A scene is ordinary Manim plus the Simplex slide base:
 
 ```python
-from manim import MathTex, ORIGIN, Write
-from simplex.slides import BaseSlide, make_chrome
+from manim import DOWN, ORIGIN, Tex, Write
+
+from simplex.slides import BaseSlide
 from simplex.theme.context import get_active_theme
 
 
-class FermatLittleTheorem(BaseSlide):
-    def setup(self) -> None:
-        super().setup()
-        chrome = make_chrome(get_active_theme(), self.region, header="Fermat's little theorem")
-        self.add_to_canvas(**chrome.mobjects)
-        self.region = chrome.body_region
-
+class Intro(BaseSlide):
     def construct(self) -> None:
-        eq = MathTex(r"a^{p-1} \equiv 1 \pmod p")
-        self.region.place(eq, ORIGIN)
-        self.play(Write(eq))
-        self.next_slide()  # bare first call -> MAIN named "Fermat Little Theorem"
+        theme = get_active_theme()
+
+        title = Tex("Hello, Simplex", font_size=theme.typography.h1)
+        self.region.place(title, ORIGIN)
+
+        subtitle = Tex(r"$e^{i\pi} + 1 = 0$", font_size=theme.typography.h2)
+        subtitle.next_to(title, DOWN, buff=0.4)
+
+        self.play(Write(title), Write(subtitle))
+        self.next_slide()
 ```
 
-No factories, no wrappers, no anti-corruption wall. The theme provides defaults, `self.region` provides bounded layout, and `clear_scene(exclude=...)` provides bulk fade-outs. Slide numbering / wall clock live in the RevealJS host (toggle via `[web]` in `deck.toml`), not the rendered frames.
+`BaseSlide` comes from `manim-simplex`. It provides the default theme,
+bounded layout region, slide lifecycle helpers, and section metadata used by
+the web builder.
 
-## Theme tokens
+## Notes And Site
 
-Presets are frozen `Theme` instances, not subclasses, so swapping the visual identity at runtime is one assignment:
+Each deck can include `notes.md`. The site builder renders Markdown notes,
+inline math, display math, citations from `refs.bib`, and slide references.
 
-```python
-from simplex.theme import active_theme, presets
+Site-wide options live in `site.toml`:
 
-with active_theme(presets.ACADEMIC_LIGHT):
-    # all slides constructed here pick up the light palette
-    ...
+```toml
+brand = "Simplex"
+tagline = "Manim presentations, rendered."
+
+nav = [
+  { label = "Decks", href = "/" },
+  { label = "GitHub", href = "https://github.com/shlomi-perles/simplex" },
+]
 ```
 
-LaTeX preamble lives on `theme.latex.preamble`. Fixed-width prose blocks use the `TexPage` mobject (default 20 cm, override via `width_cm=…` kwarg or a class attribute on a subclass).
+Deployment-only settings are read from environment variables:
 
-## Style + tooling
+- `SIMPLEX_BASE_URL`
+- `SIMPLEX_GA_TAG`
+- `SIMPLEX_BRAND`
+- `SIMPLEX_PREVIEW`
 
-- Python **3.13+**, env + lockfile via **uv**, lint + format via **ruff**, types via **basedpyright --strict**.
-- Configuration through frozen **Pydantic v2** models. No bare `dict[str, Any]`.
-- See `STYLE.md` for the full rule set.
+## CLI
+
+| Command | Purpose |
+|---|---|
+| `simplex new <slug>` | Create `decks/<slug>/` from the bundled template. |
+| `simplex new <section>/<slug>` | Create a deck inside a named section. |
+| `simplex init [dir]` | Create a lectures repo from the GitHub template. |
+| `simplex render <slug>` | Render one deck into `site/decks/<slug>/`. |
+| `simplex render <slug>::<Scene>` | Render one scene from a deck. |
+| `simplex build` | Render decks and build the static portal under `site/`. |
+| `simplex build --no-render` | Rebuild portal HTML from existing render output. |
+| `simplex serve [--watch]` | Serve `site/` locally, optionally with live reload. |
+| `simplex test` | Smoke-render decks by rendering only the first animation. |
+| `simplex clean` | Remove generated `site/` and `media/` output. |
+| `simplex doctor` | Check required binaries on `PATH`. |
+
+## Development
+
+```bash
+git clone https://github.com/shlomi-perles/simplex.git
+cd simplex
+uv sync
+uv run ruff check .
+uv run ruff format --check .
+uv run basedpyright
+uv run pytest -q
+```
+
+The release workflow uses GitHub Actions Trusted Publishing to upload
+`simplex-web` to PyPI. No PyPI API token is stored in the repository.
 
 ## License
 
