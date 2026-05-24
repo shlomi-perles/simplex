@@ -33,7 +33,7 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
     - name: Sync
-      run: uv sync
+      run: uv sync --locked
     - name: Vendor static assets
       run: bash scripts/vendor.sh
     - name: Cache manim render output
@@ -46,7 +46,7 @@ jobs:
         restore-keys: |
           simplex-media-
     - name: Build site
-      run: uv run simplex build
+      run: uv run --locked simplex build
     - name: Upload Pages artifact
       uses: actions/upload-pages-artifact@v3
       with:

@@ -73,8 +73,8 @@ def render(
     """Render every scene in ``deck`` into ``output_dir`` via manim-slides.
 
     When ``scenes`` is non-empty, only those class names are rendered.
-    When ``write_last_frame=True``, manim writes only the last frame of
-    each section (used by ``simplex test`` for fast smoke checks).
+    When ``write_last_frame=True``, render only the first animation in each
+    scene. This still constructs the full scene while keeping smoke checks fast.
     """
     groups = deck.resolve_entrypoints()
     if not groups:
@@ -97,9 +97,10 @@ def render(
     if not deck.caching:
         base_args.append("--disable_caching")
     if write_last_frame:
-        # Manim 0.20 renamed the flag from ``--write_last_frame`` to
-        # ``--save_last_frame``; both produce the same single-PNG output.
-        base_args.append("--save_last_frame")
+        # ``--save_last_frame`` conflicts with ``save_sections``: Manim tries
+        # to stitch section videos from image-only output. Rendering one
+        # animation keeps smoke checks cheap while still exercising the scene.
+        base_args.extend(["--from_animation_number", "0,0"])
 
     # Carry the deck's theme name across the subprocess via env var; the
     # manim plugin in the child interpreter reads ``SIMPLEX_THEME`` to pick
