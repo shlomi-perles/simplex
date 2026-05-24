@@ -1,6 +1,5 @@
 """`simplex render` flags: --scene filter, triple-syntax target."""
 
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +8,10 @@ from typer.testing import CliRunner
 
 from simplex.cli import commands
 from simplex.cli.commands import app
+
+
+def _noop_export(deck: Any, *, output_dir: Path) -> None:
+    pass
 
 
 def _make_deck(decks_dir: Path) -> None:
@@ -25,7 +28,7 @@ def _make_deck(decks_dir: Path) -> None:
 
 
 @pytest.fixture
-def stub_render(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, Any]]]:
+def stub_render(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     calls: list[dict[str, Any]] = []
 
     def fake_render(
@@ -45,7 +48,7 @@ def stub_render(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[dict[str, Any]
         )
 
     monkeypatch.setattr(commands.runner, "render", fake_render)
-    monkeypatch.setattr(commands.pdf, "export", lambda deck, output_dir: None)
+    monkeypatch.setattr(commands.pdf, "export", _noop_export)
     return calls
 
 
@@ -82,7 +85,7 @@ def test_render_unknown_scene_fails(project: Path, monkeypatch: pytest.MonkeyPat
         raise ValueError("unknown scene name(s): ['Ghost']")
 
     monkeypatch.setattr(commands.runner, "render", boom)
-    monkeypatch.setattr(commands.pdf, "export", lambda deck, output_dir: None)
+    monkeypatch.setattr(commands.pdf, "export", _noop_export)
     result = CliRunner().invoke(app, ["render", "demo", "--scene", "Ghost"])
     assert result.exit_code != 0
 

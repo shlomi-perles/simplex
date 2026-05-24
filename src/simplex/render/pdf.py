@@ -26,5 +26,7 @@ def export(deck: DeckConfig, *, output_dir: Path) -> Path:
         list(scenes),
         media_dir / "slides",
     )
-    PDF(presentation_configs=presentation_configs).convert_to(pdf_path)
+    PDF(presentation_configs=presentation_configs).convert_to(  # pyright: ignore[reportCallIssue]
+        pdf_path
+    )
     return pdf_path

@@ -5,7 +5,7 @@ from pathlib import Path
 import av
 import numpy as np
 import pytest
-from PIL import Image
+from PIL import Image, ImageSequence
 
 from simplex.deck.config import DeckConfig
 from simplex.manifest import DeckManifest, MainSlide, Subsection
@@ -223,4 +223,4 @@ def test_generate_carousel_gif_from_selected_slide(tmp_path: Path) -> None:
     with Image.open(gif) as image:
         image.load()
         assert image.size[0] == 320
-        assert image.n_frames >= 1
+        assert sum(1 for _ in ImageSequence.Iterator(image)) >= 1

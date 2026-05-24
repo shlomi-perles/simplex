@@ -8,6 +8,7 @@ import socketserver
 import subprocess
 import sys
 import threading
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Annotated
 
@@ -311,7 +312,7 @@ async def _watch_loop() -> None:
             console.print(f"[red]build failed[/red]: {exc}")
 
 
-def _affected_deck_slugs(changes: set[tuple[object, str]]) -> set[str]:
+def _affected_deck_slugs(changes: Iterable[tuple[object, str]]) -> set[str]:
     """Map watchfiles change paths to the deck slugs they affect.
 
     A change under ``decks/<slug>/...`` affects that slug. A change under
