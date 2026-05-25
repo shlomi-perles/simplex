@@ -107,7 +107,7 @@ def render_html(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     main_views = _copy_segments(manifest, output_dir)
-    palette_css = render_web_css(deck.resolved_web_palette())
+    palette_css = render_web_css(deck.resolved_web_palette(), code_style=deck.resolved_code_style())
     deck_custom_css = ""
     if deck.web.custom_css_path is not None:
         candidate = deck.path / deck.web.custom_css_path

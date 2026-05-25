@@ -280,7 +280,9 @@ def _build_deck(
         slides_pdf_name=filenames.pdf_name(deck, "slides"),
         notes_pdf_name=filenames.pdf_name(deck, "note"),
         notes_html=notes_html,
-        palette_css=render_web_css(deck.resolved_web_palette()),
+        palette_css=render_web_css(
+            deck.resolved_web_palette(), code_style=deck.resolved_code_style()
+        ),
         slides_version=_file_version(slides_html),
     )
     (deck_out / "index.html").write_text(page, encoding="utf-8")
@@ -336,7 +338,8 @@ def _site_palette_css(site_cfg: SiteConfig) -> str:
     from simplex.theme.presets import get as get_theme
 
     theme_name = getattr(site_cfg, "theme", None) or "simplex_dark"
-    return render_web_css(get_theme(theme_name).web_palette)
+    theme = get_theme(theme_name)
+    return render_web_css(theme.web_palette, code_style=getattr(theme, "code_style", None))
 
 
 def build(
