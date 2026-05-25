@@ -14,7 +14,8 @@ extraction, PDF / PowerPoint export, notes PDF export, HTML viewer emission.
   `manim_slides.convert.PowerPoint`.
 - `notes_pdf.export(deck, notes_path, output_dir, slide_refs=None,
   bibliography=None)` -- best-effort LaTeX PDF rendering for `notes.md`,
-  writing `<title>-note.pdf`.
+  writing `<title>-note.pdf`. The exporter preserves `\label{}` /
+  `\autoref{}` and emits `amsthm` environments for theorem-style callouts.
 - `reconcile.build_manifest(deck, media_dir)` -> `DeckManifest`
   (a tuple of `MainSlide`, each with its own `subsections`).
 - `thumbnail.generate(deck, manifest, site_deck_dir, cache_dir)` --

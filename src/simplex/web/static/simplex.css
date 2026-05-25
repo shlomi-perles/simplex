@@ -127,7 +127,7 @@
   --notes-blockquote-bg: #f3eedd;
   --notes-code-bg: #f3efe2;
   --notes-pre-bg: #f7f9fc;
-  --notes-pre-fg: #17202a;
+  --notes-pre-fg: #a9b7c6;
   --notes-sidenote-bg: #fbf6e6;
 
   --font-sans: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -1034,6 +1034,8 @@ body {
   padding-left: 1.6rem;
   margin: 0.6em 0;
 }
+.deck-notes ul { list-style: disc outside; }
+.deck-notes ol { list-style: decimal outside; }
 .deck-notes ul li::marker { color: var(--notes-fg-dim); }
 
 .deck-notes table {
@@ -1560,6 +1562,14 @@ body {
 }
 .sidenote-popover-content > :first-child { margin-top: 0; }
 .sidenote-popover-content > :last-child { margin-bottom: 0; }
+.sidenote-popover-content ul {
+  list-style: disc outside;
+  padding-left: 1.25rem;
+}
+.sidenote-popover-content ol {
+  list-style: decimal outside;
+  padding-left: 1.25rem;
+}
 body.sidenote-popover-open {
   overflow: hidden;
 }

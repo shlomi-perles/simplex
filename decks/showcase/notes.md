@@ -36,6 +36,16 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 - `DN(callable_or_VT, ...)` attaches an `add_updater`, NOT `Mobject.always` -- the latter would snapshot the value once at attach time (a documented Manim gotcha).
 - The auto-promoted `next_slide()` name (when the first call is bare) splits PascalCase boundaries (`DFSLecture` → `"DFS Lecture"`).
 
+## Callout references
+
+> **Theorem.** \label{thm:simplex-callout}
+> Theorem-style callouts are numbered automatically and can be referenced by label.
+
+> **Definition.** \label{defn:simplex-region}
+> A Simplex region is a rectangular anchor system that places Manim mobjects with consistent spacing.
+
+Use `\ref{thm:simplex-callout}` for \ref{thm:simplex-callout}, and `\autoref{defn:simplex-region}` for \autoref{defn:simplex-region}. The notes PDF emits matching LaTeX theorem environments.
+
 ## Math sample
 
 Inline: $\sum_{k=1}^n k = \tfrac{n(n+1)}{2}$.

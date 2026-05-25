@@ -181,6 +181,11 @@ Prefer label-based slide refs such as `[slide:key-idea]`; numeric refs still
 work for quick drafts. When a TeX engine is available, builds also emit
 `<title>-note.pdf` for the deck download menu.
 
+Theorem-style notes use Markdown blockquotes with TeX labels. Write
+`> **Theorem.** \label{thm:first}` and reference it with `\ref{thm:first}`
+or `\autoref{thm:first}`; the web preview numbers it automatically and the
+notes PDF emits matching `amsthm` environments.
+
 Site-wide options live in `site.toml`:
 
 ```toml

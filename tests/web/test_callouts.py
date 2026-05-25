@@ -19,6 +19,7 @@ def test_definition_uses_amber_palette_via_class() -> None:
     assert "callout-definition" in html
     # Unnumbered callouts auto-number sequentially.
     assert 'id="definition-1"' in html
+    assert ">Definition 1.<" in html
 
 
 def test_lemma_proposition_corollary_remark() -> None:
@@ -60,17 +61,43 @@ def test_ref_resolves_to_display_label() -> None:
     assert ">theorem-3-1<" not in html
 
 
+def test_labelled_callout_resolves_ref_and_autoref_to_label() -> None:
+    md = (
+        "> **Theorem.** \\label{thm:first} Every graph has a vertex.\n\n"
+        r"See \ref{thm:first} and \autoref{thm:first}."
+    )
+    html = render_text(md)
+    assert 'id="thm:first"' in html
+    assert r"\label" not in html
+    assert ">Theorem 1.<" in html
+    assert html.count('href="#thm:first"') == 2
+    assert html.count(">Theorem 1<") >= 2
+
+
 def test_unresolved_ref_marked_stale() -> None:
     html = render_text(r"See \ref{theorem-9-9}.")
     assert "ref-stale" in html
     assert "?" in html  # the fallback suffix
 
 
-def test_unnumbered_callouts_get_unique_ids() -> None:
-    md = "> **Proof.** First proof.\n\nintermezzo\n\n> **Proof.** Second proof.\n"
+def test_unnumbered_callouts_get_independent_ids() -> None:
+    md = (
+        "> **Theorem.** First theorem.\n\n"
+        "> **Definition.** First definition.\n\n"
+        "> **Theorem.** Second theorem.\n\n"
+        "> **Proof.** First proof.\n\n"
+        "> **Proof.** Second proof.\n"
+    )
     html = render_text(md)
+    assert 'id="theorem-1"' in html
+    assert 'id="definition-1"' in html
+    assert 'id="theorem-2"' in html
     assert 'id="proof-1"' in html
     assert 'id="proof-2"' in html
+    assert ">Theorem 1.<" in html
+    assert ">Definition 1.<" in html
+    assert ">Theorem 2.<" in html
+    assert ">Proof.<" in html
 
 
 def test_callout_inside_blockquote_keeps_inner_strong() -> None:

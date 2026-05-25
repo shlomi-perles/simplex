@@ -1,4 +1,4 @@
-r"""markdown-it-py plugin -- `\ref{id}` -> cross-reference placeholder.
+r"""markdown-it-py plugin -- `\ref{id}` / `\autoref{id}` placeholders.
 
 Emits ``<a class="ref" data-simplex-ref="id" href="#id">id</a>``. The
 callouts post-processor (`web/callouts.py`) resolves the placeholder to
@@ -17,8 +17,9 @@ from markdown_it.rules_inline import StateInline
 
 NAME = "ref"
 
-# `\ref{id}` -- id can include letters, digits, dashes, dots, colons, slashes.
-_PATTERN = re.compile(r"\\ref\{([A-Za-z0-9_:\-./]+)\}")
+# `\ref{id}` / `\autoref{id}` -- id can include letters, digits, dashes,
+# dots, colons, slashes.
+_PATTERN = re.compile(r"\\(?:auto)?ref\{([A-Za-z0-9_:\-./]+)\}")
 
 
 def make_plugin() -> Any:

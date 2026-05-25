@@ -1,24 +1,25 @@
 r"""Theorem-environment callouts + ``\ref{}`` resolution.
 
-Rewrites ``<blockquote><p><strong>Theorem 3.1.</strong>...</p></blockquote>``
-shapes into colour-coded, anchorable ``<aside>`` blocks:
+Rewrites ``<blockquote><p><strong>Theorem.</strong>\label{thm:x}...</p></blockquote>``
+and the older numbered ``<strong>Theorem 3.1.</strong>`` shape into
+colour-coded, anchorable ``<aside>`` blocks:
 
-    <aside class="callout callout-theorem" id="theorem-3-1">
-      <span class="callout-tag">Theorem 3.1.</span> Let f...
+    <aside class="callout callout-theorem" id="thm:x">
+      <span class="callout-tag">Theorem 1.</span> Let f...
     </aside>
 
 Recognised types (case-insensitive): **theorem, lemma, proposition,
 corollary, claim, fact, definition, example, remark, proof, observation,
-note**. Anything else stays a normal blockquote.
+note, conjecture**. Anything else stays a normal blockquote.
 
 Also resolves the placeholders emitted by `web/refs.py`:
 
-    <a class="ref" data-simplex-ref="theorem-3-1" href="#theorem-3-1">
-      theorem-3-1
+    <a class="ref" data-simplex-ref="thm:x" href="#thm:x">
+      thm:x
     </a>
         |
         v
-    <a class="ref" href="#theorem-3-1">Theorem 3.1</a>
+    <a class="ref" href="#thm:x">Theorem 1</a>
 
 Unknown ref ids get the ``ref-stale`` class (same convention as
 ``cite-stale`` / ``slide-ref-stale``).
@@ -28,11 +29,13 @@ Pure HTML transformation -- the markdown-it pipeline stays untouched.
 
 import re
 from collections import defaultdict
+from collections.abc import Mapping
 
 # Types we colour-code. Order matters only for matching priority -- longer
 # names first so "Proposition" beats a hypothetical "Prop" prefix.
 _TYPES: tuple[str, ...] = (
     "Proposition",
+    "Conjecture",
     "Definition",
     "Observation",
     "Corollary",
@@ -47,6 +50,7 @@ _TYPES: tuple[str, ...] = (
 )
 _TYPES_LC: frozenset[str] = frozenset(t.lower() for t in _TYPES)
 _TYPE_ALT = "|".join(_TYPES)
+_UNNUMBERED_TYPES = frozenset({"proof"})
 
 # Match a leading `<p><strong>Theorem 3.1.</strong>` inside a blockquote.
 # The number is optional (``Proof.`` / ``Remark.`` may stand alone). We
@@ -56,14 +60,17 @@ _TAG_RE = re.compile(
     r"(?:\s+(?P<num>\d+(?:\.\d+)*))?\s*\.\s*</strong>\s*",
     re.IGNORECASE,
 )
+_LABEL_RE = re.compile(r"\\label\{(?P<label>[A-Za-z0-9_:\-./]+)\}")
 _BLOCKQUOTE_RE = re.compile(r"<blockquote>(?P<body>.*?)</blockquote>", re.DOTALL)
 _REF_RE = re.compile(
     r'<a class="ref" data-simplex-ref="(?P<id>[^"]+)" '
     r'href="#(?P=id)">(?P<fallback>[^<]+)</a>'
 )
 
+type LabelMap = Mapping[str, str | tuple[str, str]]
 
-def transform(html: str, *, extra_labels: dict[str, str] | None = None) -> str:
+
+def transform(html: str, *, extra_labels: LabelMap | None = None) -> str:
     """Rewrite theorem-style blockquotes and resolve `\\ref{}` placeholders.
 
     `extra_labels` lets other passes (e.g. `equations.transform`) seed the
@@ -78,9 +85,12 @@ def transform(html: str, *, extra_labels: dict[str, str] | None = None) -> str:
       2. Walk every `<a class="ref">` placeholder and substitute the
          display label, combining `extra_labels` with the callout map.
     """
-    labels: dict[str, str] = dict(extra_labels or {})
-    # Auto-numbering for unnumbered callouts of the same type (e.g. multiple
-    # standalone "Proof." blocks). Keyed by lowercase type.
+    labels: dict[str, tuple[str, str]] = {}
+    for key, value in (extra_labels or {}).items():
+        labels[key] = value if isinstance(value, tuple) else (key, value)
+
+    # Auto-numbering for unnumbered callouts. Keyed by lowercase type, which
+    # mirrors LaTeX's independent theorem counters.
     counters: dict[str, int] = defaultdict(int)
 
     def rewrite_blockquote(match: re.Match[str]) -> str:
@@ -103,27 +113,34 @@ def transform(html: str, *, extra_labels: dict[str, str] | None = None) -> str:
         if num:
             slug_num = num.replace(".", "-")
             display = f"{tag_match.group('type').title()} {num}"
-        else:
+        elif kind in _UNNUMBERED_TYPES:
             counters[kind] += 1
             slug_num = str(counters[kind])
             display = tag_match.group("type").title()
+        else:
+            counters[kind] += 1
+            slug_num = str(counters[kind])
+            display = f"{tag_match.group('type').title()} {slug_num}"
 
-        block_id = f"{kind}-{slug_num}"
-        # Record both the bare id and the numbered display so refs work.
-        labels[block_id] = display
+        generated_id = f"{kind}-{slug_num}"
+        label_ids = _LABEL_RE.findall(body)
+        block_id = label_ids[0] if label_ids else generated_id
+        labels[generated_id] = (block_id, display)
+        for label_id in label_ids:
+            labels[label_id] = (block_id, display)
 
         tag_html = f'<span class="callout-tag">{display}.</span> '
         new_body = body[: tag_match.start()] + "<p>" + tag_html + body[tag_match.end() :]
-        return (
-            f'<aside class="callout callout-{kind}" id="{block_id}" role="note">{new_body}</aside>'
-        )
+        new_body = _LABEL_RE.sub("", new_body)
+        return f'<aside class="callout callout-{kind}" id="{_attr(block_id)}" role="note">{new_body}</aside>'
 
     out = _BLOCKQUOTE_RE.sub(rewrite_blockquote, html)
 
     def resolve_ref(match: re.Match[str]) -> str:
         ref_id = match.group("id")
         if ref_id in labels:
-            return f'<a class="ref" href="#{ref_id}">{labels[ref_id]}</a>'
+            target, display = labels[ref_id]
+            return f'<a class="ref" href="#{_attr(target)}">{_text(display)}</a>'
         # Slide refs / external IDs may legitimately not be in the label
         # map; mark unresolved ones as stale so the build flags them.
         return (
@@ -132,3 +149,15 @@ def transform(html: str, *, extra_labels: dict[str, str] | None = None) -> str:
         )
 
     return _REF_RE.sub(resolve_ref, out)
+
+
+_ATTR = {"&": "&amp;", "<": "&lt;", '"': "&quot;"}
+_TEXT = {"&": "&amp;", "<": "&lt;", ">": "&gt;"}
+
+
+def _attr(s: str) -> str:
+    return "".join(_ATTR.get(c, c) for c in s)
+
+
+def _text(s: str) -> str:
+    return "".join(_TEXT.get(c, c) for c in s)
