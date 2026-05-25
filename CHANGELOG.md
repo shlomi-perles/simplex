@@ -4,6 +4,13 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.3.0...manim-simplex-v0.3.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* **ci:** keep release lockfile in sync ([#28](https://github.com/shlomi-perles/simplex/issues/28)) ([55bbc9f](https://github.com/shlomi-perles/simplex/commit/55bbc9fe1ef64e8d431b72b9f8e2f7743c65eaaa))
+
 ## [0.3.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.2.3...manim-simplex-v0.3.0) (2026-05-25)
 
 
