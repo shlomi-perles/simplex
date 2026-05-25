@@ -124,6 +124,14 @@ class DeckConfig(BaseModel):
     slide_order: tuple[str, ...] = ()
     web: WebOverride = WebOverride()
 
+    # Pygments style for notes-page code blocks. Deliberately decoupled from
+    # the theme's ``code_style`` (which paints the *slide* code blocks): the
+    # notes are an academic reading copy and the bright Solarized-Light palette
+    # reads better as long-form prose than the slide deck's dark styles do.
+    # Set in ``deck.toml`` to any Pygments style name (built-in or registered
+    # via ``simplex.theme.pygments_style.register_style``).
+    notes_code_style: str = "simplex_solarized_light"
+
     @field_validator("slug")
     @classmethod
     def _slug_format(cls, value: str) -> str:
@@ -194,6 +202,29 @@ class DeckConfig(BaseModel):
             return style
         mod = __import__("simplex.theme.pygments_style", fromlist=["SimplexPycharm"])
         return mod.SimplexPycharm  # type: ignore[no-any-return]
+
+    def resolved_notes_code_style(self) -> type[Style]:
+        """Return the Pygments style class to use for notes-page code blocks.
+
+        Looks up ``notes_code_style`` by name. Names are resolved against the
+        built-in Simplex styles first (so ``simplex_solarized_light`` works
+        without the caller pre-registering it), then against Pygments' own
+        registry as a fallback. Falls back to ``SimplexSolarizedLight`` when
+        nothing matches so a typo never breaks the build.
+        """
+        from simplex.theme.styles import BUILTIN_STYLES, SimplexSolarizedLight
+
+        name = (self.notes_code_style or "").strip()
+        if not name:
+            return SimplexSolarizedLight
+        if name in BUILTIN_STYLES:
+            return BUILTIN_STYLES[name]
+        try:
+            from pygments.styles import get_style_by_name
+
+            return get_style_by_name(name)  # type: ignore[no-any-return]
+        except Exception:  # noqa: BLE001 - any pygments error -> safe default
+            return SimplexSolarizedLight
 
     def _module_to_file(self, module: str) -> Path:
         """Map ``slides.foo.bar`` to the deck-relative ``.py`` file."""

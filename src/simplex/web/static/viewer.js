@@ -203,6 +203,9 @@
     var slideThemeLabel = deck.querySelector("[data-slide-theme-label]");
     var slideNumberSetting = deck.querySelector('[data-setting="slide-number"]');
     var clockSetting = deck.querySelector('[data-setting="clock"]');
+    var stopwatchDisplay = deck.querySelector("[data-stopwatch-display]");
+    var stopwatchToggle = deck.querySelector("[data-stopwatch-toggle]");
+    var stopwatchReset = deck.querySelector("[data-stopwatch-reset]");
     var total = parseInt(deck.dataset.slideCount || "0", 10) || slideButtons.length;
     var currentIdx = 0;
     var slideThemeManual = false;
@@ -437,13 +440,98 @@
       scrollViewerBelowNav();
     });
 
-    // Forward parent keyboard arrows to the iframe (when nothing else is focused).
+    // Forward parent keyboard shortcuts to the iframe (when nothing else is focused).
+    //
+    // - Plain arrows  -> next / prev (any sub-stop)
+    // - Ctrl+ArrowRight -> jump to next *main* slide (skip remaining sub-stops)
+    // - Ctrl+ArrowLeft  -> jump to previous *main* slide; on a sub-stop, behave
+    //   like Restart and replay the current main from the start.
+    // - Space         -> toggle play/pause on the current video
     document.addEventListener("keydown", function (e) {
       var t = e.target;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      if (e.key === "ArrowRight") { e.preventDefault(); send({ type: "simplex.next" }); }
-      else if (e.key === "ArrowLeft") { e.preventDefault(); send({ type: "simplex.prev" }); }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        if (e.ctrlKey || e.metaKey) send({ type: "simplex.next-main" });
+        else send({ type: "simplex.next" });
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (e.ctrlKey || e.metaKey) send({ type: "simplex.prev-main" });
+        else send({ type: "simplex.prev" });
+      } else if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        send({ type: "simplex.toggle-play" });
+      }
     });
+
+    // --- Stopwatch ------------------------------------------------------
+    // Lives entirely in the parent: the slide iframe knows nothing about it.
+    // ``baseMs`` is the accumulated time from prior runs; ``startedAt`` is
+    // the wall clock at the most recent start (null while paused). Display
+    // shows ``HH:MM:SS`` once we cross the hour mark and ``MM:SS`` before
+    // then, so it stays compact in the settings panel.
+    var swBaseMs = 0;
+    var swStartedAt = null;
+    var swTicker = null;
+    function swElapsedMs() {
+      var live = swStartedAt != null ? (Date.now() - swStartedAt) : 0;
+      return swBaseMs + live;
+    }
+    function swPad(n) { return String(n).padStart(2, "0"); }
+    function swRender() {
+      if (!stopwatchDisplay) return;
+      var total = Math.floor(swElapsedMs() / 1000);
+      var h = Math.floor(total / 3600);
+      var m = Math.floor((total % 3600) / 60);
+      var s = total % 60;
+      stopwatchDisplay.textContent = h > 0
+        ? swPad(h) + ":" + swPad(m) + ":" + swPad(s)
+        : swPad(m) + ":" + swPad(s);
+    }
+    function swSyncToggle() {
+      if (!stopwatchToggle) return;
+      var running = swStartedAt != null;
+      stopwatchToggle.dataset.state = running ? "running" : "paused";
+      stopwatchToggle.setAttribute("aria-label", running ? "Pause stopwatch" : "Start stopwatch");
+      stopwatchToggle.setAttribute("title", running ? "Pause" : "Start");
+    }
+    function swStart() {
+      if (swStartedAt != null) return;
+      swStartedAt = Date.now();
+      if (swTicker == null) swTicker = window.setInterval(swRender, 250);
+      swSyncToggle();
+      swRender();
+    }
+    function swPause() {
+      if (swStartedAt == null) return;
+      swBaseMs += Date.now() - swStartedAt;
+      swStartedAt = null;
+      if (swTicker != null) { window.clearInterval(swTicker); swTicker = null; }
+      swSyncToggle();
+      swRender();
+    }
+    function swReset() {
+      swBaseMs = 0;
+      if (swStartedAt != null) swStartedAt = Date.now();
+      swRender();
+    }
+    if (stopwatchToggle) {
+      stopwatchToggle.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (swStartedAt != null) swPause();
+        else swStart();
+      });
+    }
+    if (stopwatchReset) {
+      stopwatchReset.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        swReset();
+      });
+    }
+    swSyncToggle();
+    swRender();
 
     if (slideThemeSetting) {
       slideThemeSetting.addEventListener("click", function () {
