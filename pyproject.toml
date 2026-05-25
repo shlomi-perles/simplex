@@ -32,9 +32,13 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "manim-simplex>=0.2.3",
+  # Manim authoring/plugin layer.
+  "manim>=0.20.1",
   "manim-slides>=5.1.7",
   "pydantic>=2.7",
+  "pygments>=2.18",
+  "pymupdf>=1.27.2.3",
+  # CLI, deck discovery, render orchestration, and static portal.
   "pydantic-settings>=2.3",
   "typer>=0.12",
   "rich>=13.7",
@@ -42,7 +46,6 @@ dependencies = [
   "jinja2>=3.1",
   "markdown-it-py>=3.0",
   "mdit-py-plugins>=0.4",
-  "pygments>=2.18",
   "platformdirs>=4.2",
   "tomli-w>=1.0",
   "watchfiles>=0.24",
@@ -51,7 +54,7 @@ dependencies = [
   "av>=15.0",
   "pillow>=11.0",
 ]
-description = "Manim-slides presentation framework with a generated web portal."
+description = "Manim plugin and lecture-site CLI for Simplex presentations."
 keywords = [
   "manim",
   "manim-slides",
@@ -65,19 +68,19 @@ keywords = [
 ]
 license = "MIT"
 license-files = ["LICENSE"]
-# PyPI distribution name. The import name stays ``simplex`` and composes
-# with the authoring facade shipped by ``manim-simplex``; the wheel/sdist
-# uses a longer brand name because the bare ``simplex`` slot is taken and
-# short variants are rejected by PyPI's name-similarity guard.
-name = "simplex-web"
+name = "manim-simplex"
 readme = "README.md"
 requires-python = ">=3.13"
-version = "0.2.4"
+version = "0.2.3"
+
+[project.entry-points."manim.plugins"]
+simplex = "simplex.plugin:activate"
 
 [project.scripts]
 simplex = "simplex.cli.commands:app"
 
 [project.urls]
+Changelog = "https://github.com/shlomi-perles/simplex/blob/main/CHANGELOG.md"
 Homepage = "https://github.com/shlomi-perles/simplex"
 Issues = "https://github.com/shlomi-perles/simplex/issues"
 Repository = "https://github.com/shlomi-perles/simplex"
@@ -85,8 +88,11 @@ Repository = "https://github.com/shlomi-perles/simplex"
 [tool.basedpyright]
 include = ["src", "tests"]
 pythonVersion = "3.13"
-# Manim's 0.20.x type stubs are incomplete; mirror the same softening as
-# manim-simplex so this repo's CI passes for the same upstream reasons.
+# Manim's type stubs in 0.20.x are incomplete: VGroup(...) widens to
+# `Group | Unknown`, Animation subclasses' `__init__` deliberately differs
+# from the inherited `__new__`, color constants are `ManimColor` instances
+# typed as `str`. Demote these categories to warnings rather than rewriting
+# upstream's stubs in this plugin. Tracked for cleanup as stubs improve.
 reportArgumentType = "warning"
 reportAssignmentType = "warning"
 # manim-slides converters (PDF, PowerPoint, RevealJS) are Pydantic models
@@ -95,6 +101,9 @@ reportAssignmentType = "warning"
 reportCallIssue = "warning"
 reportInconsistentConstructor = "warning"
 reportMissingTypeStubs = false
+# Tests deliberately exercise private helpers (e.g. `_resolve_section_type`,
+# `_interpret_delay`) to keep the public surface small while still
+# covering edge cases.
 reportPrivateUsage = false
 reportReturnType = "warning"
 reportUnknownArgumentType = false
@@ -109,14 +118,12 @@ artifacts = [
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",
   "src/simplex/web/static/reveal.js/**/*",
-  "src/simplex/web/static/tailwind.input.css",
+  "src/simplex/web/static/tailwind.css",
 ]
-only-include = [
-  "LICENSE",
-  "README.md",
-  "pyproject.toml",
-  "src",
-  "tests",
+exclude = [
+  "/.claude",
+  "/.github",
+  "/media",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -130,9 +137,12 @@ artifacts = [
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",
   "src/simplex/web/static/reveal.js/**/*",
-  "src/simplex/web/static/tailwind.input.css",
+  "src/simplex/web/static/tailwind.css",
 ]
 packages = ["src/simplex"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/simplex/py.typed" = "simplex/py.typed"
 
 [tool.pytest.ini_options]
 addopts = "-q"

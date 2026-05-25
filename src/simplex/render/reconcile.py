@@ -14,9 +14,8 @@ Two JSON sources are read per scene:
 The reconciler walks each scene's sections in order and groups consecutive
 SUB rows under their preceding MAIN, producing a ``DeckManifest`` of
 ``MainSlide`` records. The schema (``DeckManifest``, ``MainSlide``,
-``Subsection``) is owned by the ``manim-simplex`` plugin and imported
-from :mod:`simplex.manifest` -- the two repos share a single Pydantic
-definition rather than maintaining parallel copies.
+``Subsection``) lives in :mod:`simplex.manifest` so the Manim plugin and web
+pipeline share a single Pydantic definition.
 """
 
 import contextlib

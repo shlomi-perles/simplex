@@ -1,119 +1,157 @@
 # Simplex
 
-[![PyPI version](https://img.shields.io/pypi/v/simplex-web.svg)](https://pypi.org/project/simplex-web/)
-[![Python](https://img.shields.io/pypi/pyversions/simplex-web.svg)](https://pypi.org/project/simplex-web/)
+[![PyPI version](https://img.shields.io/pypi/v/manim-simplex.svg)](https://pypi.org/project/manim-simplex/)
+[![Python](https://img.shields.io/pypi/pyversions/manim-simplex.svg)](https://pypi.org/project/manim-simplex/)
 [![CI](https://github.com/shlomi-perles/simplex/actions/workflows/ci.yml/badge.svg)](https://github.com/shlomi-perles/simplex/actions/workflows/ci.yml)
-[![License](https://img.shields.io/pypi/l/simplex-web.svg)](https://github.com/shlomi-perles/simplex/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/shlomi-perles/simplex.svg)](https://github.com/shlomi-perles/simplex/blob/main/LICENSE)
 
-Simplex is a Manim presentation workflow with a generated static web portal.
-Write normal Manim scenes, mark slide boundaries with `manim-slides`, and let
-Simplex render the deck, reconcile slide metadata, build thumbnails, render
-notes, and publish a browsable site.
+Simplex is a toolkit for Manim lecture projects. The repository is named
+`simplex`, and the PyPI distribution is named `manim-simplex` because the bare
+`simplex` package name is already taken on PyPI. It ships one Python package
+namespace, `simplex`, with:
 
-The PyPI distribution is `simplex-web`. It installs the `simplex` command and
-imports into the `simplex.*` namespace.
+- a Manim plugin (`plugins = simplex`);
+- theme tokens, mobjects, layout regions, slide bases, and animation helpers;
+- a deck manifest schema and render reconciliation pipeline;
+- the `simplex` CLI for deck scaffolding, rendering, site building, serving,
+  testing, and diagnostics;
+- a static lecture portal with notes, citations, math rendering, thumbnails,
+  RevealJS playback, and GitHub Pages-friendly output.
 
-## Why Simplex?
-
-- Author scenes with standard Manim objects such as `MathTex`, `VGroup`,
-  `Axes`, and `Animation`.
-- Use `manim-simplex` slide bases, layout regions, theme tokens, and mobjects.
-- Organize decks under `decks/` with a small `deck.toml`.
-- Build a static portal with deck pages, notes, citations, math rendering,
-  thumbnails, RevealJS playback, title-based PDF downloads, and optional live reload.
-- Keep the rendered video frames clean; navigation chrome lives in the web
-  viewer where it can be changed without re-rendering videos.
-
-## Packages
-
-Simplex is split into a small toolkit:
-
-| Repository | PyPI | Purpose |
-|---|---|---|
-| [`manim-simplex`](https://github.com/shlomi-perles/manim-simplex) | `manim-simplex` | Manim plugin, themes, slide bases, mobjects, and manifest schema. |
-| [`simplex`](https://github.com/shlomi-perles/simplex) | `simplex-web` | CLI, deck discovery, render orchestration, static portal builder. |
-| [`simplex-lectures-template`](https://github.com/shlomi-perles/simplex-lectures-template) | - | Starter lectures repository. |
-
-The import namespace is still `simplex`. `manim-simplex` provides the top-level
-authoring facade (`from simplex import BaseSlide, Caption`), while
-`simplex-web` contributes CLI and site-builder modules such as `simplex.web`.
+The CLI and plugin intentionally live in one distribution so consumers only
+depend on `manim-simplex`.
 
 ## Requirements
 
-- Python 3.13 or newer
-- FFmpeg
-- A LaTeX distribution
-- Manim's native dependencies, including Cairo and Pango on Linux
+- Python 3.13+
+- Manim Community 0.20.1+
+- manim-slides 5.1.7+
+- FFmpeg, Cairo, Pango, and a TeX distribution when rendering TeX. See the
+  Manim installation guide: https://docs.manim.community/en/stable/installation.html
 
 Typical system packages:
 
 ```bash
-# Ubuntu / Debian
 sudo apt-get install texlive-latex-extra texlive-fonts-recommended ffmpeg \
                      libcairo2-dev libpango1.0-dev
 ```
 
 ```powershell
-# Windows
 winget install MiKTeX.MiKTeX
 winget install Gyan.FFmpeg
-```
-
-After installation, run:
-
-```bash
-simplex doctor
 ```
 
 ## Install
 
 ```bash
-pip install simplex-web
+pip install manim-simplex
 ```
 
-With `uv`:
+With uv:
 
 ```bash
-uv add simplex-web
+uv add manim-simplex
 ```
 
-For local development in this repository:
+Verify that Manim can discover the plugin:
 
 ```bash
-uv sync
-uv run simplex doctor
+python -m manim plugins -l
 ```
+
+The output should include `simplex`.
+
+## Configure Manim
+
+Enable the plugin in the `manim.cfg` next to your scenes or deck:
+
+```ini
+[CLI]
+plugins = simplex
+save_sections = True
+```
+
+Manim imports `simplex.plugin` through the `manim.plugins` entry point. The
+plugin applies the active Simplex theme to Manim defaults, registers Pygments
+styles, sets the TeX template, sets the background color, and enables section
+JSON output.
 
 ## Quick Start
 
-Create a new deck in an existing project:
+```python
+from manim import ORIGIN, MathTex, Write
+
+from simplex import BaseSlide, make_chrome, presets
+
+
+class HelloSlide(BaseSlide):
+    def setup(self) -> None:
+        super().setup()
+        chrome = make_chrome(
+            presets.SIMPLEX_DARK,
+            self.region,
+            header="Hello, Simplex",
+        )
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
+
+    def construct(self) -> None:
+        eq = MathTex(r"e^{i\pi} + 1 = 0")
+        self.region.place(eq, ORIGIN)
+        self.play(Write(eq))
+        self.next_slide()
+```
+
+Render as a slide deck:
 
 ```bash
-simplex new algorithms/hash-tables
-simplex render hash-tables
-simplex build
-simplex serve
+uv run manim-slides render path/to/scene.py HelloSlide
+uv run manim-slides present HelloSlide
 ```
 
-Then open:
-
-```text
-http://localhost:8000
-```
-
-To start from the GitHub template instead:
+Or create a lecture-site deck and build the portal:
 
 ```bash
-simplex init my-lectures
-cd my-lectures
-simplex new first-deck
-simplex build
-simplex serve
+uv run simplex new algorithms/hash-tables
+uv run simplex render hash-tables
+uv run simplex build
+uv run simplex serve
 ```
+
+## Public Surface
+
+| Module | Public surface |
+| --- | --- |
+| `simplex.plugin` | `activate()` entry point used by Manim. |
+| `simplex.slides` | `BaseSlide`, `OutlineScene`, `OutlinePart`, `Chrome`, `make_chrome`. |
+| `simplex.engine` | `Region`, `Remove`, `clear_scene`, `exit_for`, `register_exit`, `set_exit_animation`, `HighlightResult`, `apply_theme_defaults`. |
+| `simplex.mobjects` | `Node`, `Edge`, `ArrayMob`, `ArrayEntry`, `ArrayPointer`, `OutlineProgressBar`, `Paper`, `ShowPaper`, `DismissPaper`, `PickPage`. |
+| `simplex.theme` | `Theme`, `Palette`, `Typography`, `Spacing`, `Motion`, `LatexProfile`, `WebPalette`, `active_theme`, `get_active_theme`, `presets`, `render_web_css`. |
+| `simplex.manifest` | `DeckManifest`, `MainSlide`, `Subsection`, the manifest schema written by the render pipeline. |
+| `simplex.deck` | `DeckConfig`, `discover`, `scaffold`, section metadata, bundled deck template. |
+| `simplex.render` | Manim runner, manifest reconciliation, thumbnails, HTML, PDF, PPTX, notes PDF, filenames. |
+| `simplex.web` | Portal builder, notes renderer, citations, refs, templates, static assets, live reload. |
+| `simplex.cli` | Typer application installed as the `simplex` command. |
+
+## CLI
+
+| Command | Purpose |
+| --- | --- |
+| `simplex new <slug>` | Create `decks/<slug>/` from the bundled template. |
+| `simplex new <section>/<slug>` | Create a deck inside a named section. |
+| `simplex init [dir]` | Create a lectures repo from the GitHub template. |
+| `simplex render <slug>` | Render one deck into `site/decks/<slug>/`. |
+| `simplex render <slug>::<Scene>` | Render one scene from a deck. |
+| `simplex build` | Render decks and build the static portal under `site/`. |
+| `simplex build --no-render` | Rebuild portal HTML from existing render output. |
+| `simplex serve [--watch]` | Serve `site/` locally, optionally with live reload. |
+| `simplex test` | Smoke-render decks by rendering only the first animation. |
+| `simplex clean` | Remove generated `site/` and `media/` output. |
+| `simplex doctor` | Check required binaries on `PATH`. |
 
 ## Deck Layout
 
-`simplex new hash-tables` creates a deck like this:
+`simplex new hash-tables` creates:
 
 ```text
 decks/hash-tables/
@@ -141,104 +179,48 @@ entrypoints = ["slides.intro:Intro", "slides.intro:KeyIdea"]
 notes_anchor = "key-idea"
 ```
 
-`entrypoints` points to scene classes inside the deck directory. Legacy
-`scenes = ["Intro"]` is still accepted for single-file `slides.py` decks, but
-`entrypoints` is the preferred layout.
-
-## Authoring Slides
-
-A scene is ordinary Manim plus the Simplex slide base:
-
-```python
-from manim import DOWN, ORIGIN, Tex, Write
-
-from simplex import BaseSlide, get_active_theme
-
-
-class Intro(BaseSlide):
-    def construct(self) -> None:
-        theme = get_active_theme()
-
-        title = Tex("Hello, Simplex", font_size=theme.typography.h1)
-        self.region.place(title, ORIGIN)
-
-        subtitle = Tex(r"$e^{i\pi} + 1 = 0$", font_size=theme.typography.h2)
-        subtitle.next_to(title, DOWN, buff=0.4)
-
-        self.play(Write(title), Write(subtitle))
-        self.next_slide()
-```
-
-`BaseSlide` comes from `manim-simplex`. It provides the default theme,
-bounded layout region, slide lifecycle helpers, and section metadata used by
-the web builder.
-
-## Notes And Site
-
-Each deck can include `notes.md`. The site builder renders Markdown notes,
-inline math, display math, citations from `refs.bib`, and slide references.
-Prefer label-based slide refs such as `[slide:key-idea]`; numeric refs still
-work for quick drafts. When a TeX engine is available, builds also emit
-`<title>-note.pdf` for the deck download menu.
-
-Theorem-style notes use Markdown blockquotes with TeX labels. Write
-`> **Theorem.** \label{thm:first}` and reference it with `\ref{thm:first}`
-or `\autoref{thm:first}`; the web preview numbers it automatically and the
-notes PDF emits matching `amsthm` environments.
-
-Site-wide options live in `site.toml`:
-
-```toml
-brand = "Simplex"
-tagline = "Manim presentations, rendered."
-
-nav = [
-  { label = "Decks", href = "/" },
-  { label = "GitHub", href = "https://github.com/shlomi-perles/simplex" },
-]
-```
-
-Links labeled `GitHub` are shown as the footer GitHub icon, next to the
-`Built with Simplex` mark.
-
-Deployment-only settings are read from environment variables:
-
-- `SIMPLEX_BASE_URL`
-- `SIMPLEX_GA_TAG`
-- `SIMPLEX_BRAND`
-- `SIMPLEX_PREVIEW`
-
-## CLI
-
-| Command | Purpose |
-|---|---|
-| `simplex new <slug>` | Create `decks/<slug>/` from the bundled template. |
-| `simplex new <section>/<slug>` | Create a deck inside a named section. |
-| `simplex init [dir]` | Create a lectures repo from the GitHub template. |
-| `simplex render <slug>` | Render one deck into `site/decks/<slug>/`. |
-| `simplex render <slug>::<Scene>` | Render one scene from a deck. |
-| `simplex build` | Render decks and build the static portal under `site/`. |
-| `simplex build --no-render` | Rebuild portal HTML from existing render output. |
-| `simplex serve [--watch]` | Serve `site/` locally, optionally with live reload. |
-| `simplex test` | Smoke-render decks by rendering only the first animation. |
-| `simplex clean` | Remove generated `site/` and `media/` output. |
-| `simplex doctor` | Check required binaries on `PATH`. |
-
 ## Development
 
 ```bash
 git clone https://github.com/shlomi-perles/simplex.git
 cd simplex
-uv sync
+uv sync --all-extras
+uv run pre-commit install
+```
+
+Useful checks:
+
+```bash
+python tools/check_readmes.py
 uv run ruff check .
 uv run ruff format --check .
 uv run basedpyright
 uv run pytest -q
+uv run python tools/vendor_web_assets.py
+uv build --no-sources
+uvx twine check dist/*
 ```
 
-The release workflow uses GitHub Actions Trusted Publishing to upload
-`simplex-web` to PyPI. No PyPI API token is stored in the repository.
+Run smoke tests locally:
+
+```bash
+uv run python -c "import simplex.plugin; simplex.plugin.activate(); print('ok')"
+uv run manim plugins -l
+uv run simplex --help
+uv run simplex test --only showcase
+```
+
+## Release
+
+Releases are automated through Release Please and PyPI Trusted Publishing.
+Commit changes using Conventional Commits (`feat:`, `fix:`, `chore:`). When
+changes land on `main`, Release Please opens or updates a release PR. Merging
+that PR creates the GitHub release, builds the package with uv, publishes
+`manim-simplex` to PyPI via OIDC, and dispatches a template update workflow.
+
+Manual version bumps and chained `simplex-web` releases are no longer part of
+the release process.
 
 ## License
 
-MIT.
+MIT. See [LICENSE](LICENSE).

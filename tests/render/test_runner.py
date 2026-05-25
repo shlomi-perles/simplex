@@ -51,6 +51,15 @@ def test_render_passes_save_sections(tmp_path: Path, captured: list[dict[str, An
     assert "--save_sections" in args
 
 
+def test_render_forces_utf8_subprocess_env(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
+    deck = _deck(tmp_path)
+    runner.render(deck, output_dir=tmp_path / "out")
+    env = captured[0]["env"]
+    assert env["SIMPLEX_THEME"] == "academic_light"
+    assert env["PYTHONIOENCODING"] == "utf-8"
+    assert env["PYTHONUTF8"] == "1"
+
+
 def test_render_passes_all_scenes_when_filter_empty(
     tmp_path: Path, captured: list[dict[str, Any]]
 ) -> None:

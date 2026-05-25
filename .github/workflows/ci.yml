@@ -7,26 +7,39 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.13']
     steps:
     - uses: actions/checkout@v6
-    - name: Install system dependencies
+    - name: Install system deps
       run: |
         sudo apt-get update
         sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended \
                                 ffmpeg libcairo2-dev libpango1.0-dev
-    - name: Install uv
-      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-    - name: Sync
-      run: uv sync --locked
+    - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b   # v8.1.0
+      with:
+        enable-cache: true
+        cache-dependency-glob: uv.lock
+    - name: Pin Python ${{ matrix.python-version }}
+      run: uv python pin ${{ matrix.python-version }}
+    - run: uv sync --locked --all-extras
     - name: README structure
       run: python tools/check_readmes.py
-    - name: Lint
-      run: uv run --locked ruff check .
-    - name: Format check
-      run: uv run --locked ruff format --check .
-    - name: Type check
-      run: uv run --locked basedpyright
-    - name: Tests
-      run: uv run --locked pytest -q
+    - run: uv run --locked ruff check .
+    - run: uv run --locked ruff format --check .
+    - run: uv run --locked basedpyright
+    - run: uv run --locked pytest -q
+    - name: Vendor web assets
+      run: uv run --locked python tools/vendor_web_assets.py
+    - run: uv build --no-sources
+    - run: uvx twine check dist/*
+    - name: Plugin import smoke
+      run: uv run --locked python -c "import simplex.plugin; simplex.plugin.activate(); print('ok')"
+    - name: Plugin discovery smoke
+      run: uv run --locked manim plugins -l | tee /dev/stderr | grep -q '^\s*•\s*simplex\b'
+    - name: CLI smoke
+      run: uv run --locked simplex --help
     - name: Render smoke (showcase, first animation only)
       run: uv run --locked simplex test --only showcase

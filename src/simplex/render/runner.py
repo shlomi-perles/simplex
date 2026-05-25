@@ -105,7 +105,12 @@ def render(
     # Carry the deck's theme name across the subprocess via env var; the
     # manim plugin in the child interpreter reads ``SIMPLEX_THEME`` to pick
     # the preset whose background/typography it pushes onto ``manim.config``.
-    env = {**os.environ, "SIMPLEX_THEME": deck.theme}
+    env = {
+        **os.environ,
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUTF8": "1",
+        "SIMPLEX_THEME": deck.theme,
+    }
 
     for source_file, scene_names in groups:
         args = [
