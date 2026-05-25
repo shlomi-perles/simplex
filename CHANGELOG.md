@@ -4,6 +4,19 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.2.3...manim-simplex-v0.3.0) (2026-05-25)
+
+
+### Features
+
+* consolidate Simplex package ([7e1aedb](https://github.com/shlomi-perles/simplex/commit/7e1aedbf646e9d90ffb2fc22a852e5a5d3042e75))
+* enhance media handling and presentation features ([9dff7cc](https://github.com/shlomi-perles/simplex/commit/9dff7ccfc4bfbe79f5bffd1c01d0bac090207399))
+
+
+### Bug Fixes
+
+* handle string duration in _row_duration and update tests for consistency ([612fd3c](https://github.com/shlomi-perles/simplex/commit/612fd3c24e1c9c3ee7dbbe1a42080211ba6c927d))
+
 ## [Unreleased]
 
 ### Added

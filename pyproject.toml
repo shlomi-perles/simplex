@@ -71,7 +71,7 @@ license-files = ["LICENSE"]
 name = "manim-simplex"
 readme = "README.md"
 requires-python = ">=3.13"
-version = "0.2.3"
+version = "0.3.0"
 
 [project.entry-points."manim.plugins"]
 simplex = "simplex.plugin:activate"
