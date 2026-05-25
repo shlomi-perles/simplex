@@ -126,8 +126,8 @@
   --notes-link: #1e4f8a;
   --notes-blockquote-bg: #f3eedd;
   --notes-code-bg: #f3efe2;
-  --notes-pre-bg: #f7f9fc;
-  --notes-pre-fg: #a9b7c6;
+  --notes-pre-bg: var(--simplex-code-bg, #f7f9fc);
+  --notes-pre-fg: var(--simplex-code-text, #a9b7c6);
   --notes-sidenote-bg: #fbf6e6;
 
   --font-sans: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI",
