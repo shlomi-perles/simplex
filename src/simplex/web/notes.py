@@ -62,9 +62,7 @@ def _resolve_code_style() -> type[Style]:
     -- the active-theme lookup is only kept as a last-resort safety net for
     callers that never go through ``DeckConfig`` (e.g. ad-hoc snippets).
     """
-    mod = __import__(
-        "simplex.theme.pygments_style", fromlist=["SimplexSolarizedLight"]
-    )
+    mod = __import__("simplex.theme.pygments_style", fromlist=["SimplexSolarizedLight"])
     return mod.SimplexSolarizedLight  # type: ignore[no-any-return]
 
 

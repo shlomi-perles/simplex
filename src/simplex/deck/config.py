@@ -223,7 +223,9 @@ class DeckConfig(BaseModel):
             from pygments.styles import get_style_by_name
 
             return get_style_by_name(name)  # type: ignore[no-any-return]
-        except Exception:  # noqa: BLE001 - any pygments error -> safe default
+        except Exception:
+            # Any pygments lookup error -> fall back to the safe default
+            # rather than aborting the build for a typo in deck.toml.
             return SimplexSolarizedLight
 
     def _module_to_file(self, module: str) -> Path:
