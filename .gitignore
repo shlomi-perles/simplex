@@ -21,6 +21,8 @@ dist/
 
 # Manim output
 media/
+# manim-slides output (rooted, so tests/slides/ stays tracked)
+/slides/
 decks/**/slides/*.json
 decks/**/slides/files/
 
