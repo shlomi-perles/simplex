@@ -4,13 +4,6 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.3.1...manim-simplex-v0.4.0) (2026-05-25)
-
-
-### Features
-
-* **web:** keyboard shortcuts, stopwatch, mobile taps, PDF hyperref ([3ae572c](https://github.com/shlomi-perles/simplex/commit/3ae572c2a19c5f0095fdd4612303b6dc05a5f0bf))
-
 ## [0.3.1](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.3.0...manim-simplex-v0.3.1) (2026-05-25)
 
 

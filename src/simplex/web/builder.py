@@ -250,7 +250,6 @@ def _build_deck(
             slide_count=len(enriched),
             slide_refs=slide_refs,
             bibliography=bib,
-            code_style=deck.resolved_notes_code_style(),
         )
         if render:
             with contextlib.suppress(

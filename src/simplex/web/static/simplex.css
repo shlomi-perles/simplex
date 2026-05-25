@@ -1368,12 +1368,7 @@ body {
   border-bottom: 0;
   padding-bottom: 0;
 }
-/* The trailing `, .deck-notes .bib-list` rule beats the more specific
- * `.deck-notes ol { list-style: decimal outside }` selector above so the
- * alpha-key marker (e.g. `[KB15]`) is the only "number" rendered next to
- * each bibliography entry. */
-.bib-list,
-.deck-notes .bib-list {
+.bib-list {
   padding-left: 0;
   list-style: none;
 }
@@ -1960,84 +1955,6 @@ body.sidenote-popover-open {
   font-size: 0.78rem;
   font-weight: 800;
   cursor: pointer;
-}
-
-/* ------------------------------------------------------------------ */
-/* Stopwatch (player settings panel)                                   */
-/* ------------------------------------------------------------------ */
-.deck-setting-stopwatch {
-  align-items: center;
-}
-.deck-stopwatch {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-.deck-stopwatch-display {
-  min-width: 3.6rem;
-  padding: 0.18rem 0.5rem;
-  border-radius: 999px;
-  background: var(--site-surface-hover);
-  color: var(--site-text);
-  font-family: var(--font-mono, var(--font-sans));
-  font-size: 0.78rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  letter-spacing: 0.02em;
-}
-.deck-stopwatch-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-.deck-stopwatch-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: var(--site-surface-hover);
-  color: var(--site-text);
-  cursor: pointer;
-  transition: background-color 120ms ease, transform 120ms ease;
-}
-.deck-stopwatch-btn:hover {
-  background: var(--site-blue);
-  color: white;
-}
-.deck-stopwatch-btn:active { transform: scale(0.92); }
-.deck-stopwatch-btn svg,
-.deck-stopwatch-btn .icon-fallback {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-.deck-stopwatch-toggle {
-  background: var(--site-blue);
-  color: white;
-  box-shadow: 0 8px 18px -14px rgba(16, 88, 194, 0.9);
-}
-.deck-stopwatch-toggle:hover {
-  background: var(--site-blue);
-  filter: brightness(1.08);
-}
-.deck-stopwatch-toggle .deck-stopwatch-icon-pause { display: none; }
-.deck-stopwatch-toggle[data-state="running"] .deck-stopwatch-icon-play { display: none; }
-.deck-stopwatch-toggle[data-state="running"] .deck-stopwatch-icon-pause { display: inline-flex; }
-.deck-stopwatch-toggle[data-state="running"] {
-  background: linear-gradient(135deg, var(--site-blue), color-mix(in srgb, var(--site-blue) 70%, white));
-}
-.deck-stopwatch-reset {
-  background: transparent;
-  color: var(--site-text);
-  border: 1px solid var(--site-border);
-}
-.deck-stopwatch-reset:hover {
-  background: var(--site-surface-hover);
-  color: var(--site-text);
 }
 .deck-theme-toggle svg,
 .deck-theme-toggle .icon-fallback {

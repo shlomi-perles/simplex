@@ -193,15 +193,12 @@
         controlsTutorial: false,
         progress: true,
         hash: false,
-        // Remap arrow keys to flat next/prev so direction never matters,
-        // even when the slide grid has vertical sub-stops. Space toggles
-        // play/pause (handled via the keydown listener below, mapped to
-        // null here so Reveal does not steal it). Keys: 37 left, 38 up,
-        // 39 right, 40 down, 33 PageUp, 34 PageDown, 32 space.
+        // Remap all arrow keys to flat next/prev so direction never matters,
+        // even when the slide grid has vertical sub-stops. Keys: 37 left,
+        // 38 up, 39 right, 40 down, 32 space, 33 PageUp, 34 PageDown.
         keyboard: {
           37: 'prev', 38: 'prev', 33: 'prev',
-          39: 'next', 40: 'next', 34: 'next',
-          32: null,
+          39: 'next', 40: 'next', 32: 'next', 34: 'next',
         },
         // Disable Reveal's built-in swipe gestures. Mobile navigation goes
         // through the .tap-zone elements below; this keeps tap-right = next
@@ -266,48 +263,6 @@
           const p = v.play();
           if (p && typeof p.catch === 'function') p.catch(function () {});
         }
-        function togglePlayPause() {
-          const v = document.querySelector('.reveal .slides .present video');
-          if (!v) return;
-          if (v.paused) {
-            if (v.ended || v.currentTime >= Math.max(0, v.duration - 0.05)) {
-              try { v.currentTime = 0; } catch (_) { /* */ }
-            }
-            const p = v.play();
-            if (p && typeof p.catch === 'function') p.catch(function () {});
-          } else {
-            v.pause();
-          }
-          try {
-            window.parent.postMessage(
-              { type: 'simplex.play-state', playing: !v.paused },
-              parentOrigin
-            );
-          } catch (_) { /* */ }
-        }
-        function gotoMain(idx) {
-          // ``idx`` is a 1-based main-slide number. Reveal's horizontal axis
-          // is 0-based, so subtract one before dispatching.
-          if (!Number.isInteger(idx) || idx < 1) return;
-          const total = {{ main_slide_count }};
-          if (idx > total) return;
-          Reveal.slide(idx - 1, 0);
-        }
-        function nextMain() { gotoMain(currentMainIndex() + 1); }
-        function prevMain() {
-          // On a sub-stop, jump back to the start of the current main (acts
-          // like Restart). On the first sub-stop of a main, jump to the
-          // previous main slide.
-          const idx = Reveal.getIndices();
-          const cur = currentMainIndex();
-          if ((idx.v || 0) > 0) {
-            gotoMain(cur);
-            playCurrentVideoFromStart();
-            window.setTimeout(playCurrentVideoFromStart, 50);
-          } else {
-            gotoMain(cur - 1);
-          }
-        }
         Reveal.on('slidechanged', emit);
         Reveal.on('ready', emit);
         applyChrome();
@@ -324,17 +279,30 @@
             Reveal.next();
           } else if (data.type === 'simplex.prev') {
             Reveal.prev();
-          } else if (data.type === 'simplex.next-main') {
-            nextMain();
-          } else if (data.type === 'simplex.prev-main') {
-            prevMain();
           } else if (data.type === 'simplex.restart') {
             const main = currentMainIndex();
             if (main > 0) Reveal.slide(main - 1, 0);
             playCurrentVideoFromStart();
             window.setTimeout(playCurrentVideoFromStart, 50);
           } else if (data.type === 'simplex.toggle-play') {
-            togglePlayPause();
+            const v = document.querySelector('.reveal .slides .present video');
+            if (v) {
+              if (v.paused) {
+                if (v.ended || v.currentTime >= Math.max(0, v.duration - 0.05)) {
+                  try { v.currentTime = 0; } catch (_) { /* */ }
+                }
+                const p = v.play();
+                if (p && typeof p.catch === 'function') p.catch(function () {});
+              } else {
+                v.pause();
+              }
+              try {
+                window.parent.postMessage(
+                  { type: 'simplex.play-state', playing: !v.paused },
+                  parentOrigin
+                );
+              } catch (_) { /* */ }
+            }
           } else if (data.type === 'simplex.fullscreen') {
             const el = document.documentElement;
             const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
@@ -371,46 +339,13 @@
           } catch (_) { /* */ }
         }, true);
 
-        // Iframe-side keyboard handler. Reveal already covers plain arrows
-        // via the `keyboard:` mapping above; this layer adds ctrl/meta+arrow
-        // -> main-slide jumps, and space -> toggle play/pause. Crucial when
-        // the iframe is fullscreen (parent never sees the keydown then).
-        document.addEventListener('keydown', function (e) {
-          var tgt = e.target;
-          if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
-          if (e.key === 'ArrowRight' && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            nextMain();
-          } else if (e.key === 'ArrowLeft' && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault();
-            prevMain();
-          } else if (e.key === ' ' || e.code === 'Space') {
-            e.preventDefault();
-            togglePlayPause();
-          }
-        });
-
-        // Tap zones for touch devices. Use a broad detection (touch points
-        // OR coarse pointer OR ontouchstart) because hybrid devices like
-        // iPads with stylus pencils report ``hover: hover`` and were missed
-        // by the previous check. Listen for both ``click`` and ``touchend``:
-        // some mobile browsers swallow click after a quick tap, leaving the
-        // gesture with no effect.
-        var touchish = (
-          ('ontouchstart' in window) ||
-          (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) ||
-          window.matchMedia('(pointer: coarse)').matches
-        );
-        if (touchish) {
+        if (isTouch) {
           document.querySelectorAll('.tap-zone').forEach(function (z) {
-            function trigger(ev) {
+            z.addEventListener('click', function (ev) {
               ev.preventDefault();
-              ev.stopPropagation();
               if (z.dataset.tap === 'next') { Reveal.next(); }
               else { Reveal.prev(); }
-            }
-            z.addEventListener('click', trigger, { passive: false });
-            z.addEventListener('touchend', trigger, { passive: false });
+            }, { passive: false });
           });
         } else {
           document.querySelectorAll('.tap-zone').forEach(function (z) {
@@ -419,31 +354,15 @@
         }
       });
 
-      // Wall clock in the corner. Updates once per second. The display
-      // format follows the user's system locale -- am/pm vs 24h is picked
-      // by ``Intl.DateTimeFormat`` from the browser's locale settings so
-      // a US viewer sees "3:42:11 PM" while an IL/EU viewer sees "15:42:11".
+      // Wall clock in the corner. Updates once per second; pad single
+      // digits so the layout doesn't reflow.
       (function () {
         const el = document.getElementById('simplex-clock');
         if (!el) return;
-        let formatter;
-        try {
-          formatter = new Intl.DateTimeFormat([], {
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit',
-          });
-        } catch (_) {
-          formatter = null;
-        }
         const pad = (n) => String(n).padStart(2, '0');
         const tick = () => {
           const now = new Date();
-          if (formatter) {
-            el.textContent = formatter.format(now);
-          } else {
-            el.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
-          }
+          el.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
         };
         tick();
         setInterval(tick, 1000);
