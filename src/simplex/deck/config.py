@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pygments.style import Style
 
 from simplex.theme.presets import get as get_theme
 from simplex.theme.tokens import WebPalette
@@ -184,6 +185,15 @@ class DeckConfig(BaseModel):
             font_family_mono=web.font_family_mono or base.font_family_mono,
             font_size_base=web.font_size_base or base.font_size_base,
         )
+
+    def resolved_code_style(self) -> type[Style]:
+        """Return the Pygments style class for this deck's theme."""
+        theme = get_theme(self.theme)
+        style: type[Style] | None = getattr(theme, "code_style", None)
+        if style is not None:
+            return style
+        mod = __import__("simplex.theme.pygments_style", fromlist=["SimplexPycharm"])
+        return mod.SimplexPycharm  # type: ignore[no-any-return]
 
     def _module_to_file(self, module: str) -> Path:
         """Map ``slides.foo.bar`` to the deck-relative ``.py`` file."""
