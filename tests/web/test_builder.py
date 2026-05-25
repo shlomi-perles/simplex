@@ -63,10 +63,17 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     assert 'data-slide="1"' in alpha_html
     assert "Slide Theme" in alpha_html
     assert "Slide Color" not in alpha_html
+    assert "Stopwatch" in alpha_html
+    assert alpha_html.index("Enumeration") < alpha_html.index("Clock")
+    assert alpha_html.index("Clock") < alpha_html.index("Stopwatch")
+    assert alpha_html.index("Stopwatch") < alpha_html.index("Slide Theme")
     assert 'src="slides.html?v=' in alpha_html
     slides_html = (site_dir / "decks" / "alpha" / "slides.html").read_text(encoding="utf-8")
     assert "Reveal" in slides_html
     assert "--simplex-bg" in slides_html
+    assert "simplex.next-main" in slides_html
+    assert "simplex.prev-main-or-reset" in slides_html
+    assert "simplex.stopwatch-toggle" in slides_html
 
 
 def test_build_resolves_nav_links_against_base_url_and_moves_github_to_footer(

@@ -69,6 +69,11 @@ Cite \cite{KB15}. This line has a sidenote.^[A mobile note.]
     assert generated
     tex = generated[-1]
     assert r"\usepackage{amsmath,amssymb,amsthm}" in tex
+    assert r"\definecolor{blue}{RGB}{12,97,197}" in tex
+    assert r"\definecolor{green}{RGB}{0,128,40}" in tex
+    assert "bookmarksopenlevel=1" in tex
+    assert "citecolor=green" in tex
+    assert "anchorcolor=blue" in tex
     assert r"\newtheorem{thm}{Theorem}" in tex
     assert r"slide~2 (Key Idea)" in tex
     assert r"\begin{tabularx}" in tex

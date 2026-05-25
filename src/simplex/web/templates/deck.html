@@ -41,6 +41,7 @@
   data-slide-count="{{ slide_count }}"
   data-default-slide-number="{% if deck.web.show_slide_number %}true{% else %}false{% endif %}"
   data-default-clock="{% if deck.web.show_clock %}true{% else %}false{% endif %}"
+  data-default-stopwatch="{% if deck.web.show_stopwatch %}true{% else %}false{% endif %}"
 >
   <div class="deck-viewer">
     <div class="deck-viewer-frame">
@@ -92,6 +93,53 @@
           <span>Player Settings</span>
         </button>
         <div class="deck-settings-panel" data-settings-panel hidden>
+          <label class="deck-setting-row">
+            <span><i data-lucide="list-ordered" aria-hidden="true"></i>Enumeration</span>
+            <input
+              type="checkbox"
+              data-setting="slide-number"
+              {% if deck.web.show_slide_number %}checked{% endif %}
+            />
+          </label>
+          <label class="deck-setting-row">
+            <span><i data-lucide="clock" aria-hidden="true"></i>Clock</span>
+            <input type="checkbox" data-setting="clock" {% if deck.web.show_clock %}checked{% endif %} />
+          </label>
+          <div class="deck-setting-row deck-stopwatch-row">
+            <span><i data-lucide="timer" aria-hidden="true"></i>Stopwatch</span>
+            <div class="deck-stopwatch-controls">
+              <input
+                type="checkbox"
+                data-setting="stopwatch"
+                aria-label="Show stopwatch"
+                title="Show stopwatch"
+                {% if deck.web.show_stopwatch %}checked{% endif %}
+              />
+              <button
+                type="button"
+                class="deck-stopwatch-btn deck-stopwatch-toggle"
+                data-stopwatch-action="toggle"
+                data-state="stopped"
+                aria-label="Start stopwatch"
+                title="Start stopwatch"
+              >
+                <i data-lucide="play" class="deck-stopwatch-icon-start" aria-hidden="true"></i>
+                <i data-lucide="pause" class="deck-stopwatch-icon-stop" aria-hidden="true"></i>
+                <span class="icon-fallback deck-stopwatch-icon-start" aria-hidden="true">▶</span>
+                <span class="icon-fallback deck-stopwatch-icon-stop" aria-hidden="true">Ⅱ</span>
+              </button>
+              <button
+                type="button"
+                class="deck-stopwatch-btn"
+                data-stopwatch-action="reset"
+                aria-label="Reset stopwatch"
+                title="Reset stopwatch"
+              >
+                <i data-lucide="rotate-ccw" aria-hidden="true"></i>
+                <span class="icon-fallback" aria-hidden="true">R</span>
+              </button>
+            </div>
+          </div>
           <div class="deck-setting-row deck-setting-row-action">
             <span><i data-lucide="palette" aria-hidden="true"></i>Slide Theme</span>
             <button
@@ -106,18 +154,6 @@
               <span data-slide-theme-label>Dark</span>
             </button>
           </div>
-          <label class="deck-setting-row">
-            <span><i data-lucide="list-ordered" aria-hidden="true"></i>Enumeration</span>
-            <input
-              type="checkbox"
-              data-setting="slide-number"
-              {% if deck.web.show_slide_number %}checked{% endif %}
-            />
-          </label>
-          <label class="deck-setting-row">
-            <span><i data-lucide="clock" aria-hidden="true"></i>Clock</span>
-            <input type="checkbox" data-setting="clock" {% if deck.web.show_clock %}checked{% endif %} />
-          </label>
         </div>
       </div>
     </div>

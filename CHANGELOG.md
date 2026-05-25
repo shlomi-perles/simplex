@@ -4,6 +4,32 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.4.0...manim-simplex-v0.4.1) (2026-05-25)
+
+### Added
+
+- Stopwatch player chrome with settings controls for show/hide, start/stop,
+  and reset. The stopwatch renders next to the clock when visible and in the
+  same corner when the clock is hidden.
+- Deck-level `[web] notes_code_style` override for markdown notes code blocks.
+
+### Changed
+
+- Space now toggles playback, while Ctrl+Right and Ctrl+Left jump between main
+  slides with sub-slide reset behavior on Ctrl+Left.
+- Mobile slide taps now use seamless transparent tap zones backed by pointer
+  events for both embedded and fullscreen playback.
+- Player settings are ordered as Enumeration, Clock, Stopwatch, and Theme.
+- Markdown notes code blocks default to `SimplexSolarizedLight`, independent
+  of the slide theme.
+- Notes PDF export now loads `hyperref` with bookmark/link options and the
+  Simplex color definitions, including green citation links.
+
+### Fixed
+
+- Bibliography HTML no longer uses an ordered list, so references display as
+  `[KB15]` markers without numeric enumeration.
+
 ## [0.3.1](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.3.0...manim-simplex-v0.3.1) (2026-05-25)
 
 

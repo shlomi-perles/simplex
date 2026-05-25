@@ -77,6 +77,8 @@ class WebOverride(BaseModel):
     # so toggling them is free (no re-render).
     show_slide_number: bool = False
     show_clock: bool = False
+    show_stopwatch: bool = False
+    notes_code_style: str | None = None
 
     # Homepage/section carousel preview. ``carousel_gif`` points to a
     # user-authored GIF relative to the deck directory. When omitted,
@@ -194,6 +196,13 @@ class DeckConfig(BaseModel):
             return style
         mod = __import__("simplex.theme.pygments_style", fromlist=["SimplexPycharm"])
         return mod.SimplexPycharm  # type: ignore[no-any-return]
+
+    def resolved_notes_code_style(self) -> type[Style]:
+        """Return the Pygments style class for markdown notes code blocks."""
+        from simplex.theme.pygments_style import resolve_style
+        from simplex.theme.styles.simplex_solarized_light import SimplexSolarizedLight
+
+        return resolve_style(self.web.notes_code_style, default=SimplexSolarizedLight)
 
     def _module_to_file(self, module: str) -> Path:
         """Map ``slides.foo.bar`` to the deck-relative ``.py`` file."""

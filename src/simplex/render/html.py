@@ -125,6 +125,7 @@ def render_html(
         transition=deck.web.transition,
         show_slide_number=deck.web.show_slide_number,
         show_clock=deck.web.show_clock,
+        show_stopwatch=deck.web.show_stopwatch,
         watch=watch,
     )
     out = output_dir / "slides.html"

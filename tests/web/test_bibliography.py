@@ -164,6 +164,8 @@ def test_bibliography_html_uses_alpha_marker() -> None:
     """
     bib = Bibliography.parse(text)
     html = bib.to_html(("a", "b"))
+    assert '<ul class="bib-list" role="list">' in html
+    assert "<ol" not in html
     # Marker spans, not the old CSS counter.
     assert '<span class="bib-marker">[Ada20]</span>' in html
     assert '<span class="bib-marker">[BC21]</span>' in html

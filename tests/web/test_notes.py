@@ -25,8 +25,17 @@ def test_fenced_code_block_survives() -> None:
     assert ">1<" in html
 
 
-def test_fenced_code_block_uses_theme_keyword_color() -> None:
+def test_fenced_code_block_uses_default_notes_keyword_color() -> None:
     html = render_text("```python\ndef f(): pass\n```\n")
+    # Markdown notes default to SimplexSolarizedLight, independent of the
+    # slide theme's code style. If the style ever drifts, this catches it.
+    assert "#DB7448" in html.upper() or "#db7448" in html
+
+
+def test_fenced_code_block_can_override_code_style() -> None:
+    from simplex.theme.styles.simplex_pycharm import SimplexPycharm
+
+    html = render_text("```python\ndef f(): pass\n```\n", code_style=SimplexPycharm)
     # SimplexPycharm renders Python keywords in #CC7832 -- if the style
     # ever drifts, this is where it'll show up first.
     assert "#CC7832" in html.upper() or "#cc7832" in html

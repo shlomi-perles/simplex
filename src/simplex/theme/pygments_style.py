@@ -9,6 +9,8 @@ import sys
 import types
 
 from pygments.style import Style
+from pygments.styles import get_style_by_name
+from pygments.util import ClassNotFound
 
 from simplex.theme.styles import BUILTIN_STYLES, SimplexPycharm, SimplexSolarizedLight
 
@@ -17,6 +19,7 @@ __all__ = [
     "SimplexPycharm",
     "SimplexSolarizedLight",
     "register_style",
+    "resolve_style",
 ]
 
 
@@ -52,6 +55,37 @@ def register_all_builtin_styles() -> None:
     """Register every built-in Simplex style with Pygments."""
     for name, cls in BUILTIN_STYLES.items():
         register_style(cls, name)
+
+
+def resolve_style(name: str | None, *, default: type[Style]) -> type[Style]:
+    """Resolve a configured Pygments style name.
+
+    Built-in Simplex styles accept either their registry name
+    (``simplex_solarized_light``) or class name (``SimplexSolarizedLight``).
+    Any Pygments-installed style name is accepted too.
+    """
+    if name is None or not name.strip():
+        return default
+
+    register_all_builtin_styles()
+    raw = name.strip()
+    candidates = [raw]
+    class_like = _class_name_to_style_name(raw)
+    if class_like != raw:
+        candidates.append(class_like)
+
+    for candidate in candidates:
+        if candidate in BUILTIN_STYLES:
+            return BUILTIN_STYLES[candidate]
+        try:
+            return get_style_by_name(candidate)
+        except ClassNotFound:
+            continue
+
+    builtins = ", ".join(sorted(BUILTIN_STYLES))
+    raise ValueError(
+        f"unknown Pygments style {name!r}; use a Pygments style name or one of: {builtins}"
+    )
 
 
 def _class_name_to_style_name(name: str) -> str:

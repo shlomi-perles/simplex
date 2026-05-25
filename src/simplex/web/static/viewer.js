@@ -203,6 +203,9 @@
     var slideThemeLabel = deck.querySelector("[data-slide-theme-label]");
     var slideNumberSetting = deck.querySelector('[data-setting="slide-number"]');
     var clockSetting = deck.querySelector('[data-setting="clock"]');
+    var stopwatchSetting = deck.querySelector('[data-setting="stopwatch"]');
+    var stopwatchToggle = deck.querySelector('[data-stopwatch-action="toggle"]');
+    var stopwatchReset = deck.querySelector('[data-stopwatch-action="reset"]');
     var total = parseInt(deck.dataset.slideCount || "0", 10) || slideButtons.length;
     var currentIdx = 0;
     var slideThemeManual = false;
@@ -328,7 +331,15 @@
         type: "simplex.set-chrome",
         slideNumber: !!(slideNumberSetting && slideNumberSetting.checked),
         clock: !!(clockSetting && clockSetting.checked),
+        stopwatch: !!(stopwatchSetting && stopwatchSetting.checked),
       });
+    }
+
+    function setStopwatchState(running) {
+      if (!stopwatchToggle) return;
+      stopwatchToggle.dataset.state = running ? "running" : "stopped";
+      stopwatchToggle.setAttribute("aria-label", running ? "Stop stopwatch" : "Start stopwatch");
+      stopwatchToggle.setAttribute("title", running ? "Stop stopwatch" : "Start stopwatch");
     }
 
     function closeSettings() {
@@ -352,6 +363,8 @@
         if (Number.isInteger(d.idx)) setActive(d.idx);
       } else if (d.type === "simplex.play-state") {
         setPlayState(!!d.playing);
+      } else if (d.type === "simplex.stopwatch-state") {
+        setStopwatchState(!!d.running);
       }
     });
 
@@ -441,8 +454,22 @@
     document.addEventListener("keydown", function (e) {
       var t = e.target;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      if (e.key === "ArrowRight") { e.preventDefault(); send({ type: "simplex.next" }); }
-      else if (e.key === "ArrowLeft") { e.preventDefault(); send({ type: "simplex.prev" }); }
+      if (e.key === " " || e.code === "Space" || e.key === "Spacebar") {
+        e.preventDefault();
+        send({ type: "simplex.toggle-play" });
+      } else if (e.ctrlKey && !e.altKey && !e.metaKey && e.key === "ArrowRight") {
+        e.preventDefault();
+        send({ type: "simplex.next-main" });
+      } else if (e.ctrlKey && !e.altKey && !e.metaKey && e.key === "ArrowLeft") {
+        e.preventDefault();
+        send({ type: "simplex.prev-main-or-reset" });
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        send({ type: "simplex.next" });
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        send({ type: "simplex.prev" });
+      }
     });
 
     if (slideThemeSetting) {
@@ -458,6 +485,20 @@
     if (clockSetting) {
       clockSetting.checked = boolAttr("defaultClock");
       clockSetting.addEventListener("change", syncChromeSettings);
+    }
+    if (stopwatchSetting) {
+      stopwatchSetting.checked = boolAttr("defaultStopwatch");
+      stopwatchSetting.addEventListener("change", syncChromeSettings);
+    }
+    if (stopwatchToggle) {
+      stopwatchToggle.addEventListener("click", function () {
+        send({ type: "simplex.stopwatch-toggle" });
+      });
+    }
+    if (stopwatchReset) {
+      stopwatchReset.addEventListener("click", function () {
+        send({ type: "simplex.stopwatch-reset" });
+      });
     }
     if (iframe) iframe.addEventListener("load", sendChromeSettings);
     window.addEventListener("simplex.theme", syncThemeSetting);

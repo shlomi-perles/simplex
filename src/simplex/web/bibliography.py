@@ -8,7 +8,7 @@ Public surface (see `simplex/web/README.md`):
 - `Bibliography.parse(text)` / `.load(path)` -- read a `.bib` file.
 - `Bibliography.get(key)` -- retrieve an entry, raises if missing.
 - `Bibliography.has(key)` -- existence check (used by the citations plugin).
-- `Bibliography.to_html(used)` -- ordered <ol> of the cited entries, in the
+- `Bibliography.to_html(used)` -- list of the cited entries, in the
   order they were first referenced. Pass an empty tuple to suppress.
 
 Alpha labels follow `biblatex`'s `alpha` style:
@@ -159,7 +159,7 @@ class Bibliography(BaseModel):
         return self.entries[key]
 
     def to_html(self, used: tuple[str, ...]) -> str:
-        """Render an ordered list of the cited entries, in citation order."""
+        """Render a non-enumerated list of the cited entries, in citation order."""
         seen: set[str] = set()
         ordered: list[BibEntry] = []
         for key in used:
@@ -173,7 +173,7 @@ class Bibliography(BaseModel):
         return (
             '<section class="bibliography" aria-labelledby="bib-heading">'
             '<h2 id="bib-heading">References</h2>'
-            f'<ol class="bib-list">\n{items}\n</ol>'
+            f'<ul class="bib-list" role="list">\n{items}\n</ul>'
             "</section>"
         )
 
