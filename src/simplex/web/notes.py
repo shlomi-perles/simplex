@@ -10,7 +10,7 @@ Pipeline:
    - ``slide_ref``          -- ``[slide:N]`` -> in-page clickable jumps.
    - ``cite``               -- ``\cite{key1,key2}`` -> alpha-tag bibliography
      links; cited keys collected on ``state.env["citations"]``.
-2. Pygments syntax highlight for fenced code blocks (DarculaStyle).
+2. Pygments syntax highlight for fenced code blocks (themed style).
 3. Post-process footnote HTML into Tufte sidenote markup
    (`web/sidenotes.py`).
 4. Append the rendered bibliography (``<ol class="bib-list">``) when a
@@ -19,8 +19,8 @@ Pipeline:
 Math (``$...$`` / ``$$...$$``) is rewritten with KaTeX-friendly ``\\(...\\)``
 and ``\\[...\\]`` delimiters so katex auto-render (loaded in base.html) can
 typeset it client-side. Fenced code blocks are highlighted server-side with
-Pygments using the same DarculaStyle the video engine uses, so notes match
-the slides visually.
+Pygments using the active theme's code style, so notes match the slides
+visually.
 """
 
 from pathlib import Path
@@ -33,9 +33,10 @@ from mdit_py_plugins.footnote import footnote_plugin
 from pygments import highlight as _pyg_highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, guess_lexer
+from pygments.style import Style
 from pygments.util import ClassNotFound
 
-from simplex.theme.pygments_style import DarculaStyle
+from simplex.theme.context import get_active_theme
 from simplex.web import callouts, equations, sidenotes
 from simplex.web.bibliography import Bibliography
 from simplex.web.citations import ENV_KEY as _CITE_ENV_KEY
@@ -52,10 +53,20 @@ def _math_renderer(content: str, options: dict[str, Any]) -> str:
     return f"\\({content}\\)"
 
 
-# `nowrap=True` strips the Pygments <div><pre> wrap so markdown-it's own
-# <pre><code> is the only wrap. The surrounding notes CSS owns the light
-# background; token colors stay aligned with slide code blocks.
-_FORMATTER = HtmlFormatter(nowrap=True, noclasses=True, style=DarculaStyle)
+def _resolve_code_style() -> type[Style]:
+    """Return the active theme's code style, falling back to SimplexPycharm."""
+    style: type[Style] | None = getattr(get_active_theme(), "code_style", None)
+    if style is not None:
+        return style
+    # Lazy import: simplex.theme.pygments_style re-exports built-in styles.
+    mod = __import__("simplex.theme.pygments_style", fromlist=["SimplexPycharm"])
+    return mod.SimplexPycharm  # type: ignore[no-any-return]
+
+
+def _get_formatter(style: type[Style] | None = None) -> HtmlFormatter:  # type: ignore[type-arg]
+    if style is None:
+        style = _resolve_code_style()
+    return HtmlFormatter(nowrap=True, noclasses=True, style=style)
 
 
 def _highlight(code: str, lang: str, _attrs: str) -> str:
@@ -63,7 +74,7 @@ def _highlight(code: str, lang: str, _attrs: str) -> str:
         lexer = get_lexer_by_name(lang) if lang else guess_lexer(code)
     except ClassNotFound:
         return ""  # markdown-it falls back to its default <pre><code>
-    return _pyg_highlight(code, lexer, _FORMATTER)
+    return _pyg_highlight(code, lexer, _get_formatter())
 
 
 def _make(
