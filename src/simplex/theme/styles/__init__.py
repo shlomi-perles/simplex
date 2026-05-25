@@ -5,10 +5,12 @@ them by registration name so the theme system can look up and register any
 style without importing all of them eagerly.
 """
 
+from pygments.style import Style
+
 from simplex.theme.styles.simplex_pycharm import SimplexPycharm
 from simplex.theme.styles.simplex_solarized_light import SimplexSolarizedLight
 
-BUILTIN_STYLES: dict[str, type] = {
+BUILTIN_STYLES: dict[str, type[Style]] = {
     "simplex_pycharm": SimplexPycharm,
     "simplex_solarized_light": SimplexSolarizedLight,
 }

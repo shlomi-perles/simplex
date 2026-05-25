@@ -10,19 +10,20 @@ Pipeline:
    - ``slide_ref``          -- ``[slide:N]`` -> in-page clickable jumps.
    - ``cite``               -- ``\cite{key1,key2}`` -> alpha-tag bibliography
      links; cited keys collected on ``state.env["citations"]``.
-2. Pygments syntax highlight for fenced code blocks (themed style).
+2. Pygments syntax highlight for fenced code blocks (notes code style).
 3. Post-process footnote HTML into Tufte sidenote markup
    (`web/sidenotes.py`).
-4. Append the rendered bibliography (``<ol class="bib-list">``) when a
+4. Append the rendered bibliography (``<ul class="bib-list">``) when a
    ``Bibliography`` was supplied and any keys were cited.
 
 Math (``$...$`` / ``$$...$$``) is rewritten with KaTeX-friendly ``\\(...\\)``
 and ``\\[...\\]`` delimiters so katex auto-render (loaded in base.html) can
 typeset it client-side. Fenced code blocks are highlighted server-side with
-Pygments using the active theme's code style, so notes match the slides
-visually.
+Pygments using ``SimplexSolarizedLight`` by default, independent of the slide
+theme. Decks can override this through ``[web] notes_code_style``.
 """
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +37,7 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.style import Style
 from pygments.util import ClassNotFound
 
-from simplex.theme.context import get_active_theme
+from simplex.theme.styles.simplex_solarized_light import SimplexSolarizedLight
 from simplex.web import callouts, equations, sidenotes
 from simplex.web.bibliography import Bibliography
 from simplex.web.citations import ENV_KEY as _CITE_ENV_KEY
@@ -54,13 +55,8 @@ def _math_renderer(content: str, options: dict[str, Any]) -> str:
 
 
 def _resolve_code_style() -> type[Style]:
-    """Return the active theme's code style, falling back to SimplexPycharm."""
-    style: type[Style] | None = getattr(get_active_theme(), "code_style", None)
-    if style is not None:
-        return style
-    # Lazy import: simplex.theme.pygments_style re-exports built-in styles.
-    mod = __import__("simplex.theme.pygments_style", fromlist=["SimplexPycharm"])
-    return mod.SimplexPycharm  # type: ignore[no-any-return]
+    """Return the default markdown notes code style."""
+    return SimplexSolarizedLight
 
 
 def _get_formatter(style: type[Style] | None = None) -> HtmlFormatter:  # type: ignore[type-arg]
@@ -77,18 +73,31 @@ def _highlight(code: str, lang: str, _attrs: str) -> str:
     return _pyg_highlight(code, lexer, _get_formatter())
 
 
+def _highlight_with_style(style: type[Style]) -> Callable[[str, str, str], str]:
+    def highlight(code: str, lang: str, _attrs: str) -> str:
+        try:
+            lexer = get_lexer_by_name(lang) if lang else guess_lexer(code)
+        except ClassNotFound:
+            return ""
+        return _pyg_highlight(code, lexer, _get_formatter(style))
+
+    return highlight
+
+
 def _make(
     slide_count: int | None = None,
     slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
+    code_style: type[Style] | None = None,
 ) -> MarkdownIt:
+    highlight = _highlight if code_style is None else _highlight_with_style(code_style)
     md = MarkdownIt(
         "commonmark",
         {
             "html": False,
             "linkify": True,
             "typographer": True,
-            "highlight": _highlight,
+            "highlight": highlight,
         },
     )
     md.enable("table")
@@ -109,6 +118,7 @@ def render_text(
     slide_count: int | None = None,
     slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
+    code_style: type[Style] | None = None,
 ) -> str:
     """Render a markdown string to academic-style HTML.
 
@@ -116,7 +126,12 @@ def render_text(
     trailing ``<section class="bibliography">``. When omitted, ``\\cite{}``
     markers render as the literal `[key?]` "stale" tags.
     """
-    md = _make(slide_count=slide_count, slide_refs=slide_refs, bibliography=bibliography)
+    md = _make(
+        slide_count=slide_count,
+        slide_refs=slide_refs,
+        bibliography=bibliography,
+        code_style=code_style,
+    )
     env: dict[str, Any] = {}
     body = md.render(markdown, env)
     body = sidenotes.transform(body)
@@ -141,6 +156,7 @@ def render(
     slide_count: int | None = None,
     slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
+    code_style: type[Style] | None = None,
 ) -> str:
     """Render a notes.md file to HTML."""
     return render_text(
@@ -148,4 +164,5 @@ def render(
         slide_count=slide_count,
         slide_refs=slide_refs,
         bibliography=bibliography,
+        code_style=code_style,
     )

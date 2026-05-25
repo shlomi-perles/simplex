@@ -250,6 +250,7 @@ def _build_deck(
             slide_count=len(enriched),
             slide_refs=slide_refs,
             bibliography=bib,
+            code_style=deck.resolved_notes_code_style(),
         )
         if render:
             with contextlib.suppress(
@@ -281,7 +282,7 @@ def _build_deck(
         notes_pdf_name=filenames.pdf_name(deck, "note"),
         notes_html=notes_html,
         palette_css=render_web_css(
-            deck.resolved_web_palette(), code_style=deck.resolved_code_style()
+            deck.resolved_web_palette(), code_style=deck.resolved_notes_code_style()
         ),
         slides_version=_file_version(slides_html),
     )

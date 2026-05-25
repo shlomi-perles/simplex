@@ -7,6 +7,8 @@ import pytest
 from pydantic import ValidationError
 
 from simplex.deck.config import DeckConfig
+from simplex.theme.styles.simplex_pycharm import SimplexPycharm
+from simplex.theme.styles.simplex_solarized_light import SimplexSolarizedLight
 
 
 def _write_toml(tmp_path: Path, body: str) -> Path:
@@ -43,16 +45,24 @@ def test_web_chrome_defaults_off(tmp_path: Path) -> None:
     cfg = DeckConfig.load(deck_dir)
     assert cfg.web.show_clock is False
     assert cfg.web.show_slide_number is False
+    assert cfg.web.show_stopwatch is False
+    assert cfg.resolved_notes_code_style() is SimplexSolarizedLight
 
 
 def test_web_chrome_can_be_enabled(tmp_path: Path) -> None:
     deck_dir = _write_toml(
         tmp_path,
-        'slug = "demo"\ntitle = "Demo"\n\n[web]\nshow_clock = true\nshow_slide_number = true\n',
+        'slug = "demo"\ntitle = "Demo"\n\n[web]\n'
+        "show_clock = true\n"
+        "show_slide_number = true\n"
+        "show_stopwatch = true\n"
+        'notes_code_style = "simplex_pycharm"\n',
     )
     cfg = DeckConfig.load(deck_dir)
     assert cfg.web.show_clock is True
     assert cfg.web.show_slide_number is True
+    assert cfg.web.show_stopwatch is True
+    assert cfg.resolved_notes_code_style() is SimplexPycharm
 
 
 def test_created_at_and_carousel_gif_options_load(tmp_path: Path) -> None:

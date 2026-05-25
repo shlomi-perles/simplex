@@ -128,9 +128,29 @@ def _document(
 \usepackage[margin=1in]{{geometry}}
 \usepackage{{amsmath,amssymb,amsthm}}
 \usepackage{{array,booktabs,enumitem,fancyvrb,tabularx}}
-\usepackage{{hyperref}}
 \usepackage{{xcolor}}
-\hypersetup{{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}}
+\definecolor{{blue}}{{RGB}}{{12,97,197}}
+\definecolor{{green}}{{RGB}}{{0,128,40}}
+\definecolor{{red}}{{RGB}}{{235,16,16}}
+\definecolor{{brown}}{{RGB}}{{154,58,0}}
+\definecolor{{orange}}{{RGB}}{{231,135,26}}
+\definecolor{{purple}}{{RGB}}{{94,53,177}}
+\usepackage[
+    unicode=true,
+    bookmarks=true,
+    bookmarksnumbered=true,
+    bookmarksopen=true,
+    bookmarksopenlevel=1,
+    breaklinks=true,
+    pdfborder={{0 0 0}},
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=green,
+    anchorcolor=blue,
+]{{hyperref}}
+\hypersetup{{pdftitle={{{title}}}, pdfcreator={{Simplex}}}}
+\urlstyle{{same}}
 \setlength{{\parindent}}{{0pt}}
 \setlength{{\parskip}}{{0.65em}}
 \renewcommand{{\arraystretch}}{{1.2}}

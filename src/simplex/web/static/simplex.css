@@ -1906,7 +1906,7 @@ body.sidenote-popover-open {
   right: 0;
   bottom: calc(100% + 0.45rem);
   z-index: 50;
-  width: 15rem;
+  width: 16.5rem;
   padding: 0.45rem;
   border: 1px solid var(--site-border);
   border-radius: 8px;
@@ -1939,6 +1939,45 @@ body.sidenote-popover-open {
 .deck-setting-row-action {
   align-items: center;
 }
+.deck-stopwatch-row {
+  align-items: center;
+}
+.deck-stopwatch-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  flex: 0 0 auto;
+}
+.deck-stopwatch-controls input {
+  margin: 0 0.16rem 0 0;
+}
+.deck-stopwatch-btn {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+    var(--site-blue);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 10px 22px -16px rgba(16, 88, 194, 0.95);
+}
+.deck-stopwatch-btn:hover {
+  filter: brightness(1.08);
+}
+.deck-stopwatch-btn svg,
+.deck-stopwatch-btn .icon-fallback {
+  width: 0.92rem;
+  height: 0.92rem;
+}
+.deck-stopwatch-toggle .deck-stopwatch-icon-stop { display: none; }
+.deck-stopwatch-toggle[data-state="running"] .deck-stopwatch-icon-start { display: none; }
+.deck-stopwatch-toggle[data-state="running"] .deck-stopwatch-icon-stop { display: inline; }
 .deck-theme-toggle {
   min-width: 5.8rem;
   height: 2rem;
@@ -2087,7 +2126,7 @@ body.sidenote-popover-open {
   .deck-settings-panel {
     left: auto;
     right: 0;
-    width: min(15rem, calc(100vw - 1rem));
+    width: min(16.5rem, calc(100vw - 1rem));
   }
   .deck-slide-list {
     gap: 0.5rem;
