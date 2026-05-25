@@ -11,10 +11,10 @@ Vendored runtime assets, copied verbatim to `site/static/` at build time.
 - `viewer.js`, `notes.js` -- parent-page bridge for the deck iframe + carousel
   arrows, and the standalone notes view.
 
-## Vendored for builds (not committed)
+## Vendored for builds (generated before release, ignored in git)
 
 - `tailwind.css` (compiled from `tailwind.input.css` by the Tailwind v4
-  standalone CLI; binary cached per-user, not shipped in the wheel)
+  standalone CLI; binary cached per-user, CSS shipped in the wheel)
 - `katex/` (CSS + fonts + JS + auto-render)
 - `reveal.js/` (`reveal.js`, `reveal.css`, `reset.css`)
 - `htmx.min.js` (optional, kept for future progressive enhancement)
