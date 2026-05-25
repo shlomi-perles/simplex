@@ -3,6 +3,13 @@
   "packages": {
     ".": {
       "bump-minor-pre-major": true,
+      "extra-files": [
+        {
+          "jsonpath": "$.package[?(@.name.value=='manim-simplex')].version",
+          "path": "uv.lock",
+          "type": "toml"
+        }
+      ],
       "package-name": "manim-simplex",
       "release-type": "python"
     }
