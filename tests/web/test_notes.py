@@ -25,11 +25,20 @@ def test_fenced_code_block_survives() -> None:
     assert ">1<" in html
 
 
-def test_fenced_code_block_uses_theme_keyword_color() -> None:
+def test_fenced_code_block_uses_default_notes_style_keyword_color() -> None:
     html = render_text("```python\ndef f(): pass\n```\n")
-    # SimplexPycharm renders Python keywords in #CC7832 -- if the style
-    # ever drifts, this is where it'll show up first.
-    assert "#CC7832" in html.upper() or "#cc7832" in html
+    # Notes default to SimplexSolarizedLight regardless of the slide theme.
+    # Python keywords render in #db7448 -- if the style ever drifts, this
+    # is where it'll show up first.
+    assert "#db7448" in html.lower()
+
+
+def test_fenced_code_block_honours_explicit_style() -> None:
+    from simplex.theme.styles import SimplexPycharm
+
+    html = render_text("```python\ndef f(): pass\n```\n", code_style=SimplexPycharm)
+    # SimplexPycharm keyword color -- proves the override path is wired up.
+    assert "#cc7832" in html.lower()
 
 
 def test_heading_emitted() -> None:

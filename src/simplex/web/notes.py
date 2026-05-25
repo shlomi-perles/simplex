@@ -36,7 +36,6 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.style import Style
 from pygments.util import ClassNotFound
 
-from simplex.theme.context import get_active_theme
 from simplex.web import callouts, equations, sidenotes
 from simplex.web.bibliography import Bibliography
 from simplex.web.citations import ENV_KEY as _CITE_ENV_KEY
@@ -54,13 +53,19 @@ def _math_renderer(content: str, options: dict[str, Any]) -> str:
 
 
 def _resolve_code_style() -> type[Style]:
-    """Return the active theme's code style, falling back to SimplexPycharm."""
-    style: type[Style] | None = getattr(get_active_theme(), "code_style", None)
-    if style is not None:
-        return style
-    # Lazy import: simplex.theme.pygments_style re-exports built-in styles.
-    mod = __import__("simplex.theme.pygments_style", fromlist=["SimplexPycharm"])
-    return mod.SimplexPycharm  # type: ignore[no-any-return]
+    """Default notes code style.
+
+    Independent of the active *slide* theme: notes get a bright reading-copy
+    style (``SimplexSolarizedLight``) regardless of whether the deck's slide
+    theme is dark. Decks override this via ``notes_code_style`` in
+    ``deck.toml`` and route the resolved class through ``render``/``render_text``
+    -- the active-theme lookup is only kept as a last-resort safety net for
+    callers that never go through ``DeckConfig`` (e.g. ad-hoc snippets).
+    """
+    mod = __import__(
+        "simplex.theme.pygments_style", fromlist=["SimplexSolarizedLight"]
+    )
+    return mod.SimplexSolarizedLight  # type: ignore[no-any-return]
 
 
 def _get_formatter(style: type[Style] | None = None) -> HtmlFormatter:  # type: ignore[type-arg]
@@ -69,18 +74,24 @@ def _get_formatter(style: type[Style] | None = None) -> HtmlFormatter:  # type: 
     return HtmlFormatter(nowrap=True, noclasses=True, style=style)
 
 
-def _highlight(code: str, lang: str, _attrs: str) -> str:
-    try:
-        lexer = get_lexer_by_name(lang) if lang else guess_lexer(code)
-    except ClassNotFound:
-        return ""  # markdown-it falls back to its default <pre><code>
-    return _pyg_highlight(code, lexer, _get_formatter())
+def _make_highlighter(code_style: type[Style] | None):  # type: ignore[type-arg]
+    """Build a markdown-it ``highlight`` callback bound to ``code_style``."""
+
+    def _highlight(code: str, lang: str, _attrs: str) -> str:
+        try:
+            lexer = get_lexer_by_name(lang) if lang else guess_lexer(code)
+        except ClassNotFound:
+            return ""  # markdown-it falls back to its default <pre><code>
+        return _pyg_highlight(code, lexer, _get_formatter(code_style))
+
+    return _highlight
 
 
 def _make(
     slide_count: int | None = None,
     slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
+    code_style: type[Style] | None = None,  # type: ignore[type-arg]
 ) -> MarkdownIt:
     md = MarkdownIt(
         "commonmark",
@@ -88,7 +99,7 @@ def _make(
             "html": False,
             "linkify": True,
             "typographer": True,
-            "highlight": _highlight,
+            "highlight": _make_highlighter(code_style),
         },
     )
     md.enable("table")
@@ -109,14 +120,24 @@ def render_text(
     slide_count: int | None = None,
     slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
+    code_style: type[Style] | None = None,  # type: ignore[type-arg]
 ) -> str:
     """Render a markdown string to academic-style HTML.
 
     Pass `bibliography` to enable `\\cite{key}` -> linked alpha tags and a
     trailing ``<section class="bibliography">``. When omitted, ``\\cite{}``
     markers render as the literal `[key?]` "stale" tags.
+
+    ``code_style`` selects the Pygments style class used to syntax-highlight
+    fenced code blocks. When omitted, the notes default (``SimplexSolarizedLight``)
+    is used regardless of the active slide theme.
     """
-    md = _make(slide_count=slide_count, slide_refs=slide_refs, bibliography=bibliography)
+    md = _make(
+        slide_count=slide_count,
+        slide_refs=slide_refs,
+        bibliography=bibliography,
+        code_style=code_style,
+    )
     env: dict[str, Any] = {}
     body = md.render(markdown, env)
     body = sidenotes.transform(body)
@@ -141,6 +162,7 @@ def render(
     slide_count: int | None = None,
     slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
+    code_style: type[Style] | None = None,  # type: ignore[type-arg]
 ) -> str:
     """Render a notes.md file to HTML."""
     return render_text(
@@ -148,4 +170,5 @@ def render(
         slide_count=slide_count,
         slide_refs=slide_refs,
         bibliography=bibliography,
+        code_style=code_style,
     )

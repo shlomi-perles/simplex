@@ -124,13 +124,40 @@ def _document(
 ) -> str:
     bib = _bibliography_latex(bibliography, used_citations)
     title = _escape_latex(deck.title)
+    # xcolor declared *before* hyperref so its named colors are visible to
+    # the package's options. Color names mirror the Simplex web palette so
+    # links print with the same blue/green identity readers see online.
+    # bookmarks*: build a navigable outline in PDF readers.
+    # breaklinks: long URLs wrap inside line boxes.
+    # pdfborder={0 0 0}: no ugly default link boxes (we color the text).
+    # colorlinks + per-target colors: keep cites green, everything else blue.
     return rf"""\documentclass[11pt]{{article}}
 \usepackage[margin=1in]{{geometry}}
 \usepackage{{amsmath,amssymb,amsthm}}
 \usepackage{{array,booktabs,enumitem,fancyvrb,tabularx}}
-\usepackage{{hyperref}}
 \usepackage{{xcolor}}
-\hypersetup{{colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue}}
+\definecolor{{blue}}{{RGB}}{{12,97,197}}
+\definecolor{{green}}{{RGB}}{{0,128,40}}
+\definecolor{{red}}{{RGB}}{{235,16,16}}
+\definecolor{{brown}}{{RGB}}{{154,58,0}}
+\definecolor{{orange}}{{RGB}}{{231,135,26}}
+\definecolor{{purple}}{{RGB}}{{94,53,177}}
+\usepackage[
+    unicode=true,
+    bookmarks=true,
+    bookmarksnumbered=true,
+    bookmarksopen=true,
+    bookmarksopenlevel=1,
+    breaklinks=true,
+    pdfborder={{0 0 0}},
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=green,
+    anchorcolor=blue
+]{{hyperref}}
+\hypersetup{{pdftitle={{{title}}}}}
+\urlstyle{{same}}
 \setlength{{\parindent}}{{0pt}}
 \setlength{{\parskip}}{{0.65em}}
 \renewcommand{{\arraystretch}}{{1.2}}
