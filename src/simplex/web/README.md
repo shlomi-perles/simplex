@@ -10,15 +10,15 @@ notes pipeline (markdown + math + citations + Tufte sidenotes).
 - `notes.render(notes_md_path, slide_count=..., slide_refs=...,
   bibliography=...)` -- markdown-it + dollarmath + footnotes +
   `[slide:label]` + `\cite{}` +
-  `\ref{}` -> Tufte-style academic HTML (serif body, Lato headings,
+  `\ref{}` / `\autoref{}` -> Tufte-style academic HTML (serif body, Lato headings,
   right-margin sidenotes, colour-coded theorem callouts, references
   appendix, auto-fitted display math).
 - `bibliography.Bibliography.load(refs_bib)` -- parse a `.bib`, assign
   biblatex `alpha` labels (`[DHS11]`-style), render the cited subset.
-- `callouts.transform(html)` -- rewrite `> **Theorem 3.1.** ...`
-  blockquotes as anchored `<aside class="callout callout-theorem"
-  id="theorem-3-1">` blocks; resolve `\ref{}` placeholders to the
-  display label.
+- `callouts.transform(html)` -- rewrite `> **Theorem.** \label{thm:first} ...`
+  blockquotes as auto-numbered anchored `<aside class="callout callout-theorem"
+  id="thm:first">` blocks; resolve `\ref{}` / `\autoref{}` placeholders to
+  the display label.
 - `builder.build(decks_dir, site_dir, *, render=True, site_cfg=None, only=(), scenes=(), watch=False)`
   -- discover -> render -> pdf -> reconcile -> thumbnail -> notes ->
   emit per-deck `slides.html` + page + per-section pages + home.

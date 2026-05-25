@@ -28,6 +28,10 @@ See [slide:key-idea].
 - First item.
 - Second item.
 
+> **Theorem.** \label{thm:first} Every finite list has a first item.
+
+See \autoref{thm:first}.
+
 Cite \cite{KB15}. This line has a sidenote.^[A mobile note.]
 """,
         encoding="utf-8",
@@ -64,10 +68,16 @@ Cite \cite{KB15}. This line has a sidenote.^[A mobile note.]
     assert pdf.read_bytes() == b"%PDF-1.7\n"
     assert generated
     tex = generated[-1]
+    assert r"\usepackage{amsmath,amssymb,amsthm}" in tex
+    assert r"\newtheorem{thm}{Theorem}" in tex
     assert r"slide~2 (Key Idea)" in tex
     assert r"\begin{tabularx}" in tex
     assert r"\begin{itemize}" in tex
     assert r"\item First item.\par" in tex
+    assert r"\begin{thm}" in tex
+    assert r"\label{thm:first}" in tex
+    assert r"\autoref{thm:first}" in tex
+    assert r"\textbackslash{}label" not in tex
     assert r"\cite{KB15}" in tex
     assert r"\footnote{A mobile note.}" in tex
     assert r"\begin{thebibliography}{99}" in tex

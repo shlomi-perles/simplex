@@ -25,6 +25,42 @@ from simplex.web.bibliography import BibEntry, Bibliography
 from simplex.web.slide_ref import SlideRefMap, label_key
 
 _CITE_RE = re.compile(r"\\cite\{([^}]+)\}")
+_LABEL_RE = re.compile(r"\\label\{([A-Za-z0-9_:\-./]+)\}")
+_CALLOUT_TYPES = (
+    "Proposition",
+    "Conjecture",
+    "Definition",
+    "Observation",
+    "Corollary",
+    "Theorem",
+    "Example",
+    "Lemma",
+    "Remark",
+    "Proof",
+    "Claim",
+    "Fact",
+    "Note",
+)
+_CALLOUT_RE = re.compile(
+    rf"^\s*\*\*(?P<type>{'|'.join(_CALLOUT_TYPES)})"
+    r"(?:\s+(?P<num>\d+(?:\.\d+)*))?\s*\.\*\*\s*",
+    re.IGNORECASE,
+)
+_CALLOUT_ENVS = {
+    "theorem": "thm",
+    "lemma": "lem",
+    "proposition": "prop",
+    "corollary": "cor",
+    "claim": "claim",
+    "fact": "fact",
+    "conjecture": "conjecture",
+    "definition": "defn",
+    "example": "example",
+    "remark": "rem",
+    "observation": "obs",
+    "note": "note",
+    "proof": "proof",
+}
 
 
 def export(
@@ -90,7 +126,7 @@ def _document(
     title = _escape_latex(deck.title)
     return rf"""\documentclass[11pt]{{article}}
 \usepackage[margin=1in]{{geometry}}
-\usepackage{{amsmath,amssymb}}
+\usepackage{{amsmath,amssymb,amsthm}}
 \usepackage{{array,booktabs,enumitem,fancyvrb,tabularx}}
 \usepackage{{hyperref}}
 \usepackage{{xcolor}}
@@ -98,6 +134,7 @@ def _document(
 \setlength{{\parindent}}{{0pt}}
 \setlength{{\parskip}}{{0.65em}}
 \renewcommand{{\arraystretch}}{{1.2}}
+{_theorem_preamble()}
 \title{{{title}}}
 \date{{}}
 \begin{{document}}
@@ -105,6 +142,41 @@ def _document(
 {body}
 {bib}
 \end{{document}}
+"""
+
+
+def _theorem_preamble() -> str:
+    return r"""
+\theoremstyle{plain}
+\newtheorem{thm}{Theorem}
+\newtheorem{lem}{Lemma}
+\newtheorem{prop}{Proposition}
+\newtheorem{cor}{Corollary}
+\newtheorem{claim}{Claim}
+\newtheorem{fact}{Fact}
+\newtheorem{conjecture}{Conjecture}
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}
+\newtheorem{example}{Example}
+
+\theoremstyle{remark}
+\newtheorem{rem}{Remark}
+\newtheorem{obs}{Observation}
+\newtheorem{note}{Note}
+
+\providecommand{\thmautorefname}{Theorem}
+\providecommand{\lemautorefname}{Lemma}
+\providecommand{\propautorefname}{Proposition}
+\providecommand{\corautorefname}{Corollary}
+\providecommand{\claimautorefname}{Claim}
+\providecommand{\factautorefname}{Fact}
+\providecommand{\conjectureautorefname}{Conjecture}
+\providecommand{\defnautorefname}{Definition}
+\providecommand{\exampleautorefname}{Example}
+\providecommand{\remautorefname}{Remark}
+\providecommand{\obsautorefname}{Observation}
+\providecommand{\noteautorefname}{Note}
 """
 
 
@@ -147,8 +219,13 @@ def _render_blocks(
             out.extend(lines)
         elif token.type == "blockquote_open":
             end = _find_matching(tokens, i, "blockquote_open", "blockquote_close")
-            body = _render_blocks(tokens[i + 1 : end], used_citations, slide_refs)
-            out.extend([r"\begin{quote}", *body, r"\end{quote}"])
+            body_tokens = tokens[i + 1 : end]
+            callout = _render_callout(body_tokens, used_citations, slide_refs)
+            if callout is None:
+                body = _render_blocks(body_tokens, used_citations, slide_refs)
+                out.extend([r"\begin{quote}", *body, r"\end{quote}"])
+            else:
+                out.extend(callout)
             i = end + 1
         elif token.type == "math_block":
             out.append("\\[\n" + token.content.strip() + "\n\\]")
@@ -168,6 +245,42 @@ def _render_blocks(
         else:
             i += 1
     return out
+
+
+def _render_callout(
+    tokens: list[Token],
+    used_citations: list[str],
+    slide_refs: SlideRefMap,
+) -> list[str] | None:
+    inline_index = _first_paragraph_inline_index(tokens)
+    if inline_index is None:
+        return None
+
+    inline = tokens[inline_index]
+    match = _CALLOUT_RE.match(inline.content)
+    if match is None:
+        return None
+
+    env = _CALLOUT_ENVS.get(match.group("type").lower())
+    if env is None:
+        return None
+
+    # Drop the Markdown callout tag. In LaTeX, amsthm owns the visible
+    # theorem/proof heading and the counter.
+    inline.content = inline.content[match.end() :]
+    body = "\n".join(_render_blocks(tokens, used_citations, slide_refs)).strip()
+    if env == "proof":
+        return [r"\begin{proof}", body, r"\end{proof}"]
+    return [rf"\begin{{{env}}}", body, rf"\end{{{env}}}"]
+
+
+def _first_paragraph_inline_index(tokens: list[Token]) -> int | None:
+    for idx, token in enumerate(tokens[:-1]):
+        if token.type == "paragraph_open" and tokens[idx + 1].type == "inline":
+            return idx + 1
+        if token.type not in {"softbreak", "text"}:
+            return None
+    return None
 
 
 def _render_list(
@@ -270,6 +383,20 @@ def _inline_to_latex(
                 cite = text[i : end + 1]
                 _record_citations(cite, used_citations)
                 out.append(cite)
+                i = end + 1
+                continue
+        if text.startswith(r"\label{", i):
+            end = text.find("}", i + 7)
+            if end != -1:
+                label = text[i : end + 1]
+                if _LABEL_RE.fullmatch(label):
+                    out.append(label)
+                    i = end + 1
+                    continue
+        if text.startswith(r"\autoref{", i):
+            end = text.find("}", i + 9)
+            if end != -1:
+                out.append(text[i : end + 1])
                 i = end + 1
                 continue
         if text.startswith(r"\ref{", i):
