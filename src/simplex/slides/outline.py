@@ -312,10 +312,13 @@ class OutlineScene(BaseSlide):
             left=self.region.left,
             right=self.region.right,
         )
-        feature_region.shrink(top=_CONTENT_BUFF, bottom=_CONTENT_BUFF)
-        if feature_region.top <= feature_region.bottom:
-            feature_region.update(bottom=self.progress_bar)
-            feature_region.shrink(bottom=_CONTENT_BUFF)
+        if feature_region.height > 2 * _CONTENT_BUFF:
+            feature_region.shrink(top=_CONTENT_BUFF, bottom=_CONTENT_BUFF)
+        else:
+            fallback_bottom = min(self.progress_bar.get_top()[1], feature_region.top - 1e-6)
+            feature_region.update(bottom=fallback_bottom)
+            if feature_region.height > _CONTENT_BUFF:
+                feature_region.shrink(bottom=_CONTENT_BUFF)
         if feature_region.top <= feature_region.bottom:
             feature_region.bottom = feature_region.top - 1e-6
         return feature_region

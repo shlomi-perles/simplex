@@ -107,7 +107,7 @@ def test_labels_fit_bottom_region_and_share_font_size() -> None:
         assert label.width <= max_label_width + 1e-6
         assert label.height <= max_label_height + 1e-6
         assert label.get_center()[0] == pytest.approx(scene.dots[index].get_center()[0])
-        assert label.get_center()[1] == pytest.approx(label_region.center[1])
+        assert label.get_center()[1] == pytest.approx(label_region.get_center()[1])
 
     assert parts[0].label.font_size == pytest.approx(parts[1].label.font_size)
 
@@ -138,4 +138,4 @@ def test_feature_visual_fits_region_above_compact_thumbnail() -> None:
     assert feature_region.bottom >= previous_visual.get_top()[1]
     assert current.visual.width <= feature_region.width + 1e-6
     assert current.visual.height <= feature_region.height + 1e-6
-    assert np.allclose(current.visual.get_center(), feature_region.center)
+    assert np.allclose(current.visual.get_center(), feature_region.get_center())

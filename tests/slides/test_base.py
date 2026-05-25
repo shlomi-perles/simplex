@@ -6,11 +6,14 @@ resolution logic from manim-slides' ``Slide`` machinery (no Scene init,
 no renderer, no file output).
 """
 
+from typing import Any
+
 import pytest
 
 pytest.importorskip("manim")
 pytest.importorskip("manim_slides")
 
+from simplex.engine.region import Region
 from simplex.section import SimplexSectionType
 from simplex.slides.base import BaseSlide, _pretty_class_name
 
@@ -22,6 +25,20 @@ class _MiniSlide:
 
     def __init__(self) -> None:
         self._current_main: str | None = None
+
+
+class _ChromeSlide:
+    setup_chrome = BaseSlide.setup_chrome
+
+    def __init__(self) -> None:
+        self.header = None
+        self.footer = None
+        self.chrome_kwargs = {}
+        self.region = Region.full_frame()
+        self.canvas: dict[str, Any] = {}
+
+    def add_to_canvas(self, **mobjects: Any) -> None:
+        self.canvas.update(mobjects)
 
 
 def _resolve(
@@ -94,3 +111,24 @@ def test_pretty_class_name_splits_capital_runs() -> None:
     assert _pretty_class_name("BFS") == "BFS"
     # Digit/uppercase boundaries also get a space.
     assert _pretty_class_name("Section2Intro") == "Section2 Intro"
+
+
+def test_setup_chrome_noops_without_header_or_footer() -> None:
+    stub = _ChromeSlide()
+    original = stub.region
+
+    chrome = stub.setup_chrome()
+
+    assert chrome is None
+    assert stub.region is original
+    assert stub.canvas == {}
+
+
+def test_setup_chrome_adds_canvas_and_updates_region() -> None:
+    stub = _ChromeSlide()
+
+    chrome = stub.setup_chrome(footer="foot")
+
+    assert chrome is not None
+    assert "footer" in stub.canvas
+    assert stub.region.bottom > Region.full_frame().bottom

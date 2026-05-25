@@ -17,6 +17,24 @@ def test_chrome_with_header_only() -> None:
     assert "footer" not in chrome.mobjects
 
 
+def test_chrome_accepts_header_footer_mobjects() -> None:
+    from manim import Circle, Square
+
+    region = Region.full_frame()
+    header = Square()
+    footer = Circle()
+    chrome = make_chrome(presets.SIMPLEX_DARK, region, header=header, footer=footer)
+
+    assert chrome.mobjects["header"] is header
+    assert chrome.mobjects["footer"] is footer
+    assert header.get_top()[1] == pytest.approx(
+        region.top - presets.SIMPLEX_DARK.spacing.header_buff
+    )
+    assert footer.get_left()[0] == pytest.approx(
+        region.left + presets.SIMPLEX_DARK.spacing.footer_buff
+    )
+
+
 def test_chrome_does_not_mutate_input_region() -> None:
     region = Region.full_frame()
     original = (region.top, region.bottom, region.left, region.right)

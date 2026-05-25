@@ -17,6 +17,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any, cast
 
+import numpy as np
 from manim import (
     LEFT,
     RIGHT,
@@ -270,6 +271,8 @@ def _inline_math_in_line(
     if not matches:
         return False
 
+    original_left = line_mob.get_left()[0]
+    original_center_y = line_mob.get_center()[1]
     substituted = False
     glyph_for_char = _glyph_positions(source_line)
     for match in reversed(matches):
@@ -313,6 +316,16 @@ def _inline_math_in_line(
         if len(tail) > 0:
             tail.next_to(span[0], RIGHT, buff=max(tail_gap, 0.0))
         substituted = True
+    if substituted:
+        line_mob.shift(
+            np.array(
+                [
+                    original_left - line_mob.get_left()[0],
+                    original_center_y - line_mob.get_center()[1],
+                    0.0,
+                ]
+            )
+        )
     return substituted
 
 
@@ -420,7 +433,8 @@ def _refit_background(code: Code) -> None:
     if (stroke_color := background.get_stroke_color()) is not None:
         replacement_config["color"] = stroke_color
     replacement_config["fill_color"] = background.get_fill_color()
-    replacement = SurroundingRectangle(inner, **replacement_config)
+    bounds = VGroup(inner, *decorations) if decorations else inner
+    replacement = SurroundingRectangle(bounds, **replacement_config)
     background.become(replacement)
     if decorations:
         background.add(*decorations)

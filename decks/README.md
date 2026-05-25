@@ -31,7 +31,7 @@ See `src/simplex/render/README.md` for the full cache + re-render semantics.
   - `engine.text`: `Caption`, `TexPage` (fixed-width minipage), `color_tex`
   - `engine.code`: `code_block` + `highlight_code_lines` + `code_explain` + `transform_code_lines`
   - `engine.geometry`: convex hull + surrounding rectangle
-  - `engine.region`: direction anchors + `shrink` + `reset` + `split(axis, k)`
+  - `engine.region`: direction anchors + `shrink` + `reset` + `split_regions(axis, k)`
   - `engine.animations`: `set_exit_animation` + `register_exit` + `clear_scene(exclude=...)`
   - `engine.scaling`: `scale_to_fit(len_x, len_y, buff)`
   - `mobjects.graph` / `mobjects.array`: `Node`, `Edge`, `ArrayMob`, `ArrayPointer`

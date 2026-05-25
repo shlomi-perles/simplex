@@ -12,7 +12,7 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 | `CodeHelpers` | `engine.code` | `code_block`, `highlight_code_lines`, `code_explain`, `transform_code_lines` |
 | `CodeWithMath` | `engine.code` | `code_with_math` -- inline LaTeX (`$...$`) in pseudocode, with `bold_math` + `math_color` styling |
 | `GraphAndArray` | `mobjects.graph` + `mobjects.array` | `Node`, `Edge`, `ArrayMob`, `ArrayPointer` |
-| `RegionAnchors` | `engine.region` | direction anchors (`UL`/`UR`/`DL`/`DR`/`ORIGIN`), `shrink`, `reset`, `split(axis, k)` |
+| `RegionAnchors` | `engine.region` | direction anchors (`UL`/`UR`/`DL`/`DR`/`ORIGIN`), `shrink`, `reset`, `split_regions(axis, k)` |
 | `ExitAnimations` | `engine.animations` | `set_exit_animation`, `register_exit`, `clear_scene(exclude=...)` |
 | `GeometryHelpers` | `engine.geometry` | `get_convex_hull_polygon`, `get_surrounding_rectangle` |
 | `GlyphMapTransform` | `engine.glyph_map` | `TransformByGlyphMap` -- explicit glyph-index morph |
@@ -28,7 +28,7 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 - `TexPage` is the encapsulated fixed-width helper (was `Definition`). Its default page width is **20 cm**; pass `width_cm=10.5` per call, or set the class attribute on a subclass (`class WidePage(TexPage): width_cm = 12.0`) for a deck-wide variant. The `{minipage}{<width>cm}` literal only appears inside `TexPage` itself -- themes no longer carry it.
 - Body-sized prose uses plain `manim.Tex`. The plugin's `apply_theme_defaults` sets the body `font_size` and `color` so `Tex(...)` already matches what the old `BodyText` produced.
 - `region.place(mob, anchor, buff=...)` accepts a Manim direction vector (`UP`, `DR`, `ORIGIN`, ...) -- string anchors raise `ValueError`.
-- `region.split(axis, k)` returns `k` sub-regions strung along `axis` (e.g. `RIGHT` → left-to-right). Each piece keeps the perpendicular extent and gets `1/k` of the axis extent; their union is the original.
+- `region.split_regions(axis, k)` returns `k` sub-regions strung along `axis` (e.g. `RIGHT` → left-to-right). Each piece keeps the perpendicular extent and gets `1/k` of the axis extent; their union is the original.
 - Slide numbering and the wall clock live in the RevealJS host (toggle via `[web] show_slide_number` / `show_clock` in `deck.toml`). They are not drawn into each frame, so toggling them does not invalidate the manim cache.
 - The MF-Tools-derived helpers deliberately drop everything Manim 0.20.x already ships -- `ValueTracker` arithmetic operators, `index_labels`, `ConvexHull`, `Polygon.round_corners`, `Union`, `BraceLabel`/`BraceText`, and `Mobject.always` all stay native. We only add what isn't already there.
 - `TransformByGlyphMap` falls back to a `show_indices` mode if the leftover glyph counts don't line up -- pass an empty `glyph_map` (or `show_indices=True`) to see the index labels and write the right map.
