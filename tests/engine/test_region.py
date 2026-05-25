@@ -12,7 +12,16 @@ from simplex.engine.region import Region
 
 def test_full_frame_center_is_origin() -> None:
     r = Region.full_frame()
-    assert tuple(r.center) == (0.0, 0.0, 0.0)
+    assert tuple(r.get_center()) == (0.0, 0.0, 0.0)
+
+
+def test_region_is_a_transparent_manim_rectangle() -> None:
+    from manim import Rectangle
+
+    r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
+    assert isinstance(r, Rectangle)
+    assert r.get_stroke_opacity() == pytest.approx(0.0)
+    assert r.get_fill_opacity() == pytest.approx(0.0)
 
 
 def test_shrink_top_moves_center_down() -> None:
@@ -20,7 +29,7 @@ def test_shrink_top_moves_center_down() -> None:
     original_top = r.top
     r.shrink(top=1.0)
     assert r.top == pytest.approx(original_top - 1.0)
-    assert r.center[1] < 0.0
+    assert r.get_center()[1] < 0.0
 
 
 def test_update_keeps_float_behavior() -> None:
@@ -99,7 +108,9 @@ def test_reset_restores_full_frame() -> None:
     r.shrink(top=1.0, bottom=0.5, left=0.25, right=0.25)
     r.reset()
     full = Region.full_frame()
-    assert (r.top, r.bottom, r.left, r.right) == (full.top, full.bottom, full.left, full.right)
+    assert (r.top, r.bottom, r.left, r.right) == pytest.approx(
+        (full.top, full.bottom, full.left, full.right)
+    )
 
 
 def test_anchor_point_for_each_direction() -> None:
@@ -131,6 +142,17 @@ def test_place_with_buff_pulls_mob_inward() -> None:
     assert dot.get_top()[1] == pytest.approx(r.top - 0.25)
 
 
+def test_place_corner_uses_mobject_aligned_edge() -> None:
+    from manim import Square
+
+    r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
+    sq = Square(side_length=1.0)
+    r.place(sq, UR, buff=0.25)
+
+    assert sq.get_right()[0] == pytest.approx(r.right - 0.25)
+    assert sq.get_top()[1] == pytest.approx(r.top - 0.25)
+
+
 def test_place_rejects_string_anchor() -> None:
     """Region directions are vectors now; strings raise instead of silently
     routing to the legacy match-case path."""
@@ -143,7 +165,7 @@ def test_place_rejects_string_anchor() -> None:
 
 def test_split_right_returns_left_to_right_pieces() -> None:
     r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
-    pieces = r.split(RIGHT, 3)
+    pieces = r.split_regions(RIGHT, 3)
     assert len(pieces) == 3
     assert [(p.left, p.right) for p in pieces] == [(-3.0, -1.0), (-1.0, 1.0), (1.0, 3.0)]
     for p in pieces:
@@ -153,13 +175,13 @@ def test_split_right_returns_left_to_right_pieces() -> None:
 
 def test_split_left_returns_right_to_left_pieces() -> None:
     r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
-    pieces = r.split(LEFT, 3)
+    pieces = r.split_regions(LEFT, 3)
     assert [(p.left, p.right) for p in pieces] == [(1.0, 3.0), (-1.0, 1.0), (-3.0, -1.0)]
 
 
 def test_split_up_returns_bottom_to_top_pieces() -> None:
     r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
-    pieces = r.split(UP, 4)
+    pieces = r.split_regions(UP, 4)
     assert len(pieces) == 4
     heights = [p.height for p in pieces]
     for h in heights:
@@ -172,7 +194,7 @@ def test_split_up_returns_bottom_to_top_pieces() -> None:
 def test_split_pieces_union_equals_original() -> None:
     r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
     for axis, k in [(RIGHT, 5), (UP, 4), (DOWN, 2), (LEFT, 3)]:
-        pieces = r.split(axis, k)
+        pieces = r.split_regions(axis, k)
         total_extent = sum(p.width for p in pieces)
         # Width sums to original along horizontal split; height along vertical.
         if axis[0] != 0:
@@ -184,7 +206,7 @@ def test_split_pieces_union_equals_original() -> None:
 
 def test_split_k_one_returns_copy() -> None:
     r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
-    pieces = r.split(RIGHT, 1)
+    pieces = r.split_regions(RIGHT, 1)
     assert len(pieces) == 1
     p = pieces[0]
     assert (p.top, p.bottom, p.left, p.right) == (r.top, r.bottom, r.left, r.right)
@@ -213,10 +235,10 @@ def test_linspace_include_edges_returns_endpoints() -> None:
 def test_split_rejects_non_cardinal_axis() -> None:
     r = Region.full_frame()
     with pytest.raises(ValueError, match="cardinal direction"):
-        r.split(UR, 3)
+        r.split_regions(UR, 3)
 
 
 def test_split_rejects_k_zero() -> None:
     r = Region.full_frame()
     with pytest.raises(ValueError, match=r"k must be >= 1"):
-        r.split(RIGHT, 0)
+        r.split_regions(RIGHT, 0)

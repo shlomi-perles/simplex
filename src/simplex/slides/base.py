@@ -19,7 +19,7 @@ in ``simplex.render.reconcile`` reads back to build the main/sub tree.
 """
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from manim_slides.slide import Slide
@@ -27,6 +27,8 @@ from manim_slides.slide import Slide
 from simplex.engine.animations import clear_scene as _clear_scene
 from simplex.engine.region import Region
 from simplex.section import SimplexSectionType
+from simplex.slides.chrome import Chrome, ChromeContent, make_chrome
+from simplex.theme.context import get_active_theme
 
 # Insert a space between a run of capitals and a Title-cased word
 # (``BFSLecture`` -> ``BFS Lecture``) and between any lower/Upper pair
@@ -50,12 +52,37 @@ def _pretty_class_name(name: str) -> str:
 class BaseSlide(Slide):
     """``manim_slides.Slide`` with the Simplex hierarchy + ``clear_scene``."""
 
+    header: ChromeContent = None
+    footer: ChromeContent = None
+    chrome_kwargs: Mapping[str, Any] = {}
     _current_main: str | None
 
     def setup(self) -> None:
         super().setup()
         self.region = Region.full_frame()
         self._current_main = None
+        self.setup_chrome()
+
+    def setup_chrome(self, **kwargs: Any) -> Chrome | None:
+        """Add header/footer chrome to the canvas and shrink ``self.region``.
+
+        Defaults come from ``self.header``, ``self.footer`` and
+        ``self.chrome_kwargs``. A call with no header and no footer is a no-op,
+        which keeps plain slides lightweight.
+        """
+        chrome_kwargs = dict(self.chrome_kwargs)
+        chrome_kwargs.update(kwargs)
+        chrome_kwargs.setdefault("header", self.header)
+        chrome_kwargs.setdefault("footer", self.footer)
+        if chrome_kwargs["header"] is None and chrome_kwargs["footer"] is None:
+            return None
+
+        theme = chrome_kwargs.pop("theme", get_active_theme())
+        region = chrome_kwargs.pop("region", self.region)
+        chrome = make_chrome(theme, region, **chrome_kwargs)
+        self.add_to_canvas(**chrome.mobjects)
+        self.region = chrome.body_region
+        return chrome
 
     def next_slide(
         self,

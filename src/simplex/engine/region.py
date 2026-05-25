@@ -1,17 +1,17 @@
 """Region -- mutable rectangular sub-area of the frame.
 
 The region API speaks in Manim's direction vectors (``UP``, ``DR``, ``ORIGIN``,
-…) rather than ad-hoc strings. Each direction's ``(x, y)`` components in
-``{-1, 0, 1}`` pick the corresponding edge / midpoint / center of the region.
+...) rather than ad-hoc strings. ``Region`` subclasses Manim's transparent
+``Rectangle`` so placement can use the same geometry primitives as ordinary
+mobjects.
 """
 
 from collections.abc import Iterable
 from numbers import Real
-from typing import Self
+from typing import Any, Self
 
 import numpy as np
-from manim import Mobject
-from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
+from manim import Mobject, Rectangle
 
 type EdgeValue = float | np.ndarray | Iterable[float] | Mobject
 
@@ -58,21 +58,8 @@ def _edge_value(edge: str, value: EdgeValue) -> float:
     return _edge_coordinate(value, axis, getter_name)
 
 
-class Region(BaseModel):
-    """A mutable axis-aligned region in Manim frame coordinates."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    top: float
-    bottom: float
-    left: float
-    right: float
-
-    @field_validator("top", "bottom", "left", "right", mode="before")
-    @classmethod
-    def _coerce_edge_value(cls, value: EdgeValue, info: ValidationInfo) -> float:
-        if info.field_name is None:
-            raise ValueError("edge field name is missing")
-        return _edge_value(info.field_name, value)
+class Region(Rectangle):
+    """A transparent, mutable, axis-aligned region in Manim frame coordinates."""
 
     def __init__(
         self,
@@ -81,8 +68,25 @@ class Region(BaseModel):
         bottom: EdgeValue,
         left: EdgeValue,
         right: EdgeValue,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(top=top, bottom=bottom, left=left, right=right)
+        top_f = _edge_value("top", top)
+        bottom_f = _edge_value("bottom", bottom)
+        left_f = _edge_value("left", left)
+        right_f = _edge_value("right", right)
+        width = right_f - left_f
+        height = top_f - bottom_f
+        if width < 0 or height < 0:
+            raise ValueError(
+                "region edges must satisfy left <= right and bottom <= top; "
+                f"got top={top_f}, bottom={bottom_f}, left={left_f}, right={right_f}"
+            )
+
+        kwargs.setdefault("stroke_width", 0)
+        kwargs.setdefault("stroke_opacity", 0)
+        kwargs.setdefault("fill_opacity", 0)
+        super().__init__(width=width, height=height, **kwargs)
+        self.move_to(np.array([(left_f + right_f) / 2, (top_f + bottom_f) / 2, 0.0]))
 
     @classmethod
     def full_frame(cls) -> Self:
@@ -93,25 +97,63 @@ class Region(BaseModel):
         return cls(top=half_h, bottom=-half_h, left=-half_w, right=half_w)
 
     @property
-    def width(self) -> float:
-        return self.right - self.left
+    def top(self) -> float:
+        return float(self.get_top()[1])
+
+    @top.setter
+    def top(self, value: EdgeValue) -> None:
+        self._apply_edges(top=_edge_value("top", value))
 
     @property
-    def height(self) -> float:
-        return self.top - self.bottom
+    def bottom(self) -> float:
+        return float(self.get_bottom()[1])
+
+    @bottom.setter
+    def bottom(self, value: EdgeValue) -> None:
+        self._apply_edges(bottom=_edge_value("bottom", value))
 
     @property
-    def center(self) -> np.ndarray:
-        cx = (self.left + self.right) / 2
-        cy = (self.top + self.bottom) / 2
-        return np.array([cx, cy, 0.0])
+    def left(self) -> float:
+        return float(self.get_left()[0])
+
+    @left.setter
+    def left(self, value: EdgeValue) -> None:
+        self._apply_edges(left=_edge_value("left", value))
+
+    @property
+    def right(self) -> float:
+        return float(self.get_right()[0])
+
+    @right.setter
+    def right(self, value: EdgeValue) -> None:
+        self._apply_edges(right=_edge_value("right", value))
+
+    def _apply_edges(
+        self,
+        *,
+        top: float | None = None,
+        bottom: float | None = None,
+        left: float | None = None,
+        right: float | None = None,
+    ) -> None:
+        top_f = self.top if top is None else top
+        bottom_f = self.bottom if bottom is None else bottom
+        left_f = self.left if left is None else left
+        right_f = self.right if right is None else right
+        width = right_f - left_f
+        height = top_f - bottom_f
+        if width < 0 or height < 0:
+            raise ValueError(
+                "region edges must satisfy left <= right and bottom <= top; "
+                f"got top={top_f}, bottom={bottom_f}, left={left_f}, right={right_f}"
+            )
+        self.stretch_to_fit_width(width)
+        self.stretch_to_fit_height(height)
+        self.move_to(np.array([(left_f + right_f) / 2, (top_f + bottom_f) / 2, 0.0]))
 
     def _anchor_point(self, direction: np.ndarray) -> np.ndarray:
         """Map a normalized direction vector to the matching point of this region."""
-        cx, cy, _ = self.center
-        x = self.left if direction[0] < 0 else (self.right if direction[0] > 0 else cx)
-        y = self.bottom if direction[1] < 0 else (self.top if direction[1] > 0 else cy)
-        return np.array([x, y, 0.0])
+        return self.get_critical_point(direction)
 
     def place(
         self,
@@ -121,40 +163,45 @@ class Region(BaseModel):
     ) -> Mobject:
         """Move ``mob`` so its anchor sits at the matching point of this region.
 
-        ``anchor`` is a Manim direction vector (``UP``, ``DR``, ``ORIGIN``, …).
-        ``buff`` pulls ``mob`` inward by that distance plus half its own size
-        along the same axis, so a non-zero ``buff`` always leaves visible
-        breathing room between the mob and the region edge.
+        ``anchor`` is a Manim direction vector (``UP``, ``DR``, ``ORIGIN``, ...).
+        ``buff`` pulls ``mob`` inward by that distance along the anchored axes.
         """
         from manim import ORIGIN
 
         direction = _as_dir(ORIGIN if anchor is None else anchor)
-        mob.move_to(self._anchor_point(direction))
-        half_w, half_h = mob.width / 2, mob.height / 2
-        dx = -direction[0] * (buff + half_w)
-        dy = -direction[1] * (buff + half_h)
-        if dx or dy:
-            mob.shift(np.array([dx, dy, 0.0]))
+        mob.move_to(self.get_critical_point(direction), aligned_edge=direction)
+        if buff:
+            mob.shift(-direction * buff)
         return mob
 
     def update(
         self,
+        dt: float = 0,
+        recursive: bool = True,
         *,
         top: EdgeValue | None = None,
         bottom: EdgeValue | None = None,
         left: EdgeValue | None = None,
         right: EdgeValue | None = None,
-    ) -> None:
+    ) -> Self:
         """Update region edges from floats, points, or neighbouring mobjects.
 
         Point values contribute their relevant coordinate: x for left/right,
         y for top/bottom. Mobjects contribute the edge facing this region, then
-        use the same coordinate rule.
+        use the same coordinate rule. With no edge arguments, this delegates to
+        Manim's normal updater machinery.
         """
-        updates = (("top", top), ("bottom", bottom), ("left", left), ("right", right))
-        for edge, value in updates:
-            if value is not None:
-                setattr(self, edge, _edge_value(edge, value))
+        if top is None and bottom is None and left is None and right is None:
+            super().update(dt=dt, recursive=recursive)
+            return self
+
+        self._apply_edges(
+            top=None if top is None else _edge_value("top", top),
+            bottom=None if bottom is None else _edge_value("bottom", bottom),
+            left=None if left is None else _edge_value("left", left),
+            right=None if right is None else _edge_value("right", right),
+        )
+        return self
 
     def shrink(
         self,
@@ -164,19 +211,18 @@ class Region(BaseModel):
         left: float = 0.0,
         right: float = 0.0,
     ) -> None:
-        self.top -= top
-        self.bottom += bottom
-        self.left += left
-        self.right -= right
+        self._apply_edges(
+            top=self.top - top,
+            bottom=self.bottom + bottom,
+            left=self.left + left,
+            right=self.right - right,
+        )
 
     def reset(self) -> None:
         full = Region.full_frame()
-        self.top = full.top
-        self.bottom = full.bottom
-        self.left = full.left
-        self.right = full.right
+        self._apply_edges(top=full.top, bottom=full.bottom, left=full.left, right=full.right)
 
-    def split(
+    def split_regions(
         self,
         axis: np.ndarray | Iterable[float],
         k: int,
@@ -273,7 +319,7 @@ class Region(BaseModel):
         if horizontal:
             start = self.left + inset
             end = self.right - inset
-            other = self.center[1] if orthogonal is None else orthogonal
+            other = self.get_center()[1] if orthogonal is None else orthogonal
             if include_edges:
                 if k == 1:
                     coords = [start]
@@ -287,7 +333,7 @@ class Region(BaseModel):
         else:
             start = self.bottom + inset
             end = self.top - inset
-            other = self.center[0] if orthogonal is None else orthogonal
+            other = self.get_center()[0] if orthogonal is None else orthogonal
             if include_edges:
                 if k == 1:
                     coords = [start]

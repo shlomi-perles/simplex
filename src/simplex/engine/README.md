@@ -5,7 +5,7 @@ Small additive helpers that augment vanilla Manim. **Never wrap Manim's construc
 ## Public surface
 
 - `apply_theme_defaults(theme)` -- calls `Mobject.set_default(...)` for Tex / MathTex / Text / Line / Dot / Arrow / Rectangle / Square (invoked by `simplex.plugin:activate`)
-- `Region` -- mutable rectangular drawing area; default lives on `BaseSlide.region`
+- `Region` -- transparent Manim `Rectangle` subclass used as a mutable drawing area; default lives on `BaseSlide.region`
 - `Remove(mob, **kw)` -- exit animation lookup; dispatches through `exit_for(mob)`
 - `exit_for(mob, **kw)` -- per-instance override (WeakKeyDictionary) -> MRO match in defaults -> `FadeOut`
 - `register_exit(mob_type, factory)` -- register a default exit for a Mobject class
@@ -34,5 +34,5 @@ Cross-package types live one level up:
 - Don't call `Mobject.set_default(...)` outside `apply_theme_defaults`.
 - Don't subclass Manim Mobjects to inject defaults; use `set_default` via `apply_theme_defaults`.
 - Don't reimplement what Manim ships: `ValueTracker` arithmetic ops, `index_labels`, `ConvexHull`, `Union`, `Polygon.round_corners`, `scale_to_fit_height/_width/_depth`, `BraceLabel`/`BraceText`, `Mobject.always` -- all already in 0.20.x.
-- Don't import Manim at module load time from animations / region / defaults -- import inside the function so importing `simplex.engine` stays cheap.
+- Don't reimplement Manim geometry in layout helpers. `Region` is a transparent `Rectangle`, so use native methods such as `get_critical_point`, `move_to(..., aligned_edge=...)`, and `get_center_of_mass` where they fit.
 - Don't monkey-patch Mobjects (no `_simplex_*` attributes). Use the `WeakKeyDictionary` registry in `animations.py` instead.

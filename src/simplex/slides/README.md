@@ -17,11 +17,16 @@ here.
   scene. Progress dots are positioned through `Region.linspace(RIGHT, n)`
   defaults, not `arrange`, so edge margins and inter-dot gaps match the
   Simplex region contract.
+- `self.setup_chrome(header=..., footer=..., theme=..., region=...)`
+  -- convenience wrapper for the common setup path. If neither header nor
+  footer is set, it returns without touching the scene; otherwise it calls
+  `make_chrome`, splats the result into `add_to_canvas`, and updates
+  `self.region`.
 - `make_chrome(theme, region, *, header=..., footer=...)`
   -- *pure* factory returning a `Chrome(mobjects, body_region)`
-  NamedTuple. Splat `chrome.mobjects` into `add_to_canvas` and assign
-  `chrome.body_region` to `self.region`. Buff distances are read from
-  `theme.spacing.header_buff` / `footer_buff`.
+  NamedTuple. `header` and `footer` can be strings or prebuilt Manim
+  mobjects. Buff distances are read from `theme.spacing.header_buff` /
+  `footer_buff`.
 - `Chrome` -- the NamedTuple returned by `make_chrome`.
 
 Slide numbering and a wall clock are presentation chrome, not rendered
@@ -37,7 +42,6 @@ Re-usable mobjects (`Node`, `Edge`, `ArrayMob`, ...) live in
   `get_active_theme()` inside `setup()`.
 - Don't call `super().setup()` after touching `self.region` -- the
   base seeds it first.
-- Don't subclass for chrome (header/footer); use `make_chrome`
-  and `add_to_canvas(**chrome.mobjects)`.
+- Don't subclass for chrome (header/footer); use `setup_chrome`.
 - Don't mutate the `region` passed to `make_chrome` -- it is treated as
   immutable; the returned `body_region` is the shrunk copy.

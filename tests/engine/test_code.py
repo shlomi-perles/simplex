@@ -150,6 +150,43 @@ def test_code_with_math_preserves_background_padding() -> None:
     assert bg.buff == pytest.approx(0.3)
 
 
+def test_code_with_math_keeps_code_rows_aligned_with_line_numbers() -> None:
+    pytest.importorskip("manim")
+    from simplex.engine.code import code_block, code_with_math
+
+    src = "def f():\n    x = $\\infty$\n    return $x + 1$"
+    plain = code_block(src)
+    block = code_with_math(src)
+
+    plain_offsets = [
+        line.get_center()[1] - number.get_center()[1]
+        for line, number in zip(plain.code_lines, plain.line_numbers, strict=True)
+    ]
+    math_offsets = [
+        line.get_center()[1] - number.get_center()[1]
+        for line, number in zip(block.code_lines, block.line_numbers, strict=True)
+    ]
+    assert math_offsets == pytest.approx(plain_offsets)
+
+
+def test_code_with_math_background_contains_window_dots() -> None:
+    pytest.importorskip("manim")
+    import numpy as np
+
+    from simplex.engine.code import code_with_math
+
+    block = code_with_math("x = $1$", language="python")
+    bg = block.background
+    assert bg.submobjects
+
+    rect_points = bg.points
+    rect_left = float(np.min(rect_points[:, 0]))
+    rect_top = float(np.max(rect_points[:, 1]))
+    for decoration in bg.submobjects:
+        assert decoration.get_left()[0] >= rect_left
+        assert decoration.get_top()[1] <= rect_top
+
+
 def test_code_with_math_bold_wraps_with_boldsymbol() -> None:
     # We can't easily inspect MathTex source post-construction, but we
     # can at least verify the helper accepts the flag without error and

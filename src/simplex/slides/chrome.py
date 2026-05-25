@@ -17,10 +17,12 @@ RevealJS template / web settings (see ``simplex.web``).
 
 from typing import Any, NamedTuple
 
-from manim import DL, UP, Tex
+from manim import DL, UP, Mobject, Tex
 
 from simplex.engine.region import Region
 from simplex.theme.tokens import Theme
+
+type ChromeContent = str | Mobject | None
 
 
 class Chrome(NamedTuple):
@@ -39,8 +41,8 @@ def make_chrome(
     theme: Theme,
     region: Region,
     *,
-    header: str | None = None,
-    footer: str | None = None,
+    header: ChromeContent = None,
+    footer: ChromeContent = None,
 ) -> Chrome:
     """Build optional header/footer mobjects and return a shrunk body Region.
 
@@ -51,19 +53,27 @@ def make_chrome(
     """
     mobs: dict[str, Any] = {}
 
-    if header:
-        head = Tex(header, font_size=theme.typography.h2)
+    if header is not None:
+        head = _as_chrome_mobject(header, font_size=theme.typography.h2)
         region.place(head, UP, buff=theme.spacing.header_buff)
         mobs["header"] = head
-    if footer:
-        foot = Tex(footer, font_size=theme.typography.caption)
+    if footer is not None:
+        foot = _as_chrome_mobject(footer, font_size=theme.typography.caption)
         region.place(foot, DL, buff=theme.spacing.footer_buff)
         mobs["footer"] = foot
 
     body = Region(
-        top=region.top - (theme.spacing.header_height if header else 0.0),
-        bottom=region.bottom + (theme.spacing.footer_height if footer else 0.0),
+        top=region.top - (theme.spacing.header_height if header is not None else 0.0),
+        bottom=region.bottom + (theme.spacing.footer_height if footer is not None else 0.0),
         left=region.left,
         right=region.right,
     )
     return Chrome(mobjects=mobs, body_region=body)
+
+
+def _as_chrome_mobject(content: ChromeContent, *, font_size: float) -> Mobject:
+    if isinstance(content, Mobject):
+        return content
+    if content is None:
+        raise ValueError("chrome content cannot be None")
+    return Tex(content, font_size=font_size)

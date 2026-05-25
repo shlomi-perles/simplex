@@ -41,9 +41,11 @@ logger = logging.getLogger("simplex.paper")
 _DEFAULT_DPI = 150
 _DEFAULT_PAGES = 3
 _DEFAULT_TIMEOUT = 30
-_SHADOW_OPACITY = 0.35
+_SHADOW_OPACITY = 0.22
 _SHADOW_COLOR = "#000000"
-_SHADOW_OFFSET_FACTOR = 0.06
+_SHADOW_OFFSET_FACTOR = 0.025
+_SHADOW_LAYERS = 5
+_SHADOW_SPREAD_FACTOR = 0.012
 _STACK_OFFSET_FACTOR = 0.08
 _PAGE_HEIGHT = 5.5
 _BORDER_COLOR = WHITE
@@ -231,17 +233,27 @@ class Paper(Group):
             parts: list[Any] = []
 
             if shadow:
-                shadow_rect = RoundedRectangle(
-                    width=img.width,
-                    height=img.height,
-                    corner_radius=0.04,
-                    fill_color=_SHADOW_COLOR,
-                    fill_opacity=shadow_opacity,
-                    stroke_width=0,
-                )
-                shadow_offset = shadow_dir * page_height * _SHADOW_OFFSET_FACTOR
-                shadow_rect.move_to(img.get_center() + shadow_offset)
-                parts.append(shadow_rect)
+                shadow_layers: list[RoundedRectangle] = []
+                for layer in reversed(range(_SHADOW_LAYERS)):
+                    fade = (_SHADOW_LAYERS - layer) / _SHADOW_LAYERS
+                    spread = page_height * _SHADOW_SPREAD_FACTOR * layer
+                    shadow_rect = RoundedRectangle(
+                        width=img.width + spread * 2,
+                        height=img.height + spread * 2,
+                        corner_radius=0.04 + spread * 0.35,
+                        fill_color=_SHADOW_COLOR,
+                        fill_opacity=shadow_opacity * fade**2,
+                        stroke_width=0,
+                    )
+                    shadow_offset = (
+                        shadow_dir
+                        * page_height
+                        * _SHADOW_OFFSET_FACTOR
+                        * (1 + layer / _SHADOW_LAYERS * 0.5)
+                    )
+                    shadow_rect.move_to(img.get_center() + shadow_offset)
+                    shadow_layers.append(shadow_rect)
+                parts.append(Group(*shadow_layers))
 
             parts.append(img)
 
@@ -264,6 +276,7 @@ class Paper(Group):
         self._page_groups = page_groups
         super().__init__(*reversed(page_groups), **kwargs)
         self._arrange_stack()
+        self._sync_submobjects()
 
     # -- source resolution ---------------------------------------------------
 
@@ -287,6 +300,23 @@ class Paper(Group):
         for i, pg in enumerate(self._page_groups):
             pg.move_to(self._stack_dir * self._stack_offset * i)
 
+    def _sync_submobjects(self) -> None:
+        """Keep submobject draw order and z-index in front-page order."""
+        self.submobjects = list(reversed(self._page_groups))
+        self._sync_page_z_indices()
+
+    def _sync_page_z_indices(self) -> None:
+        base_z = self.z_index
+        count = len(self._page_groups)
+        for front_index, pg in enumerate(self._page_groups):
+            pg.set_z_index(base_z + count - front_index, family=True)
+
+    def _set_page_order(self, page_groups: list[Group], *, arrange: bool) -> None:
+        self._page_groups = list(page_groups)
+        self._sync_submobjects()
+        if arrange:
+            self._arrange_stack()
+
     # -- public API ----------------------------------------------------------
 
     @property
@@ -305,10 +335,10 @@ class Paper(Group):
 
     def reorder_page_to_top(self, index: int) -> None:
         """Move page at *index* to position 0 (front of stack, drawn last)."""
-        page = self._page_groups.pop(index)
-        self._page_groups.insert(0, page)
-        self.submobjects = list(reversed(self._page_groups))
-        self._arrange_stack()
+        pages = list(self._page_groups)
+        page = pages.pop(index)
+        pages.insert(0, page)
+        self._set_page_order(pages, arrange=True)
 
 
 # ---------------------------------------------------------------------------
@@ -350,6 +380,7 @@ class ShowPaper(AnimationGroup):
         shift_dir = _parse_direction(direction)
         shift_vec = shift_dir * 2.0
         anim_cls = FadeOut if dismiss else FadeIn
+        paper._sync_submobjects()
 
         # Intro: back-to-front (last page first, top page last).
         # Dismiss: front-to-back (top page first, last page last).
@@ -413,22 +444,25 @@ class PickPage(Animation):
     def begin(self) -> None:
         self._page = self._paper.get_page(self._page_index)
         self._start_pos = self._page.get_center().copy()
+        self._original_order = self._paper.page_groups
+        self._target_order = [
+            self._page,
+            *(pg for pg in self._original_order if pg is not self._page),
+        ]
+        self._paper._set_page_order(self._original_order, arrange=False)
+        self._page.set_z_index(self._paper.z_index - 1, family=True)
 
-        self._other_pages_start: list[np.ndarray] = []
-        for i, pg in enumerate(self._paper.page_groups):
-            if i != self._page_index:
-                self._other_pages_start.append(pg.get_center().copy())
-
-        self._paper.reorder_page_to_top(self._page_index)
+        self._other_pages = [pg for pg in self._target_order if pg is not self._page]
+        self._other_pages_start = [pg.get_center().copy() for pg in self._other_pages]
+        self._other_pages_end = [
+            self._paper._stack_dir * self._paper._stack_offset * i
+            for i, pg in enumerate(self._target_order)
+            if pg is not self._page
+        ]
 
         self._end_pos = self._paper._stack_dir * self._paper._stack_offset * 0
         self._midpoint = self._start_pos + self._slide_vec
-
-        self._other_pages_end: list[np.ndarray] = []
-        for i, _pg in enumerate(self._paper.page_groups[1:], start=1):
-            self._other_pages_end.append(self._paper._stack_dir * self._paper._stack_offset * i)
-
-        self._other_pages = self._paper.page_groups[1:]
+        self._promoted = False
         super().begin()
 
     def interpolate_mobject(self, alpha: float) -> None:
@@ -438,6 +472,9 @@ class PickPage(Animation):
             sub_t = t * 2.0
             pos = self._start_pos + (self._midpoint - self._start_pos) * sub_t
         else:
+            if not self._promoted:
+                self._paper._set_page_order(self._target_order, arrange=False)
+                self._promoted = True
             sub_t = (t - 0.5) * 2.0
             pos = self._midpoint + (self._end_pos - self._midpoint) * sub_t
 
@@ -450,6 +487,7 @@ class PickPage(Animation):
             pg.move_to(start + (end - start) * settle_t)
 
     def finish(self) -> None:
+        self._paper._set_page_order(self._target_order, arrange=False)
         self._page.move_to(self._end_pos)
         for i, pg in enumerate(self._other_pages):
             pg.move_to(self._other_pages_end[i])

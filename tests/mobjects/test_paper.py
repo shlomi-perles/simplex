@@ -71,6 +71,12 @@ def test_paper_top_page_at_origin(sample_pdf: Path) -> None:
     assert np.allclose(paper.get_top_page().get_center(), [0, 0, 0], atol=0.01)
 
 
+def test_paper_pages_have_front_to_back_z_indices(sample_pdf: Path) -> None:
+    paper = Paper(sample_pdf, pages=3, dpi=72, page_height=4.0)
+    z_indices = [pg.z_index for pg in paper.page_groups]
+    assert z_indices == sorted(z_indices, reverse=True)
+
+
 def test_paper_reorder_to_top(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=3, dpi=72, page_height=4.0)
     original_back = paper.get_page(2)
@@ -128,6 +134,30 @@ def test_paper_with_shadow_and_border(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=2, dpi=72, page_height=3.0, shadow=True, border=True)
     for pg in paper.page_groups:
         assert len(pg.submobjects) == 3
+
+
+def test_paper_shadow_is_layered_gradient(sample_pdf: Path) -> None:
+    paper = Paper(sample_pdf, pages=1, dpi=72, page_height=3.0, shadow=True, border=False)
+    shadow = paper.get_top_page().submobjects[0]
+    assert len(shadow.submobjects) > 1
+    opacities = [layer.get_fill_opacity() for layer in shadow.submobjects]
+    assert opacities[0] < opacities[-1]
+
+
+def test_pick_page_promotes_z_index_only_after_slide_out(sample_pdf: Path) -> None:
+    paper = Paper(sample_pdf, pages=3, dpi=72, page_height=3.0)
+    selected = paper.get_page(1)
+    anim = PickPage(paper, page_index=1, slide_direction="RIGHT")
+
+    anim.begin()
+    other_z = [pg.z_index for pg in paper.page_groups if pg is not selected]
+    assert selected.z_index < min(other_z)
+
+    anim.interpolate_mobject(0.5)
+    assert paper.get_top_page() is selected
+    other_z = [pg.z_index for pg in paper.page_groups if pg is not selected]
+    assert selected.z_index > max(other_z)
+    anim.finish()
 
 
 def test_dismiss_is_show_subclass(sample_pdf: Path) -> None:

@@ -81,19 +81,13 @@ JSON output.
 ```python
 from manim import ORIGIN, MathTex, Write
 
-from simplex import BaseSlide, make_chrome, presets
+from simplex import BaseSlide
 
 
 class HelloSlide(BaseSlide):
     def setup(self) -> None:
         super().setup()
-        chrome = make_chrome(
-            presets.SIMPLEX_DARK,
-            self.region,
-            header="Hello, Simplex",
-        )
-        self.add_to_canvas(**chrome.mobjects)
-        self.region = chrome.body_region
+        self.setup_chrome(header="Hello, Simplex")
 
     def construct(self) -> None:
         eq = MathTex(r"e^{i\pi} + 1 = 0")

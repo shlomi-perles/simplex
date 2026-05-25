@@ -4,11 +4,10 @@ Demonstrates ``simplex.mobjects.Paper`` with the "Attention Is All You Need"
 paper from ArXiv. Shows the full lifecycle: intro -> pick -> dismiss.
 """
 
-from manim import RIGHT, UP, Tex, Write
+from manim import UP, Tex, Write
 
 from simplex.mobjects.paper import DismissPaper, Paper, PickPage, ShowPaper
-from simplex.slides import BaseSlide, make_chrome
-from simplex.theme.context import get_active_theme
+from simplex.slides import BaseSlide
 
 
 class PaperShowcase(BaseSlide):
@@ -16,20 +15,15 @@ class PaperShowcase(BaseSlide):
 
     def setup(self) -> None:
         super().setup()
-        chrome = make_chrome(
-            get_active_theme(),
-            self.region,
-            header=r"mobjects/paper.py -- Paper + ShowPaper + PickPage + DismissPaper",
+        self.setup_chrome(
+            footer=r"mobjects/paper.py -- Paper + ShowPaper + PickPage + DismissPaper",
         )
-        self.add_to_canvas(**chrome.mobjects)
-        self.region = chrome.body_region
 
     def construct(self) -> None:
         title = Tex(r"\textbf{Attention Is All You Need} \\ Vaswani et al., 2017")
         title.scale(0.8)
         self.region.place(title, UP, buff=0.2)
         self.play(Write(title))
-        self.next_slide(name="PaperShowcase")
 
         paper = Paper(
             "https://arxiv.org/abs/1706.03762",
@@ -53,3 +47,4 @@ class PaperShowcase(BaseSlide):
 
         self.play(DismissPaper(paper, direction="DOWN"))
         self.next_slide()
+        self.clear_scene()
