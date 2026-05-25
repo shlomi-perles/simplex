@@ -9,8 +9,8 @@ each footnote body floats next to its anchor as a Tufte-style sidenote:
         class="sidenote" id="sn-1" role="note">body</aside> more text.
 
 The bottom ``<section class="footnotes">`` is removed so wide-screen readers
-see only the marginal note; narrow screens collapse the sidenote inline (via
-CSS in ``static/simplex.css``).
+see only the marginal note; narrow screens open a bottom-sheet note via
+``static/notes.js`` with an inline CSS fallback.
 
 Pure HTML transformation -- no JS, no token-tree gymnastics. This keeps the
 markdown-it plugin chain (footnotes + dollarmath + citations + slide-ref)
@@ -70,7 +70,8 @@ def _extract_bodies(html: str) -> dict[str, str]:
 def _render_sidenote(n: str, num: str, body: str) -> str:
     return (
         f'<label for="sn-toggle-{n}" class="sidenote-ref" id="snref-{n}" '
-        f'role="button" tabindex="0" aria-controls="sn-{n}" aria-expanded="false">'
+        f'role="button" tabindex="0" aria-controls="sn-{n}" aria-expanded="false" '
+        'aria-haspopup="dialog">'
         f"{num}</label>"
         f'<input type="checkbox" id="sn-toggle-{n}" class="sidenote-toggle" '
         'aria-hidden="true" />'

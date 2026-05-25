@@ -31,7 +31,7 @@ from simplex.slides import BaseSlide
 from utils import DEFINITION_TEX_ENV, get_func_text
 
 
-# dastimator's REMOVE_MATH_SPACE_PREAMBLE: simplex's dastimator_dark theme
+# dastimator's REMOVE_MATH_SPACE_PREAMBLE: simplex's SIMPLEX_DARK theme
 # already injects an equivalent preamble globally, so the per-call value
 # can be empty.
 REMOVE_MATH_SPACE = ""

@@ -147,6 +147,41 @@
     });
   }
 
+  function initResourceMenus() {
+    document.querySelectorAll("[data-resource-menu]").forEach(function (menu) {
+      var toggle = menu.querySelector("[data-resource-toggle]");
+      var panel = menu.querySelector("[data-resource-panel]");
+      if (!toggle || !panel) return;
+
+      function close() {
+        panel.hidden = true;
+        toggle.setAttribute("aria-expanded", "false");
+      }
+      function open() {
+        panel.hidden = false;
+        toggle.setAttribute("aria-expanded", "true");
+      }
+      function isOpen() {
+        return !panel.hidden;
+      }
+
+      toggle.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isOpen()) close();
+        else open();
+      });
+      panel.addEventListener("click", function () { close(); });
+      document.addEventListener("click", function (e) {
+        if (menu.contains(e.target)) return;
+        close();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") close();
+      });
+    });
+  }
+
   // ------------------------------------------------------------------
   // Deck page: iframe bridge + sidebar + controls + slide-refs.
   // ------------------------------------------------------------------
@@ -161,15 +196,17 @@
     var slideList = deck.querySelector(".deck-slide-list");
     var sidebar = deck.querySelector(".deck-sidebar");
     var controls = deck.querySelectorAll("[data-control]");
-    var slideRefs = deck.querySelectorAll(".slide-ref[data-slide]");
     var settings = deck.querySelector("[data-settings]");
     var settingsToggle = deck.querySelector("[data-settings-toggle]");
     var settingsPanel = deck.querySelector("[data-settings-panel]");
-    var colorSetting = deck.querySelector('[data-setting="slide-color"]');
+    var slideThemeSetting = deck.querySelector('[data-setting="slide-theme"]');
+    var slideThemeLabel = deck.querySelector("[data-slide-theme-label]");
     var slideNumberSetting = deck.querySelector('[data-setting="slide-number"]');
     var clockSetting = deck.querySelector('[data-setting="clock"]');
     var total = parseInt(deck.dataset.slideCount || "0", 10) || slideButtons.length;
     var currentIdx = 0;
+    var slideThemeManual = false;
+    var slideTheme = normalizeTheme(document.documentElement.dataset.theme || "dark");
 
     function targetOrigin() {
       if (!iframe || !iframe.src) return "*";
@@ -180,11 +217,38 @@
       if (!iframe || !iframe.contentWindow) return;
       iframe.contentWindow.postMessage(message, targetOrigin());
     }
-    function syncThemeSetting() {
+    function normalizeTheme(theme) {
+      return theme === "light" ? "light" : "dark";
+    }
+    function pageTheme() {
+      return normalizeTheme(document.documentElement.dataset.theme || "dark");
+    }
+    function applySlideTheme(theme, manual) {
+      slideTheme = normalizeTheme(theme);
+      slideThemeManual = slideThemeManual || !!manual;
+      deck.classList.toggle("is-slide-theme-light", slideTheme === "light");
       send({
         type: "simplex.set-theme",
-        theme: document.documentElement.dataset.theme || "dark",
+        theme: slideTheme,
       });
+      if (slideThemeSetting) {
+        slideThemeSetting.dataset.slideTheme = slideTheme;
+        slideThemeSetting.setAttribute(
+          "aria-label",
+          slideTheme === "dark" ? "Switch slides to light theme" : "Switch slides to dark theme"
+        );
+        slideThemeSetting.setAttribute(
+          "title",
+          slideTheme === "dark" ? "Switch slides to light theme" : "Switch slides to dark theme"
+        );
+      }
+      if (slideThemeLabel) {
+        slideThemeLabel.textContent = slideTheme === "dark" ? "Dark" : "Light";
+      }
+    }
+    function syncThemeSetting() {
+      if (!slideThemeManual) applySlideTheme(pageTheme(), false);
+      else applySlideTheme(slideTheme, false);
     }
     function sendChromeSettings() {
       window.setTimeout(function () {
@@ -267,11 +331,6 @@
       });
     }
 
-    function syncColorSetting() {
-      if (!colorSetting) return;
-      deck.classList.toggle("is-light-preview", colorSetting.checked);
-    }
-
     function closeSettings() {
       if (!settingsPanel || !settingsToggle) return;
       settingsPanel.hidden = true;
@@ -338,6 +397,15 @@
       send({ type: "simplex.fullscreen" });
     }
 
+    function scrollViewerBelowNav() {
+      var target = frame || iframe;
+      if (!target) return;
+      var nav = document.querySelector(".site-nav-wrap");
+      var navHeight = nav ? nav.getBoundingClientRect().height : 0;
+      var y = window.scrollY + target.getBoundingClientRect().top - navHeight - 12;
+      window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+    }
+
     slideButtons.forEach(function (btn) {
       btn.addEventListener("click", function () {
         var t = parseInt(btn.dataset.slideTarget, 10);
@@ -358,17 +426,15 @@
       });
     });
 
-    slideRefs.forEach(function (a) {
-      a.addEventListener("click", function (e) {
-        e.preventDefault();
-        if (a.classList.contains("slide-ref-stale")) return;
-        var idx = parseInt(a.dataset.slide, 10);
-        if (!Number.isInteger(idx)) return;
-        send({ type: "simplex.goto", idx: idx });
-        if (iframe && iframe.scrollIntoView) {
-          iframe.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
+    document.addEventListener("click", function (e) {
+      var a = e.target && e.target.closest ? e.target.closest(".slide-ref[data-slide]") : null;
+      if (!a) return;
+      e.preventDefault();
+      if (a.classList.contains("slide-ref-stale")) return;
+      var idx = parseInt(a.dataset.slide, 10);
+      if (!Number.isInteger(idx)) return;
+      send({ type: "simplex.goto", idx: idx });
+      scrollViewerBelowNav();
     });
 
     // Forward parent keyboard arrows to the iframe (when nothing else is focused).
@@ -379,10 +445,11 @@
       else if (e.key === "ArrowLeft") { e.preventDefault(); send({ type: "simplex.prev" }); }
     });
 
-    if (colorSetting) {
-      colorSetting.checked = true;
-      colorSetting.addEventListener("change", syncColorSetting);
-      syncColorSetting();
+    if (slideThemeSetting) {
+      slideThemeSetting.addEventListener("click", function () {
+        applySlideTheme(slideTheme === "dark" ? "light" : "dark", true);
+      });
+      applySlideTheme(pageTheme(), false);
     }
     if (slideNumberSetting) {
       slideNumberSetting.checked = boolAttr("defaultSlideNumber");
@@ -416,6 +483,7 @@
       initIcons();
       initPreviewGifs();
       initCarousels();
+      initResourceMenus();
       initDeck();
     });
   } else {
@@ -423,6 +491,7 @@
     initIcons();
     initPreviewGifs();
     initCarousels();
+    initResourceMenus();
     initDeck();
   }
 })();

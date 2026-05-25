@@ -9,6 +9,7 @@ def test_inline_footnote_becomes_sidenote() -> None:
     assert 'class="sidenote-ref"' in html
     assert 'role="button"' in html
     assert 'aria-expanded="false"' in html
+    assert 'aria-haspopup="dialog"' in html
     assert 'class="sidenote"' in html
     assert "marginal aside" in html
     # The reference label sits between the body text and the aside.

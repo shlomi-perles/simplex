@@ -41,6 +41,7 @@ from simplex.web.bibliography import Bibliography
 from simplex.web.citations import ENV_KEY as _CITE_ENV_KEY
 from simplex.web.citations import make_plugin as cite_plugin
 from simplex.web.refs import make_plugin as ref_plugin
+from simplex.web.slide_ref import SlideRefMap
 from simplex.web.slide_ref import make_plugin as slide_ref_plugin
 
 
@@ -52,8 +53,8 @@ def _math_renderer(content: str, options: dict[str, Any]) -> str:
 
 
 # `nowrap=True` strips the Pygments <div><pre> wrap so markdown-it's own
-# <pre><code> is the only wrap. The Darcula background lives on
-# `.deck-notes pre` in simplex.css.
+# <pre><code> is the only wrap. The surrounding notes CSS owns the light
+# background; token colors stay aligned with slide code blocks.
 _FORMATTER = HtmlFormatter(nowrap=True, noclasses=True, style=DarculaStyle)
 
 
@@ -67,6 +68,7 @@ def _highlight(code: str, lang: str, _attrs: str) -> str:
 
 def _make(
     slide_count: int | None = None,
+    slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
 ) -> MarkdownIt:
     md = MarkdownIt(
@@ -84,7 +86,7 @@ def _make(
     # Tufte sidenotes by `sidenotes.transform`.
     md.use(footnote_plugin, inline=True, move_to_end=True)
     md.use(anchors_plugin, max_level=3)
-    md.use(slide_ref_plugin(slide_count=slide_count))
+    md.use(slide_ref_plugin(slide_count=slide_count, slide_refs=slide_refs))
     md.use(cite_plugin(bibliography))
     md.use(ref_plugin())
     return md
@@ -94,6 +96,7 @@ def render_text(
     markdown: str,
     *,
     slide_count: int | None = None,
+    slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
 ) -> str:
     """Render a markdown string to academic-style HTML.
@@ -102,7 +105,7 @@ def render_text(
     trailing ``<section class="bibliography">``. When omitted, ``\\cite{}``
     markers render as the literal `[key?]` "stale" tags.
     """
-    md = _make(slide_count=slide_count, bibliography=bibliography)
+    md = _make(slide_count=slide_count, slide_refs=slide_refs, bibliography=bibliography)
     env: dict[str, Any] = {}
     body = md.render(markdown, env)
     body = sidenotes.transform(body)
@@ -125,11 +128,13 @@ def render(
     notes_md: Path,
     *,
     slide_count: int | None = None,
+    slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
 ) -> str:
     """Render a notes.md file to HTML."""
     return render_text(
         notes_md.read_text(encoding="utf-8"),
         slide_count=slide_count,
+        slide_refs=slide_refs,
         bibliography=bibliography,
     )

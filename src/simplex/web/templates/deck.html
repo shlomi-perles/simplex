@@ -1,26 +1,36 @@
 {% extends "base.html" %}
 {% block title %}{{ deck.title }} -- {{ site.brand }}{% endblock %}
 {% block nav_actions %}
-  {% if has_pdf %}
-  <a
-    href="{{ deck.slug }}.pdf"
-    class="site-resource-link"
-    download
-  >
-    <span class="pdf-file-icon" aria-hidden="true"><span>PDF</span></span>
-    <span>ppt</span>
-  </a>
-  {% endif %}
-  {% if has_notes_pdf %}
-  <a
-    href="notes.pdf"
-    class="site-resource-link"
-    download
-  >
-    <i data-lucide="file-text" aria-hidden="true"></i>
-    <span class="icon-fallback" aria-hidden="true">N</span>
-    <span>Notes PDF</span>
-  </a>
+  {% if has_pdf or has_notes_pdf %}
+  <div class="site-resource-menu" data-resource-menu>
+    <button
+      type="button"
+      class="site-resource-trigger"
+      data-resource-toggle
+      aria-expanded="false"
+      aria-haspopup="menu"
+      aria-label="Download resources"
+      title="Download resources"
+    >
+      <span class="pdf-file-icon" aria-hidden="true"><span>PDF</span></span>
+    </button>
+    <div class="site-resource-menu-panel" data-resource-panel role="menu" hidden>
+      {% if has_pdf %}
+      <a href="{{ slides_pdf_name|urlencode }}" class="site-resource-menu-item" role="menuitem" download>
+        <i data-lucide="presentation" aria-hidden="true"></i>
+        <span class="icon-fallback" aria-hidden="true">S</span>
+        <span>Slides</span>
+      </a>
+      {% endif %}
+      {% if has_notes_pdf %}
+      <a href="{{ notes_pdf_name|urlencode }}" class="site-resource-menu-item" role="menuitem" download>
+        <i data-lucide="file-text" aria-hidden="true"></i>
+        <span class="icon-fallback" aria-hidden="true">N</span>
+        <span>Notes</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
   {% endif %}
 {% endblock %}
 {% block main_class %}deck-main{% endblock %}
@@ -82,10 +92,20 @@
           <span>Player Settings</span>
         </button>
         <div class="deck-settings-panel" data-settings-panel hidden>
-          <label class="deck-setting-row">
-            <span><i data-lucide="palette" aria-hidden="true"></i>Slide Color</span>
-            <input type="checkbox" data-setting="slide-color" checked />
-          </label>
+          <div class="deck-setting-row deck-setting-row-action">
+            <span><i data-lucide="palette" aria-hidden="true"></i>Slide Theme</span>
+            <button
+              type="button"
+              class="deck-theme-toggle"
+              data-setting="slide-theme"
+              aria-label="Toggle slide theme"
+            >
+              <i data-lucide="sun" class="deck-theme-icon deck-theme-icon-sun" aria-hidden="true"></i>
+              <i data-lucide="moon" class="deck-theme-icon deck-theme-icon-moon" aria-hidden="true"></i>
+              <span class="icon-fallback" aria-hidden="true">T</span>
+              <span data-slide-theme-label>Dark</span>
+            </button>
+          </div>
           <label class="deck-setting-row">
             <span><i data-lucide="list-ordered" aria-hidden="true"></i>Enumeration</span>
             <input

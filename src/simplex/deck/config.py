@@ -102,7 +102,7 @@ class DeckConfig(BaseModel):
     title: str
     summary: str = ""
     tags: tuple[str, ...] = ()
-    theme: str = "dastimator_dark"
+    theme: str = "simplex_dark"
     scenes: tuple[str, ...] = ()
     entrypoints: tuple[str, ...] = ()
     quality: str = "high_quality"

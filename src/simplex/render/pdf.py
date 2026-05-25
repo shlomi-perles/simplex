@@ -8,16 +8,17 @@ and writes one combined PDF. No subprocess, no shell.
 from pathlib import Path
 
 from simplex.deck.config import DeckConfig
+from simplex.render.filenames import pdf_name
 
 
 def export(deck: DeckConfig, *, output_dir: Path) -> Path:
-    """Write ``<output_dir>/<slug>.pdf`` from manim-slides' rendered scenes."""
+    """Write ``<output_dir>/<title>-slides.pdf`` from rendered scenes."""
     from manim_slides.convert import PDF
     from manim_slides.present import get_scenes_presentation_config
 
     output_dir.mkdir(parents=True, exist_ok=True)
     media_dir = output_dir.resolve()
-    pdf_path = media_dir / f"{deck.slug}.pdf"
+    pdf_path = media_dir / pdf_name(deck, "slides")
     scenes = deck.scene_class_names
     if not scenes:
         raise ValueError(f"deck {deck.slug!r} has no scenes/entrypoints configured")

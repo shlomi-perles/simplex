@@ -32,7 +32,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "manim-simplex>=0.2.2",
+  "manim-simplex>=0.2.3",
   "manim-slides>=5.1.7",
   "pydantic>=2.7",
   "pydantic-settings>=2.3",
@@ -65,14 +65,14 @@ keywords = [
 ]
 license = "MIT"
 license-files = ["LICENSE"]
-# PyPI distribution name. The import name stays ``simplex`` (a PEP 420
-# namespace shared with ``manim-simplex``); the wheel/sdist uses a longer
-# brand name because the bare ``simplex`` slot is taken and short variants
-# are rejected by PyPI's name-similarity guard.
+# PyPI distribution name. The import name stays ``simplex`` and composes
+# with the authoring facade shipped by ``manim-simplex``; the wheel/sdist
+# uses a longer brand name because the bare ``simplex`` slot is taken and
+# short variants are rejected by PyPI's name-similarity guard.
 name = "simplex-web"
 readme = "README.md"
 requires-python = ">=3.13"
-version = "0.2.2"
+version = "0.2.3"
 
 [project.scripts]
 simplex = "simplex.cli.commands:app"

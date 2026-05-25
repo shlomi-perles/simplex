@@ -377,6 +377,14 @@ def doctor() -> None:
         else:
             console.print(f"[red]MISSING[/red] {tool}")
             ok = False
+    notes_engine = next(
+        (path for tool in ("xelatex", "lualatex", "pdflatex") if (path := shutil.which(tool))),
+        None,
+    )
+    if notes_engine:
+        console.print(f"[green]ok[/green]   notes-pdf -> {notes_engine}")
+    else:
+        console.print("[yellow]optional[/yellow] notes-pdf -> xelatex/lualatex/pdflatex not found")
     sys.exit(0 if ok else 1)
 
 

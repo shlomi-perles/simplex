@@ -63,8 +63,12 @@
     }
 
     function noteFor(ref) {
-      var input = document.getElementById(ref.getAttribute("for") || "");
-      var note = input && input.nextElementSibling;
+      var noteId = ref.getAttribute("aria-controls");
+      var note = noteId ? document.getElementById(noteId) : null;
+      if (!note) {
+        var input = document.getElementById(ref.getAttribute("for") || "");
+        note = input && input.nextElementSibling;
+      }
       if (!note || !note.classList || !note.classList.contains("sidenote")) return null;
       return note;
     }
@@ -135,12 +139,14 @@
       }
     }
 
+    document.addEventListener("click", function (e) {
+      var ref = e.target && e.target.closest ? e.target.closest(".sidenote-ref[for]") : null;
+      if (!ref || !isNarrow()) return;
+      e.preventDefault();
+      open(ref);
+    });
+
     refs.forEach(function (ref) {
-      ref.addEventListener("click", function (e) {
-        if (!isNarrow()) return;
-        e.preventDefault();
-        open(ref);
-      });
       ref.addEventListener("keydown", function (e) {
         if (!isNarrow()) return;
         if (e.key !== "Enter" && e.key !== " ") return;

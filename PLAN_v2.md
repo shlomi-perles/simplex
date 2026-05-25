@@ -251,7 +251,7 @@ class WebPalette(BaseModel):
 ```
 
 `Theme.web_palette: WebPalette` field. `presets.py` fills defaults for
-DASTIMATOR_DARK + ACADEMIC_LIGHT.
+SIMPLEX_DARK + ACADEMIC_LIGHT.
 
 `theme/web_css.py::render_web_css(palette) -> str` emits a `:root {
 --simplex-… }` block consumed by:
@@ -273,7 +273,7 @@ summary = "Demonstrates every helper."
 tags = ["reference"]
 category = "Reference"
 order = 0
-theme = "dastimator_dark"
+theme = "simplex_dark"
 
 # Render controls
 quality = "medium_quality"

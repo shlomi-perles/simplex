@@ -47,11 +47,12 @@
       {% for link in site.nav %}
       {% set label = link.label|lower %}
       {% set is_github = "github" in label %}
+      {% set is_home = "home" in label or "deck" in label %}
       {% set icon = "book-open" if "docs" in label else ("home" if "home" in label or "deck" in label else "circle-dot") %}
       {% if not is_github %}
       <a
         href="{{ site.nav_url(link.href) }}"
-        class="site-nav-link"
+        class="site-nav-link{% if is_home %} site-nav-link-home{% endif %}"
         {% if site.is_external_url(link.href) %}target="_blank" rel="noreferrer"{% endif %}
       >
         <i data-lucide="{{ icon }}" aria-hidden="true"></i>
@@ -88,24 +89,26 @@
   {% endif %}
   {% endfor %}
   <span class="site-footer-built">
-    Built with
     <a
-      href="https://github.com/shlomi-perles/simplex"
-      class="site-footer-simplex"
+      href="{{ site.nav_url(footer.github_href) }}"
+      class="site-footer-github"
+      aria-label="GitHub"
+      title="GitHub"
       target="_blank"
       rel="noreferrer"
-    >Simplex</a>
+    >
+      <span class="github-square-icon" aria-hidden="true"></span>
+    </a>
+    <span>
+      Built with
+      <a
+        href="https://github.com/shlomi-perles/simplex"
+        class="site-footer-simplex"
+        target="_blank"
+        rel="noreferrer"
+      >Simplex</a>
+    </span>
   </span>
-  <a
-    href="{{ site.nav_url(footer.github_href) }}"
-    class="site-footer-github"
-    aria-label="GitHub"
-    title="GitHub"
-    target="_blank"
-    rel="noreferrer"
-  >
-    <span class="github-square-icon" aria-hidden="true"></span>
-  </a>
 </footer>
 <script src="{{ static('lucide/lucide.min.js') }}" defer></script>
 <script src="{{ static('viewer.js') }}" defer></script>

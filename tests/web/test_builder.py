@@ -18,7 +18,7 @@ def _write_deck(root: Path, slug: str, title: str, *, scenes: tuple[str, ...] = 
         encoding="utf-8",
     )
     (d / "slides.py").write_text("# empty\n", encoding="utf-8")
-    (d / "notes.md").write_text("# Notes\n\nMath: $a+b$. See [slide:1].\n", encoding="utf-8")
+    (d / "notes.md").write_text("# Notes\n\nMath: $a+b$. See [slide:s1].\n", encoding="utf-8")
 
 
 def _write_section(root: Path, name: str, title: str, order: int) -> None:
@@ -60,6 +60,9 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     assert "Alpha" in alpha_html
     assert 'class="math inline"' in alpha_html
     assert 'class="slide-ref"' in alpha_html
+    assert 'data-slide="1"' in alpha_html
+    assert "Slide Theme" in alpha_html
+    assert "Slide Color" not in alpha_html
     assert 'src="slides.html?v=' in alpha_html
     slides_html = (site_dir / "decks" / "alpha" / "slides.html").read_text(encoding="utf-8")
     assert "Reveal" in slides_html
@@ -90,10 +93,39 @@ def test_build_resolves_nav_links_against_base_url_and_moves_github_to_footer(
 
     index_html = (site_dir / "index.html").read_text(encoding="utf-8")
     assert 'href="/simplex-lectures-template/"' in index_html
+    assert 'class="site-nav-link site-nav-link-home"' in index_html
     assert 'class="site-nav-link site-nav-link-icon-only"' not in index_html
     assert 'class="site-footer-github"' in index_html
     assert "https://github.com/example/project" in index_html
     assert 'class="site-footer-simplex"' in index_html
+    assert index_html.index('class="site-footer-github"') < index_html.index(
+        'class="site-footer-simplex"'
+    )
+
+
+def test_deck_downloads_are_grouped_under_pdf_icon(tmp_path: Path) -> None:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
+    deck_out = tmp_path / "site" / "decks" / "alpha"
+    deck_out.mkdir(parents=True)
+    (deck_out / "Alpha-slides.pdf").write_bytes(b"%PDF")
+    (deck_out / "Alpha-note.pdf").write_bytes(b"%PDF")
+
+    build(
+        decks_dir=decks_dir,
+        site_dir=tmp_path / "site",
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+
+    html = (deck_out / "index.html").read_text(encoding="utf-8")
+    assert "data-resource-menu" in html
+    assert 'href="Alpha-slides.pdf"' in html
+    assert 'href="Alpha-note.pdf"' in html
+    assert ">Slides</span>" in html
+    assert ">Notes</span>" in html
+    assert ">ppt</span>" not in html
 
 
 def test_build_emits_section_pages_and_orders(tmp_path: Path) -> None:

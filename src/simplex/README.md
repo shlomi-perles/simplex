@@ -1,18 +1,19 @@
 # src/simplex
 
-The `simplex` distribution's half of the namespace: deck discovery,
+The `simplex-web` distribution's half of the package: deck discovery,
 render pipeline, web portal, and CLI. The plugin half (`simplex.plugin`,
 `simplex.engine`, `simplex.theme`, `simplex.slides`) is shipped by the
-`manim-simplex` distribution and merged into this same namespace at
-import time via PEP 420.
+`manim-simplex` distribution, whose top-level facade extends the package
+path so these web modules compose with the authoring API.
 
-This directory ships **no** `__init__.py`. Don't add one -- it would
-shadow the implicit namespace and break the `manim-simplex` half.
+This directory ships **no** runtime `__init__.py`. Don't add one -- the
+runtime facade belongs to `manim-simplex`. The local `__init__.pyi` is
+only a shallow typing stub for this repo's strict checks.
 
 ## Public surface (this distribution)
 
 - `simplex.deck` -- `DeckConfig`, `discover`, `scaffold`
-- `simplex.render` -- `runner`, `reconcile`, `html`, `pdf`, `pptx`, `thumbnail`
+- `simplex.render` -- `runner`, `reconcile`, `html`, `pdf`, `pptx`, `notes_pdf`, `filenames`, `thumbnail`
 - `simplex.web` -- `builder`, `notes`, bibliography stack, templates, static, SSE reload
 - `simplex.cli.commands:app` -- the Typer app behind `uv run simplex`
 
@@ -25,7 +26,7 @@ shadow the implicit namespace and break the `manim-simplex` half.
 
 ## Don't
 
-- Don't add `src/simplex/__init__.py`. The namespace must stay implicit.
+- Don't add `src/simplex/__init__.py`. The runtime facade belongs to `manim-simplex`.
 - Don't import `manim_editor`. The legacy package is deprecated and not a dependency.
 - Don't wrap Manim constructors. Authors write vanilla Manim; the framework configures defaults underneath via `Mobject.set_default(...)`.
 - Don't add a custom quality enum. Use `manim.constants.QUALITIES` keys directly.

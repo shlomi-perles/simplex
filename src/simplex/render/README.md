@@ -1,7 +1,7 @@
 # render/
 
 Manim-slides subprocess invocation, native-section reconcile, thumbnail
-extraction, PDF / PowerPoint export, HTML viewer emission.
+extraction, PDF / PowerPoint export, notes PDF export, HTML viewer emission.
 
 ## Public surface
 
@@ -9,9 +9,12 @@ extraction, PDF / PowerPoint export, HTML viewer emission.
   spawns `manim-slides render` with `--save_sections` (and
   `--disable_caching` when `deck.caching = False`).
 - `pdf.export(deck, output_dir)` -- in-process via
-  `manim_slides.convert.PDF`.
+  `manim_slides.convert.PDF`, writing `<title>-slides.pdf`.
 - `pptx.export(deck, output_dir)` -- in-process via
   `manim_slides.convert.PowerPoint`.
+- `notes_pdf.export(deck, notes_path, output_dir, slide_refs=None,
+  bibliography=None)` -- best-effort LaTeX PDF rendering for `notes.md`,
+  writing `<title>-note.pdf`.
 - `reconcile.build_manifest(deck, media_dir)` -> `DeckManifest`
   (a tuple of `MainSlide`, each with its own `subsections`).
 - `thumbnail.generate(deck, manifest, site_deck_dir, cache_dir)` --

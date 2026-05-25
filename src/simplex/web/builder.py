@@ -30,7 +30,7 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from simplex.deck.config import DeckConfig
 from simplex.deck.registry import Section, SectionedRegistry, discover
 from simplex.deck.section import SectionConfig
-from simplex.render import html, pdf, reconcile, runner, thumbnail
+from simplex.render import filenames, html, notes_pdf, pdf, reconcile, runner, thumbnail
 from simplex.theme.web_css import render_web_css
 from simplex.web import notes, vendor
 from simplex.web.bibliography import Bibliography
@@ -114,11 +114,40 @@ def _maybe_render(
 
 
 def _has_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
-    return (deck_dir / f"{deck.slug}.pdf").exists()
+    return (deck_dir / filenames.pdf_name(deck, "slides")).exists()
 
 
-def _has_notes_pdf(deck_dir: Path) -> bool:
-    return (deck_dir / "notes.pdf").exists()
+def _has_notes_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
+    return (deck_dir / filenames.pdf_name(deck, "note")).exists()
+
+
+def _slide_ref_labels(
+    deck: DeckConfig,
+    slides: tuple[Any, ...],
+) -> dict[str, tuple[int, str]]:
+    """Return label -> ``(index, display label)`` for note slide refs."""
+    from simplex.web.slide_ref import label_key
+
+    refs: dict[str, tuple[int, str]] = {}
+    for slide in slides:
+        index = int(slide.index)
+        display = str(slide.name)
+        candidates = {
+            str(index),
+            display,
+            label_key(display),
+            str(slide.scene),
+            label_key(str(slide.scene)),
+        }
+        override = deck.slides.get(display)
+        if override and override.notes_anchor:
+            candidates.add(override.notes_anchor)
+            candidates.add(label_key(override.notes_anchor))
+        for candidate in candidates:
+            key = label_key(candidate)
+            if key:
+                refs.setdefault(key, (index, display))
+    return refs
 
 
 def _load_bibliography(deck_path: Path) -> Bibliography | None:
@@ -213,9 +242,28 @@ def _build_deck(
 
     notes_md = deck.path / "notes.md"
     notes_html = ""
+    slide_refs = _slide_ref_labels(deck, enriched)
     if notes_md.exists():
         bib = _load_bibliography(deck.path)
-        notes_html = notes.render(notes_md, slide_count=len(enriched), bibliography=bib)
+        notes_html = notes.render(
+            notes_md,
+            slide_count=len(enriched),
+            slide_refs=slide_refs,
+            bibliography=bib,
+        )
+        if render:
+            with contextlib.suppress(
+                subprocess.SubprocessError,
+                FileNotFoundError,
+                ImportError,
+            ):
+                notes_pdf.export(
+                    deck,
+                    notes_md,
+                    output_dir=deck_out,
+                    slide_refs=slide_refs,
+                    bibliography=bib,
+                )
 
     total_seconds = sum(m.duration_s for m in enriched)
     total_minutes: int | None = int(total_seconds // 60) if total_seconds > 0 else None
@@ -228,7 +276,9 @@ def _build_deck(
         slide_count=len(enriched),
         total_duration_min=total_minutes,
         has_pdf=_has_pdf(deck, deck_out),
-        has_notes_pdf=_has_notes_pdf(deck_out),
+        has_notes_pdf=_has_notes_pdf(deck, deck_out),
+        slides_pdf_name=filenames.pdf_name(deck, "slides"),
+        notes_pdf_name=filenames.pdf_name(deck, "note"),
         notes_html=notes_html,
         palette_css=render_web_css(deck.resolved_web_palette()),
         slides_version=_file_version(slides_html),
@@ -285,7 +335,7 @@ def _site_palette_css(site_cfg: SiteConfig) -> str:
     """Return CSS for the site-wide palette (uses site_cfg.theme if set, else default)."""
     from simplex.theme.presets import get as get_theme
 
-    theme_name = getattr(site_cfg, "theme", None) or "dastimator_dark"
+    theme_name = getattr(site_cfg, "theme", None) or "simplex_dark"
     return render_web_css(get_theme(theme_name).web_palette)
 
 
