@@ -19,7 +19,7 @@ def test_load_minimal(tmp_path: Path) -> None:
     cfg = DeckConfig.load(deck_dir)
     assert cfg.slug == "demo"
     assert cfg.title == "Demo"
-    assert cfg.theme == "dastimator_dark"
+    assert cfg.theme == "simplex_dark"
     assert cfg.quality == "high_quality"
 
 

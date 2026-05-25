@@ -29,6 +29,7 @@ def test_new_creates_loadable_featured_deck(project: Path) -> None:
     cfg = DeckConfig.load(deck_dir)
     assert cfg.slug == "demo"
     assert cfg.created_at is not None
+    assert cfg.scene_class_names == ("Intro", "KeyIdea")
     assert (deck_dir / "slides" / "__init__.py").exists()
 
 

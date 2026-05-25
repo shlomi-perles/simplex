@@ -37,7 +37,7 @@ simplex/
 |   |-- README.md
 |   |-- theme/                 # design tokens (Pydantic, frozen)
 |   |   |-- tokens.py          # Palette, Typography, Spacing, Motion, LatexProfile, Theme
-|   |   |-- presets.py         # DASTIMATOR_DARK = Theme(...), ACADEMIC_LIGHT = Theme(...)
+|   |   |-- presets.py         # SIMPLEX_DARK = Theme(...), ACADEMIC_LIGHT = Theme(...)
 |   |   `-- context.py         # ContextVar-backed active_theme() + get_active_theme()
 |   |-- engine/                # small, additive helpers (no wrapping)
 |   |   |-- defaults.py        # apply_theme_defaults(theme)
@@ -182,7 +182,7 @@ Every directory under `src/simplex/`, `decks/`, and `tests/` ships a `README.md`
 ## 4. Critical files
 
 **Port (read, redesign -- do not copy):**
-- `dastimator/source/tools/consts.py:1-62` -> seeds `theme/presets.py:DASTIMATOR_DARK`.
+- `dastimator/source/tools/consts.py:1-62` -> seeds `theme/presets.py:SIMPLEX_DARK`.
 - `dastimator/source/tools/graphs/{node,edge}.py` -> `slides/components/graph.py`.
 - `dastimator/source/tools/array.py` -> `slides/components/array.py`.
 - `dastimator/source/tools/funcs.py` -> split into `engine/animations.py` and helper functions.
@@ -193,7 +193,7 @@ Every directory under `src/simplex/`, `decks/`, and `tests/` ships a `README.md`
 
 - Step 1: `uv sync && uv run simplex doctor` exits 0 on a clean Windows box.
 - Step 2: pre-commit fails when any directory under `src/simplex/` lacks a README or exceeds 50 lines.
-- Step 3: `DASTIMATOR_DARK.palette.background == "#242424"`, `theme.latex.environments["definition"] == "{minipage}{20cm}"`, models frozen.
+- Step 3: `SIMPLEX_DARK.palette.background == "#242424"`, `theme.latex.environments["definition"] == "{minipage}{20cm}"`, models frozen.
 - Step 4: After `apply_theme_defaults`, a vanilla `MathTex(r"x")` has theme color and preamble.
 - Step 5: `Region.full_frame().shrink(top=0.5).center` returns the expected coordinate.
 - Step 6: `Remove(mob)` -> `FadeOut` by default; `set_exit_animation(mob, ShrinkToCenter)` -> `ShrinkToCenter`.

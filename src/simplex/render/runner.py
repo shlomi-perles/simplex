@@ -7,7 +7,7 @@ plugin entry-point applies theme defaults and ``save_sections = True`` at
 ``import manim`` time. The runner re-introduces the ``SIMPLEX_THEME`` env
 var purely to *select* which preset the plugin activates -- Python's
 ``ContextVar`` doesn't traverse the ``subprocess`` boundary, so without
-the env var every render falls back to ``DASTIMATOR_DARK`` regardless of
+the env var every render falls back to ``SIMPLEX_DARK`` regardless of
 what the deck's ``deck.toml`` declares.
 
 We still spawn a subprocess (not in-process) for three reasons: clean

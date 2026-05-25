@@ -2,9 +2,9 @@
 
 This deck is a starting point. Replace the contents of `slides/` and fill these notes.
 
-Refer to a slide inline with `[slide:1]` to add a clickable jump link.
+Refer to a slide label inline with `[slide:key-idea]` to add a clickable jump link: [slide:key-idea].
 
-Add a sidenote with the `^[...]` syntax — it floats into the right margin on wide screens.^[Sidenotes are Tufte-style: a numbered reference inline, the body in the gutter; narrow viewports collapse to an inline reveal on click.]
+Add a sidenote with the `^[...]` syntax — it floats into the right margin on wide screens.^[Sidenotes are Tufte-style: a numbered reference inline, the body in the gutter; narrow viewports open a bottom-sheet note on click.]
 
 Inline math: $a^2 + b^2 = c^2$. Display math:
 
@@ -18,7 +18,7 @@ Theorem / definition / lemma / remark / proof blockquotes turn into colour-coded
 
 Reference one by id with `\ref{theorem-1-1}` — the renderer resolves it to **Theorem 1.1** automatically.
 
-Cite the bundled `refs.bib` with `\cite{key}` — the build appends a References section automatically (`\cite{KB15}` here).
+Cite the bundled `refs.bib` with `\cite{key}` — the build appends a References section automatically. For example, Adam is introduced in \cite{KB15}.
 
 Code blocks render with Pygments:
 

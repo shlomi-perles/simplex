@@ -20,7 +20,7 @@ imports into the `simplex.*` namespace.
 - Use `manim-simplex` slide bases, layout regions, theme tokens, and mobjects.
 - Organize decks under `decks/` with a small `deck.toml`.
 - Build a static portal with deck pages, notes, citations, math rendering,
-  thumbnails, RevealJS playback, and optional live reload.
+  thumbnails, RevealJS playback, title-based PDF downloads, and optional live reload.
 - Keep the rendered video frames clean; navigation chrome lives in the web
   viewer where it can be changed without re-rendering videos.
 
@@ -34,9 +34,9 @@ Simplex is split into a small toolkit:
 | [`simplex`](https://github.com/shlomi-perles/simplex) | `simplex-web` | CLI, deck discovery, render orchestration, static portal builder. |
 | [`simplex-lectures-template`](https://github.com/shlomi-perles/simplex-lectures-template) | - | Starter lectures repository. |
 
-The import namespace is still `simplex`. Both `manim-simplex` and
-`simplex-web` intentionally use a PEP 420 namespace package so their modules
-merge at runtime.
+The import namespace is still `simplex`. `manim-simplex` provides the top-level
+authoring facade (`from simplex import BaseSlide, Caption`), while
+`simplex-web` contributes CLI and site-builder modules such as `simplex.web`.
 
 ## Requirements
 
@@ -133,9 +133,12 @@ The important fields in `deck.toml` are:
 slug = "hash-tables"
 title = "Hash Tables"
 summary = "A one-line deck summary."
-theme = "dastimator_dark"
+theme = "simplex_dark"
 quality = "high_quality"
-entrypoints = ["slides.intro:Intro"]
+entrypoints = ["slides.intro:Intro", "slides.intro:KeyIdea"]
+
+[slides."Key Idea"]
+notes_anchor = "key-idea"
 ```
 
 `entrypoints` points to scene classes inside the deck directory. Legacy
@@ -149,8 +152,7 @@ A scene is ordinary Manim plus the Simplex slide base:
 ```python
 from manim import DOWN, ORIGIN, Tex, Write
 
-from simplex.slides import BaseSlide
-from simplex.theme.context import get_active_theme
+from simplex import BaseSlide, get_active_theme
 
 
 class Intro(BaseSlide):
@@ -175,6 +177,9 @@ the web builder.
 
 Each deck can include `notes.md`. The site builder renders Markdown notes,
 inline math, display math, citations from `refs.bib`, and slide references.
+Prefer label-based slide refs such as `[slide:key-idea]`; numeric refs still
+work for quick drafts. When a TeX engine is available, builds also emit
+`<title>-note.pdf` for the deck download menu.
 
 Site-wide options live in `site.toml`:
 

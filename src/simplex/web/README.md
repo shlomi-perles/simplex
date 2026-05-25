@@ -7,8 +7,9 @@ notes pipeline (markdown + math + citations + Tufte sidenotes).
 
 - `SiteConfig.load()` -- merge committed `site.toml` with env overrides
   (`SIMPLEX_GA_TAG`, `SIMPLEX_BASE_URL`, `SIMPLEX_BRAND`, `SIMPLEX_PREVIEW`).
-- `notes.render(notes_md_path, slide_count=..., bibliography=...)` --
-  markdown-it + dollarmath + footnotes + `[slide:N]` + `\cite{}` +
+- `notes.render(notes_md_path, slide_count=..., slide_refs=...,
+  bibliography=...)` -- markdown-it + dollarmath + footnotes +
+  `[slide:label]` + `\cite{}` +
   `\ref{}` -> Tufte-style academic HTML (serif body, Lato headings,
   right-margin sidenotes, colour-coded theorem callouts, references
   appendix, auto-fitted display math).

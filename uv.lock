@@ -473,7 +473,7 @@ wheels = [
 
 [[package]]
 name = "manim-simplex"
-version = "0.2.2"
+version = "0.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "manim" },
@@ -482,9 +482,9 @@ dependencies = [
     { name = "pygments" },
     { name = "pymupdf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/a4/b79b215a23d668294834e43314fbf9c914bd3ad46db83cc2b6ce16659b5d/manim_simplex-0.2.2.tar.gz", hash = "sha256:b72692a2f377606b888eab9e9d70a309105043b92a63a000e5a285906f7d09f2", size = 147689 }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/fe/210fb1bb18bc9392debd0652aacd8ce9a5205d0463ded9da703ee3ad794b/manim_simplex-0.2.3.tar.gz", hash = "sha256:be9eae4efa5825589744e159148aba078e1cf5269998196b7d381cb1fd06c4e3", size = 149036, upload-time = "2026-05-25T03:43:32.011Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/a3/eaaac6d06eff40cec05c2c225ce019bf0a3fd24eb68c10178bad1548503c/manim_simplex-0.2.2-py3-none-any.whl", hash = "sha256:131e63d796d775200a0a8d251e222588808f2c36e9d30a6a0bb1672f551f64c9", size = 65539 },
+    { url = "https://files.pythonhosted.org/packages/a7/48/314e6f2dd0bae468d0cadc55ec4fcbebd48883b88e6e7da885b7b848fb4e/manim_simplex-0.2.3-py3-none-any.whl", hash = "sha256:72f51f09690981e7be49029c5c0fe72da5d94ecbb7a6e82337cad01a87f74645", size = 67156, upload-time = "2026-05-25T03:43:30.5Z" },
 ]
 
 [[package]]
@@ -1370,7 +1370,7 @@ wheels = [
 
 [[package]]
 name = "simplex-web"
-version = "0.2.2"
+version = "0.2.3"
 source = { editable = "." }
 dependencies = [
     { name = "av" },
@@ -1405,7 +1405,7 @@ dev = [
 requires-dist = [
     { name = "av", specifier = ">=15.0" },
     { name = "jinja2", specifier = ">=3.1" },
-    { name = "manim-simplex", specifier = ">=0.2.2" },
+    { name = "manim-simplex", specifier = ">=0.2.3" },
     { name = "manim-slides", specifier = ">=5.1.7" },
     { name = "markdown-it-py", specifier = ">=3.0" },
     { name = "mdit-py-plugins", specifier = ">=0.4" },
