@@ -4,6 +4,18 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.4.1...manim-simplex-v0.5.0) (2026-05-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* Region is no longer a Pydantic model; the read-only `center`/`width`/`height` properties are gone -- use the inherited Rectangle methods (`get_center()`, `width`, `height` still work via the Mobject API). Region.split is renamed Region.split_regions to free `split` for future Manim parity. make_chrome's header/footer parameters widened from `str | None` to `str | Mobject | None`.
+
+### Features
+
+* chrome ergonomics, Region as Rectangle, paper polish, showcase rewrite ([346ef5b](https://github.com/shlomi-perles/simplex/commit/346ef5b02de4118e72efbf24f2bd92e8ea178f0b))
+* **mobjects:** add blurred paper shadows ([37df25f](https://github.com/shlomi-perles/simplex/commit/37df25f589d6a9eb0300affbf346479f7dda88b3))
+
 ## [0.4.1](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.4.0...manim-simplex-v0.4.1) (2026-05-25)
 
 ### Added
