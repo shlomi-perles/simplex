@@ -1,4 +1,4 @@
-# decks/
+# decks
 
 Author content lives here, one directory per deck.
 
