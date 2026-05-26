@@ -1,6 +1,4 @@
-"""Geometry helpers: frame center math and built-in convex hull wrapper."""
-
-import math
+"""Geometry helpers: frame center math, 3D arc, and surrounding-rect union."""
 
 import pytest
 
@@ -12,8 +10,6 @@ from manim import Square  # noqa: E402
 from simplex.engine.geometry import (  # noqa: E402
     Arc3d,
     SurroundingRectangleUnion,
-    Vcis,
-    get_convex_hull_polygon,
     get_frame_center,
 )
 
@@ -33,27 +29,6 @@ def test_frame_center_uses_explicit_coordinates() -> None:
     )
     assert center[0] == pytest.approx(0.0)
     assert center[1] == pytest.approx(0.0)
-
-
-def test_convex_hull_wraps_manim_native() -> None:
-    pts = np.array(
-        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.5, 0.5, 0.0]],
-    )
-    poly = get_convex_hull_polygon(pts)
-    assert poly is not None
-
-
-def test_vcis_zero_is_x_axis() -> None:
-    assert np.allclose(Vcis(0.0), [1.0, 0.0, 0.0])
-
-
-def test_vcis_quarter_turn_is_y_axis() -> None:
-    assert np.allclose(Vcis(math.pi / 2), [0.0, 1.0, 0.0])
-
-
-def test_vcis_clockwise_quarter_is_x_axis() -> None:
-    # clockwise from +y at PI/2 lands on +x
-    assert np.allclose(Vcis(math.pi / 2, clockwise=True), [1.0, 0.0, 0.0])
 
 
 def test_arc3d_produces_segments_points() -> None:

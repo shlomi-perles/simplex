@@ -1,13 +1,16 @@
-"""Default-exit registry, ``Remove``, ``set_exit_animation``, and ``clear_scene``.
+"""Default-exit registry, ``ExitAnim``, ``set_exit_animation``, and ``clear_scene``.
 
 Each Mobject type has a default *exit* animation (e.g. ``Tex`` -> ``Unwrite``,
 ``Circle`` -> ``ShrinkToCenter``). Callers can override per-instance via
 ``set_exit_animation(mob, anim_cls_or_factory)``, or per-type via
 ``register_exit(type, factory)``.
 
-``Remove(mob)`` and ``clear_scene(scene, exclude=...)`` both dispatch through
+``ExitAnim(mob)`` and ``clear_scene(scene, exclude=...)`` both dispatch through
 ``exit_for(mob)``, which checks instance overrides, then walks the MRO of
-``type(mob)`` against the type defaults, falling back to ``FadeOut``.
+``type(mob)`` against the type defaults, falling back to ``FadeOut``. The name
+``ExitAnim`` deliberately avoids ``Remove`` because Manim 0.20.x already
+ships an ``Add`` Animation, and a sibling ``Remove`` Animation would clash
+with Simplex's exit-dispatch helper.
 
 Implementation notes:
 
@@ -146,8 +149,14 @@ def exit_for(mob: Any, **kwargs: Any) -> Any:
     return FadeOut(mob, **kwargs)
 
 
-def Remove(mob: Any, **kwargs: Any) -> Any:  # noqa: N802 -- mirrors Manim's PascalCase Animations
-    """Alias for ``exit_for(mob, **kwargs)`` -- spelled to match Manim animations."""
+def ExitAnim(mob: Any, **kwargs: Any) -> Any:  # noqa: N802 -- mirrors Manim's PascalCase Animations
+    """Return the registered exit animation for ``mob``.
+
+    Thin wrapper over :func:`exit_for` named in Manim's PascalCase animation
+    style so calls read like ``self.play(ExitAnim(mob))``. The name avoids
+    ``Remove`` because Manim already ships an ``Add`` Animation, and a
+    symmetric ``Remove`` Animation would collide with this dispatcher.
+    """
     return exit_for(mob, **kwargs)
 
 

@@ -164,7 +164,11 @@ def code_explain(
     theme = get_active_theme()
     color = color or theme.palette.accent
     code_lines = code.code_lines
-    target = VGroup(code_lines[ln - 1] for ln in lines)  # type: ignore[arg-type]
+    # ``lines`` are 1-based and ``code_explain``'s docstring promises a
+    # contiguous range, so slice the underlying ``VGroup`` directly --
+    # Manim's ``Code.code_lines`` is a ``VGroup`` and supports list-style
+    # slicing without rebuilding the group from a generator expression.
+    target = code_lines[lines[0] - 1 : lines[-1]]
     brace = Brace(target, RIGHT, buff=buff, color=color)
     label = Text(explanation, color=color).scale(scale).next_to(brace, RIGHT, buff=buff)
 
@@ -459,7 +463,7 @@ def transform_code_lines(
 
     anims = [
         TransformMatchingShapes(
-            VGroup(src_lines[s - 1] for s in srcs),  # type: ignore[arg-type]
+            VGroup(*(src_lines[s - 1] for s in srcs)),  # type: ignore[arg-type]
             dst_lines[dst_no - 1],
         )
         for dst_no, srcs in grouped.items()

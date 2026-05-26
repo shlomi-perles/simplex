@@ -12,13 +12,20 @@ import numpy as np
 from manim import Mobject
 
 
-def scale_with_stroke_width(
+def scale_stroke_aware(
     mobject: Mobject,
     scale_factor: float = 1.0,
     *,
     scale_stroke_width: bool = True,
 ) -> Mobject:
-    """`mobject.scale(...)` that also rescales the stroke width across the family."""
+    """``mobject.scale(...)`` that also rescales the stroke width across the family.
+
+    Manim's vanilla :meth:`Mobject.scale` keeps stroke widths constant in pixel
+    units, so a thin line stays the same thickness after shrinking, which is
+    usually wrong for diagrams. This helper multiplies each submobject's
+    stroke width by ``scale_factor`` before delegating to ``Mobject.scale``.
+    Pass ``scale_stroke_width=False`` to fall back to vanilla behaviour.
+    """
     if scale_stroke_width:
         for sub in mobject.get_family():
             sub.set_stroke(width=sub.get_stroke_width() * scale_factor)
@@ -56,7 +63,7 @@ def scale_to_fit(
         factors.append(factor)
     if not factors:
         return mobject
-    return scale_with_stroke_width(mobject, min(factors), scale_stroke_width=scale_stroke_width)
+    return scale_stroke_aware(mobject, min(factors), scale_stroke_width=scale_stroke_width)
 
 
 def scale_to_fit_mobject(
@@ -74,4 +81,4 @@ def scale_to_fit_mobject(
     )
 
 
-__all__ = ["scale_to_fit", "scale_to_fit_mobject", "scale_with_stroke_width"]
+__all__ = ["scale_stroke_aware", "scale_to_fit", "scale_to_fit_mobject"]

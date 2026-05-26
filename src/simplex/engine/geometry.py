@@ -1,9 +1,14 @@
-"""Geometry helpers: convex hull, surrounding rectangle, frame center.
+"""Geometry helpers: surrounding rectangle, frame center, 3D arc, unioned rect.
 
-Also exports `Arc3d`, `SurroundingRectangleUnion`, and `Vcis` -- small
-geometry primitives that don't have a clean Manim equivalent (Manim's
-`ArcBetweenPoints` is 2D-only, and `SurroundingRectangle` doesn't merge
-with neighbours).
+Manim 0.20.x already ships :class:`~.ConvexHull` (QuickHull) and
+:func:`~.manim.utils.space_ops.normalize`/``angle_of_vector`` -- callers
+should import those directly instead of any Simplex wrapper. This module
+sticks to additions that Manim does not provide:
+
+- :class:`Arc3d` -- arc on a sphere; Manim's ``ArcBetweenPoints`` is 2D.
+- :class:`SurroundingRectangleUnion` -- merged surrounding rect for groups.
+- :func:`get_surrounding_rectangle` -- rotated rect spanning two mobjects.
+- :func:`get_frame_center` -- midpoint of four mobject/point/edge anchors.
 """
 
 from copy import deepcopy
@@ -15,7 +20,6 @@ from manim import (
     LEFT,
     RIGHT,
     UP,
-    ConvexHull,
     Mobject,
     Polygon,
     Rectangle,
@@ -25,51 +29,7 @@ from manim import (
     VMobject,
     config,
 )
-
-
-def get_convex_hull_polygon(
-    points: np.ndarray,
-    *,
-    round_radius: float = 0.2,
-    **kwargs: Any,
-) -> ConvexHull:
-    """Convex hull of 2D points (z is ignored) with rounded corners.
-
-    Uses Manim's built-in :class:`~.ConvexHull` (added in 0.19.0), so no scipy.
-    """
-    flat = _outer_hull_points(points)
-    hull = ConvexHull(*flat, **kwargs)
-    hull.round_corners(radius=round_radius)
-    return hull
-
-
-def _outer_hull_points(points: np.ndarray) -> list[tuple[float, float, float]]:
-    """Return outer 2D hull vertices in stable order, discarding interior points."""
-    pts = sorted({(float(p[0]), float(p[1])) for p in points})
-    if len(pts) <= 1:
-        return [(x, y, 0.0) for x, y in pts]
-
-    def cross(
-        origin: tuple[float, float],
-        a: tuple[float, float],
-        b: tuple[float, float],
-    ) -> float:
-        return (a[0] - origin[0]) * (b[1] - origin[1]) - (a[1] - origin[1]) * (b[0] - origin[0])
-
-    lower: list[tuple[float, float]] = []
-    for pt in pts:
-        while len(lower) >= 2 and cross(lower[-2], lower[-1], pt) <= 0:
-            lower.pop()
-        lower.append(pt)
-
-    upper: list[tuple[float, float]] = []
-    for pt in reversed(pts):
-        while len(upper) >= 2 and cross(upper[-2], upper[-1], pt) <= 0:
-            upper.pop()
-        upper.append(pt)
-
-    hull = lower[:-1] + upper[:-1]
-    return [(x, y, 0.0) for x, y in hull]
+from manim.utils.space_ops import angle_of_vector, normalize
 
 
 def get_surrounding_rectangle(
@@ -81,10 +41,7 @@ def get_surrounding_rectangle(
     rect_height = float(np.linalg.norm(a.get_center() - b.get_center()))
     b_aligned = b.copy().match_x(a)
     rect = SurroundingRectangle(VGroup(a, b_aligned), **kwargs).scale_to_fit_height(rect_height)
-    angle = np.arctan2(
-        a.get_center()[1] - b.get_center()[1],
-        a.get_center()[0] - b.get_center()[0],
-    )
+    angle = angle_of_vector(a.get_center() - b.get_center())
     rect.rotate(angle, about_point=a.get_center())
     return rect
 
@@ -141,17 +98,6 @@ def get_frame_center(
     )
 
 
-def Vcis(theta: float, *, clockwise: bool = False) -> np.ndarray:  # noqa: N802 -- math idiom
-    """Unit vector at angle `theta` (radians).
-
-    Default convention: counter-clockwise from +x. With `clockwise=True`,
-    measured clockwise from +y -- handy for clock-face layouts.
-    """
-    if clockwise:
-        return np.sin(theta) * RIGHT + np.cos(theta) * UP
-    return np.cos(theta) * RIGHT + np.sin(theta) * UP
-
-
 class Arc3d(VMobject):
     """A 3D arc spanning from `a` to `b` along a fixed-radius sphere about `center`.
 
@@ -174,17 +120,12 @@ class Arc3d(VMobject):
         a = np.asarray(a, dtype=float)
         b = np.asarray(b, dtype=float)
         center = np.asarray(center, dtype=float)
-        start = center + _normalize(a - center) * radius
-        end = center + _normalize(b - center) * radius
+        start = center + normalize(a - center) * radius
+        end = center + normalize(b - center) * radius
         self.set_points([start])
         for t in np.linspace(0.0, 1.0, segments, endpoint=True):
             chord_pt = start + t * (end - start)
-            self.add_smooth_curve_to(center + _normalize(chord_pt - center) * radius)
-
-
-def _normalize(v: np.ndarray) -> np.ndarray:
-    norm = float(np.linalg.norm(v))
-    return v / norm if norm > 0 else v
+            self.add_smooth_curve_to(center + normalize(chord_pt - center) * radius)
 
 
 class SurroundingRectangleUnion(VGroup):
@@ -209,22 +150,17 @@ class SurroundingRectangleUnion(VGroup):
     ) -> None:
         rects = VGroup(*(SurroundingRectangle(m, buff=buff) for m in mobjects))
         union = Union(*rects, **kwargs) if len(rects) > 1 else rects[0]
-        beziers = [union.points[i : i + 4] for i in range(0, len(union.points), 4)]
 
-        polygons: list[list[np.ndarray]] = []
-        current: list[np.ndarray] = []
-        for bez in beziers:
-            first = np.asarray(bez[0], dtype=float)
-            last = np.asarray(bez[-1], dtype=float)
-            if not current:
-                current.append(first)
-            elif np.allclose(last, current[0]):
-                current.append(first)
-                polygons.append(current)
-                current = []
-            else:
-                current.append(first)
-        self._polygons = polygons
+        # Manim's ``Union`` is itself a VMobject; ``get_subpaths`` splits its
+        # control-point array into one connected component per polygon, and
+        # the start anchor of each cubic curve inside a subpath is one of
+        # the polygon's corners. This replaces the hand-rolled ``points[i:i+4]``
+        # walk that used to do the same job.
+        nppcc = union.n_points_per_cubic_curve
+        self._polygons: list[list[np.ndarray]] = [
+            [np.asarray(p, dtype=float) for p in subpath[::nppcc]]
+            for subpath in union.get_subpaths()
+        ]
 
         if unbuff > 0:
             self._apply_unbuff(unbuff)
@@ -237,8 +173,8 @@ class SurroundingRectangleUnion(VGroup):
         original = deepcopy(self._polygons)
         for j, poly in enumerate(original):
             for i, vertex in enumerate(poly):
-                edge_a = _normalize(vertex - poly[(i - 1) % len(poly)])
-                edge_b = _normalize(vertex - poly[(i + 1) % len(poly)])
+                edge_a = normalize(vertex - poly[(i - 1) % len(poly)])
+                edge_b = normalize(vertex - poly[(i + 1) % len(poly)])
                 bisector = edge_a + edge_b
                 cross_z = float(np.cross(edge_a[:2], edge_b[:2]))
                 if cross_z > 0:

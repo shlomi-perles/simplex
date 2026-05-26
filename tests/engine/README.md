@@ -8,7 +8,7 @@ ghost_fade animations, dynamics, geometry, text, scaling, debug.
 
 - `test_region.py` uses `pytest.importorskip("manim")` because
   `Region.full_frame()` reads `manim.config.frame_width`.
-- `test_animations.py` exercises `Remove`'s lookup with a stub animation
+- `test_animations.py` exercises `ExitAnim`'s lookup with a stub animation
   class so it can run without a Manim scene context.
 - `test_glyph_map.py` exercises only the `_interpret_delay` rate-func
   shifter; full glyph-mapping behaviour needs a LaTeX render and lives

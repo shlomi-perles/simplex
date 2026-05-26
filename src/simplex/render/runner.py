@@ -18,30 +18,39 @@ We run with ``cwd=output_dir`` so manim-slides writes its per-scene
 ``slides/<Scene>.json`` (PresentationConfig) to the build tree; manim's
 section + video output goes to ``<output_dir>/videos/<src_stem>/<q>/...``
 via ``--media_dir``.
+
+Quality keys (``low_quality``, ``medium_quality``, ...) come from
+``manim.constants.QUALITIES`` -- the same dict Manim's own CLI reads. No
+Simplex-side enum re-declares them; see :func:`_quality_flag`.
 """
 
 import os
 import subprocess
 from pathlib import Path
 
+from manim.constants import QUALITIES
+
 from simplex.deck.config import DeckConfig
 from simplex.render._warnings import append_pythonwarnings_filter
 
-_QUALITY_FLAGS: dict[str, str] = {
-    "low_quality": "l",
-    "medium_quality": "m",
-    "high_quality": "h",
-    "production_quality": "p",
-    "fourk_quality": "k",
-    "example_quality": "e",
-}
-
 
 def _quality_flag(quality_key: str) -> str:
-    if quality_key not in _QUALITY_FLAGS:
-        known = ", ".join(sorted(_QUALITY_FLAGS))
-        raise ValueError(f"unknown quality {quality_key!r}; known: {known}")
-    return _QUALITY_FLAGS[quality_key]
+    """Look up the ``-q`` CLI letter (``l``/``m``/``h``/``p``/``k``) for a quality key.
+
+    Reads ``manim.constants.QUALITIES`` directly so Simplex picks up any new
+    preset Manim adds without a code change. ``example_quality`` has
+    ``flag=None`` in Manim and isn't selectable from the CLI, so we reject it
+    explicitly with the same error shape as an unknown key.
+    """
+    try:
+        flag = QUALITIES[quality_key]["flag"]
+    except KeyError:
+        known = ", ".join(sorted(k for k, v in QUALITIES.items() if v["flag"] is not None))
+        raise ValueError(f"unknown quality {quality_key!r}; known: {known}") from None
+    if flag is None:
+        known = ", ".join(sorted(k for k, v in QUALITIES.items() if v["flag"] is not None))
+        raise ValueError(f"quality {quality_key!r} has no CLI flag; known: {known}")
+    return flag
 
 
 def _filter_groups(

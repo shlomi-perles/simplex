@@ -10,7 +10,7 @@ Pytest suites for the `manim-simplex` package.
   schema, JSON round-trip, helper methods. Pure Python.
 - `tests/theme/` -- palette / preamble immutability, preset round-trips,
   context push/pop. Stdlib + pytest only.
-- `tests/engine/` -- `Region` math, `Remove` lookup (WeakKeyDictionary +
+- `tests/engine/` -- `Region` math, `ExitAnim` lookup (WeakKeyDictionary +
   thread-safe registry), `HighlightResult`, glyph_map / ghost_fade
   animations, geometry, dynamics, text, scaling, debug. Manim-touching
   cases use `pytest.importorskip("manim")`.
