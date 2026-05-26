@@ -24,7 +24,7 @@ class SimplexSolarizedLight(Style):
     highlight_color = "#eee8d5"
 
     styles = {  # noqa: RUF012 -- Pygments declares `styles` as a class attribute
-        Token: 'bold',
+        Token: "bold",
         Text: "#002b36",
         Error: "bold #dc322f",
         Comment: "italic #586e75",
