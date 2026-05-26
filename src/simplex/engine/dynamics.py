@@ -8,9 +8,9 @@ auto-pulled from a `ValueTracker` or callable via an updater.
 
 from collections.abc import Callable
 from typing import Any, Self
-from weakref import WeakKeyDictionary
 
-from manim import DecimalNumber, Group, Line, Mobject, ValueTracker
+import numpy as np
+from manim import DecimalNumber, Mobject, ValueTracker, angle_of_vector
 
 
 class VT(ValueTracker):
@@ -55,41 +55,45 @@ def DN(  # noqa: N802 -- mirrors the original `DN` shorthand
     return number
 
 
-_ORIENTATION_MARKERS: WeakKeyDictionary[Mobject, Line] = WeakKeyDictionary()
-
-
 def keep_orientation(*mobjects: Mobject) -> None:
-    """Counter-rotate each mobject so it stays upright as it rotates with a parent.
+    """Counter-rotate each mobject so it stays upright as its parent rotates.
 
-    Attaches a per-mobject updater (Manim 0.20.x ``mob.add_updater``) instead
-    of polluting the scene's global updater list. The orientation tracker is
-    a hidden :class:`~.Line` added as a submobject (so it rotates along with
-    the parent), but the marker is looked up through a module-level
-    ``WeakKeyDictionary`` -- callers never see it via ``mob[-1]``. Iterate
-    ``mob.submobjects`` directly and skip whatever ``WeakKeyDictionary``
-    returns if you need the user-visible children.
+    Per-mobject updater (Manim 0.20.x ``add_updater``). The cumulative
+    parent rotation is read from the mob's own
+    :meth:`~.Mobject.get_points_defining_boundary` -- no hidden marker
+    submobject is added, so iterating ``mob.submobjects`` returns only
+    the user-visible children and setting opacity won't reveal anything
+    unexpected.
+
+    Setup snapshots the centroid-to-farthest-boundary-point vector;
+    each frame the same vector is re-derived and the mob is rotated so
+    its angle matches the snapshot. Counter-rotation snaps the points
+    back to the snapshot, so the next parent rotation is again
+    observable -- a self-correcting loop. Mobs with fewer than two
+    boundary points (e.g., bare ``Mobject``, single ``Dot``) are
+    silently skipped since "upright" has no meaning for them.
     """
     for mob in mobjects:
-        marker = Line().set_opacity(0).move_to(mob.get_center())
-        _ORIENTATION_MARKERS[mob] = marker
-        mob.add(marker)
+        boundary = mob.get_points_defining_boundary()
+        if len(boundary) < 2:
+            continue
+        offsets = boundary - boundary.mean(axis=0)
+        # Farthest point from the centroid is the most numerically stable
+        # reference -- short offsets amplify angle noise.
+        ref_index = int(np.linalg.norm(offsets, axis=1).argmax())
+        if np.linalg.norm(offsets[ref_index]) < 1e-9:
+            continue
+        initial_angle = angle_of_vector(offsets[ref_index])
 
-        def _counter_rotate(m: Mobject) -> None:
-            tracker = _ORIENTATION_MARKERS.get(m)
-            if tracker is None:
+        def _upright(m: Mobject, _idx: int = ref_index, _initial: float = initial_angle) -> None:
+            points = m.get_points_defining_boundary()
+            if len(points) <= _idx:
                 return
-            visible_children = [child for child in m.submobjects if child is not tracker]
-            if not visible_children:
-                return
-            # Wrap in a transient ``Group`` so the rotation pivot matches the
-            # bounding-box center of the user-visible children -- the same
-            # semantics as ``mob[:-1].get_center()`` in the original
-            # marker-as-last-submobject implementation, minus the ``mob[-1]``
-            # ambiguity for downstream callers.
-            visible = Group(*visible_children)
-            visible.rotate(-tracker.get_angle(), about_point=visible.get_center())
+            delta = angle_of_vector(points[_idx] - points.mean(axis=0)) - _initial
+            if abs(delta) > 1e-9:
+                m.rotate(-delta, about_point=m.get_center())
 
-        mob.add_updater(_counter_rotate)
+        mob.add_updater(_upright)
 
 
 def maintain_apparent_stroke_width(
