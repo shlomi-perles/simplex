@@ -19,8 +19,10 @@ from manim import (
     DEFAULT_FONT_SIZE,
     DOWN,
     LEFT,
+    MED_LARGE_BUFF,
     ORIGIN,
     RIGHT,
+    SMALL_BUFF,
     TAU,
     UP,
     Animation,
@@ -208,7 +210,7 @@ class ArrayMob(VGroup):
         self.add(*self.entries)
 
         self.name_mob.next_to(self.align_point, LEFT, buff=0)
-        self.entries.next_to(self.name_mob, RIGHT, buff=0.5)
+        self.entries.next_to(self.name_mob, RIGHT, buff=MED_LARGE_BUFF)
         self.reference_entry.move_to(self.entries[0])
 
     def get_entry(self, index: int) -> ArrayEntry:
@@ -369,7 +371,7 @@ class ArrayPointer(Vector):
             return Text(".").set_opacity(0)
         mob: Mobject = text if isinstance(text, Mobject) else MathTex(str(text), **self.text_config)
         mob.scale(self.text_scale)
-        mob.next_to(self.arrow, direction=-self.get_vector(), buff=0.1)
+        mob.next_to(self.arrow, direction=-self.get_vector(), buff=SMALL_BUFF)
         mob.set_color(self.get_color())
         return mob
 

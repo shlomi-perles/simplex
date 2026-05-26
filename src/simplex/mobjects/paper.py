@@ -19,10 +19,9 @@ from typing import Any, Self, cast
 import numpy as np
 import pymupdf
 from manim import (
+    DL,
     DOWN,
-    LEFT,
     RIGHT,
-    UP,
     WHITE,
     Animation,
     AnimationGroup,
@@ -139,31 +138,6 @@ def _render_pages(
     return rendered
 
 
-# ---------------------------------------------------------------------------
-# Direction parsing (shared by Paper and animation classes)
-# ---------------------------------------------------------------------------
-
-_DIRECTION_MAP: dict[str, np.ndarray] = {
-    "dl": DOWN + LEFT,
-    "dr": DOWN + RIGHT,
-    "ul": UP + LEFT,
-    "ur": UP + RIGHT,
-    "left": LEFT,
-    "right": RIGHT,
-    "up": UP,
-    "down": DOWN,
-}
-
-
-def _parse_direction(direction: str | np.ndarray) -> np.ndarray:
-    if isinstance(direction, str):
-        key = direction.lower().strip()
-        if key in _DIRECTION_MAP:
-            return _DIRECTION_MAP[key]
-        raise ValueError(f"Unknown direction '{direction}'.")
-    return np.asarray(direction, dtype=float)
-
-
 def _blurred_mobject_image(
     mobjects: Sequence[Mobject],
     *,
@@ -223,7 +197,7 @@ class Paper(Group):
     shadow
         Whether to render a drop shadow behind pages.
     shadow_direction
-        Direction the shadow falls (offset direction from page center).
+        Direction the shadow falls (Manim direction vector, e.g. ``DL``).
     shadow_opacity
         Opacity of the shadow silhouette before it is blurred.
     shadow_blur
@@ -237,7 +211,7 @@ class Paper(Group):
     border_stroke_width
         Stroke width for the page border.
     stack_direction
-        Direction pages stack towards (the offset axis for peeking edges).
+        Direction pages stack towards (Manim direction vector, e.g. ``DL``).
     stack_offset
         Distance between consecutive pages in the stack (Manim units).
     timeout
@@ -252,14 +226,14 @@ class Paper(Group):
         dpi: int = _DEFAULT_DPI,
         page_height: float = _PAGE_HEIGHT,
         shadow: bool = True,
-        shadow_direction: str | np.ndarray = "DL",
+        shadow_direction: np.ndarray = DL,
         shadow_opacity: float = _SHADOW_OPACITY,
         shadow_blur: float = _SHADOW_BLUR,
         shadow_scale: float = _SHADOW_SCALE,
         border: bool = True,
         border_color: ParsableManimColor = _BORDER_COLOR,
         border_stroke_width: float = _BORDER_STROKE_WIDTH,
-        stack_direction: str | np.ndarray = "DL",
+        stack_direction: np.ndarray = DL,
         stack_offset: float | None = None,
         timeout: int = _DEFAULT_TIMEOUT,
         **kwargs: Any,
@@ -269,8 +243,8 @@ class Paper(Group):
         pdf_path = self._resolve_source(source, timeout=timeout)
         image_paths = _render_pages(pdf_path, pages=pages, dpi=dpi)
 
-        shadow_dir = _parse_direction(shadow_direction)
-        self._stack_dir = _parse_direction(stack_direction)
+        shadow_dir = np.asarray(shadow_direction, dtype=float)
+        self._stack_dir = np.asarray(stack_direction, dtype=float)
         self._stack_offset = (
             stack_offset if stack_offset is not None else page_height * _STACK_OFFSET_FACTOR
         )
@@ -407,7 +381,8 @@ class ShowPaper(AnimationGroup):
     paper
         The Paper mobject to animate.
     direction
-        Direction from which pages slide in (intro) or out (dismiss).
+        Direction from which pages slide in (intro) or out (dismiss). Pass a
+        Manim direction vector such as ``DOWN`` or ``UP``.
     lag_ratio
         Stagger between successive page animations.
     dismiss
@@ -418,7 +393,7 @@ class ShowPaper(AnimationGroup):
         cls,
         paper: Paper,
         *,
-        direction: str | np.ndarray = "DOWN",
+        direction: np.ndarray = DOWN,
         lag_ratio: float = 0.3,
         dismiss: bool = False,
         use_override: bool = True,
@@ -438,13 +413,12 @@ class ShowPaper(AnimationGroup):
         self,
         paper: Paper,
         *,
-        direction: str | np.ndarray = "DOWN",
+        direction: np.ndarray = DOWN,
         lag_ratio: float = 0.3,
         dismiss: bool = False,
         **kwargs: Any,
     ) -> None:
-        shift_dir = _parse_direction(direction)
-        shift_vec = shift_dir * 2.0
+        shift_vec = np.asarray(direction, dtype=float) * 2.0
         anim_cls = FadeOut if dismiss else FadeIn
         paper._sync_submobjects()
 
@@ -464,7 +438,7 @@ class DismissPaper(ShowPaper):
         cls,
         paper: Paper,
         *,
-        direction: str | np.ndarray = "DOWN",
+        direction: np.ndarray = DOWN,
         lag_ratio: float = 0.3,
         use_override: bool = True,
         **kwargs: Any,
@@ -483,7 +457,7 @@ class DismissPaper(ShowPaper):
         self,
         paper: Paper,
         *,
-        direction: str | np.ndarray = "DOWN",
+        direction: np.ndarray = DOWN,
         lag_ratio: float = 0.3,
         **kwargs: Any,
     ) -> None:
@@ -504,7 +478,8 @@ class PickPage(Animation):
     page_index
         Which page to pick (0 = current top; 1+ = pages behind it).
     slide_direction
-        Direction the page slides out to before returning to top.
+        Direction the page slides out before returning to the top. Pass a
+        Manim direction vector such as ``RIGHT`` or ``LEFT``.
     overshoot
         How far (Manim units) the page travels out before settling.
     """
@@ -514,7 +489,7 @@ class PickPage(Animation):
         paper: Paper,
         page_index: int = 1,
         *,
-        slide_direction: str | np.ndarray = "RIGHT",
+        slide_direction: np.ndarray = RIGHT,
         overshoot: float = 3.0,
         use_override: bool = True,
         **kwargs: Any,
@@ -534,7 +509,7 @@ class PickPage(Animation):
         paper: Paper,
         page_index: int = 1,
         *,
-        slide_direction: str | np.ndarray = "RIGHT",
+        slide_direction: np.ndarray = RIGHT,
         overshoot: float = 3.0,
         **kwargs: Any,
     ) -> None:
@@ -542,7 +517,7 @@ class PickPage(Animation):
             raise IndexError(f"page_index {page_index} out of range [0, {paper.page_count})")
         self._paper = paper
         self._page_index = page_index
-        self._slide_vec = _parse_direction(slide_direction) * overshoot
+        self._slide_vec = np.asarray(slide_direction, dtype=float) * overshoot
         kwargs.setdefault("run_time", 2.0)
         super().__init__(paper, **kwargs)
 

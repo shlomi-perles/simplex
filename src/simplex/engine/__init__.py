@@ -9,7 +9,7 @@ touching Manim.
 """
 
 from simplex.engine.animations import (
-    Remove,
+    ExitAnim,
     clear_scene,
     exit_for,
     register_exit,
@@ -20,9 +20,9 @@ from simplex.engine.defaults import apply_theme_defaults
 from simplex.engine.region import Region
 
 __all__ = [
+    "ExitAnim",
     "HighlightResult",
     "Region",
-    "Remove",
     "apply_theme_defaults",
     "clear_scene",
     "exit_for",

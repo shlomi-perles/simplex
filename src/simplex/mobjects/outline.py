@@ -12,7 +12,17 @@ from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
-from manim import RIGHT, AnimationGroup, Create, Dot, FadeIn, LaggedStart, Line, VGroup
+from manim import (
+    DEFAULT_DOT_RADIUS,
+    RIGHT,
+    AnimationGroup,
+    Create,
+    Dot,
+    FadeIn,
+    LaggedStart,
+    Line,
+    VGroup,
+)
 
 from simplex.engine.region import Region
 from simplex.theme.context import get_active_theme
@@ -31,7 +41,7 @@ class OutlineProgressBar(VGroup):
         self,
         points: Sequence[np.ndarray],
         *,
-        dot_radius: float = 0.08,
+        dot_radius: float = DEFAULT_DOT_RADIUS,
         moving_dot_scale: float = 2.5,
         line_stroke_width: float = 10.0,
         dot_color: str | None = None,

@@ -43,6 +43,7 @@ from manim import (
     Write,
     always_redraw,
 )
+from manim.utils.space_ops import rotate_vector
 
 from simplex.engine.animations import register_exit, set_exit_animation
 from simplex.engine.code import (
@@ -54,12 +55,7 @@ from simplex.engine.code import (
 )
 from simplex.engine.debug import bounding_box, indexx_labels
 from simplex.engine.dynamics import DN, VT
-from simplex.engine.geometry import (
-    SurroundingRectangleUnion,
-    Vcis,
-    get_convex_hull_polygon,
-    get_surrounding_rectangle,
-)
+from simplex.engine.geometry import SurroundingRectangleUnion, get_surrounding_rectangle
 from simplex.engine.ghost_fade import GhostSlideFade
 from simplex.engine.glyph_map import TransformByGlyphMap
 from simplex.engine.scaling import scale_to_fit, scale_to_fit_mobject
@@ -403,29 +399,10 @@ class GeometryHelpers(BaseSlide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
-            footer=r"engine/geometry.py -- convex hull + surrounding rect",
+            footer=r"engine/geometry.py -- rotated surrounding rect (use manim.ConvexHull directly for hulls)",
         )
 
     def construct(self) -> None:
-        points = np.array(
-            [
-                [-2.0, -1.0, 0.0],
-                [2.0, -1.0, 0.0],
-                [-1.0, 1.2, 0.0],
-                [1.0, 1.2, 0.0],
-                [0.0, 0.0, 0.0],
-                [-1.5, 0.3, 0.0],
-                [1.5, 0.3, 0.0],
-            ],
-        )
-        dots = [Dot(p) for p in points]
-        self.play(*(FadeIn(d) for d in dots))
-
-        hull = get_convex_hull_polygon(points, round_radius=0.15)
-        hull.set_stroke(width=4)
-        self.play(Write(hull))
-        self.next_slide()
-
         a = Dot(LEFT * 3 + DOWN)
         b = Dot(RIGHT * 3 + UP)
         rect = get_surrounding_rectangle(a, b, buff=0.3)
@@ -484,16 +461,21 @@ class TrackingHelpers(BaseSlide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
-            footer=r"engine/dynamics.py -- VT, DN + engine/geometry.py Vcis",
+            footer=r"engine/dynamics.py -- VT, DN (vectors come from vanilla manim rotate\_vector)",
         )
 
     def construct(self) -> None:
-        # A clock-style pointer driven by a VT angle.
+        # A clock-style pointer driven by a VT angle. Use manim's vanilla
+        # ``rotate_vector`` for unit-vector math -- no Simplex wrapper.
         angle = VT(0.0)
         face = Circle(radius=2.0, color=BLUE).set_stroke(width=2)
         ticks = VGroup(
             *(
-                Line(2.0 * Vcis(k * PI / 6), 1.85 * Vcis(k * PI / 6), stroke_width=2)
+                Line(
+                    2.0 * rotate_vector(RIGHT, k * PI / 6),
+                    1.85 * rotate_vector(RIGHT, k * PI / 6),
+                    stroke_width=2,
+                )
                 for k in range(12)
             )
         )
@@ -505,7 +487,7 @@ class TrackingHelpers(BaseSlide):
         hand = always_redraw(
             lambda: Arrow(
                 start=face.get_center(),
-                end=face.get_center() + 1.7 * Vcis(~angle),
+                end=face.get_center() + 1.7 * rotate_vector(RIGHT, ~angle),
                 buff=0.0,
                 color=GOLD,
             )

@@ -2,7 +2,7 @@
 
 These are vanilla ``VMobject`` subclasses; they pull colors / strokes
 from the active Simplex theme at construction time and register a
-``ShrinkToCenter`` exit animation so ``Remove(node)`` looks natural.
+``ShrinkToCenter`` exit animation so ``ExitAnim(node)`` looks natural.
 """
 
 from typing import Any

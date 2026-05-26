@@ -24,6 +24,7 @@ _EXPORTS: dict[str, str] = {
     "DeckConfig": "simplex.deck",
     "DismissPaper": "simplex.mobjects",
     "Edge": "simplex.mobjects",
+    "ExitAnim": "simplex.engine",
     "GhostSlideFade": "simplex.engine.ghost_fade",
     "HighlightResult": "simplex.engine",
     "MainSlide": "simplex.manifest",
@@ -34,7 +35,6 @@ _EXPORTS: dict[str, str] = {
     "Paper": "simplex.mobjects",
     "PickPage": "simplex.mobjects",
     "Region": "simplex.engine",
-    "Remove": "simplex.engine",
     "SIMPLEX_DARK": "simplex.theme.presets",
     "ShowPaper": "simplex.mobjects",
     "SimplexSectionType": "simplex.section",
@@ -55,7 +55,6 @@ _EXPORTS: dict[str, str] = {
     "discover": "simplex.deck",
     "exit_for": "simplex.engine",
     "get_active_theme": "simplex.theme",
-    "get_convex_hull_polygon": "simplex.engine.geometry",
     "get_frame_center": "simplex.engine.geometry",
     "get_surrounding_rectangle": "simplex.engine.geometry",
     "highlight_code_lines": "simplex.engine.code",
@@ -65,9 +64,9 @@ _EXPORTS: dict[str, str] = {
     "make_chrome": "simplex.slides",
     "presets": "simplex.theme",
     "register_exit": "simplex.engine",
+    "scale_stroke_aware": "simplex.engine.scaling",
     "scale_to_fit": "simplex.engine.scaling",
     "scale_to_fit_mobject": "simplex.engine.scaling",
-    "scale_with_stroke_width": "simplex.engine.scaling",
     "scaffold": "simplex.deck",
     "search_shape_in_text": "simplex.engine.text",
     "set_exit_animation": "simplex.engine",
@@ -92,9 +91,9 @@ def __dir__() -> list[str]:
 if TYPE_CHECKING:
     from simplex.deck import DeckConfig, discover, scaffold
     from simplex.engine import (
+        ExitAnim,
         HighlightResult,
         Region,
-        Remove,
         apply_theme_defaults,
         clear_scene,
         exit_for,
@@ -109,14 +108,10 @@ if TYPE_CHECKING:
     )
     from simplex.engine.debug import bounding_box, debug_glyph, debug_glyphs, indexx_labels
     from simplex.engine.dynamics import DN, VT, keep_orientation, maintain_apparent_stroke_width
-    from simplex.engine.geometry import (
-        get_convex_hull_polygon,
-        get_frame_center,
-        get_surrounding_rectangle,
-    )
+    from simplex.engine.geometry import get_frame_center, get_surrounding_rectangle
     from simplex.engine.ghost_fade import GhostSlideFade
     from simplex.engine.glyph_map import TransformByGlyphMap
-    from simplex.engine.scaling import scale_to_fit, scale_to_fit_mobject, scale_with_stroke_width
+    from simplex.engine.scaling import scale_stroke_aware, scale_to_fit, scale_to_fit_mobject
     from simplex.engine.text import Caption, TexPage, color_tex, search_shape_in_text
     from simplex.manifest import DeckManifest, MainSlide, Subsection
     from simplex.mobjects import (

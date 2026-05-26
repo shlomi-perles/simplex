@@ -118,7 +118,7 @@ uv run simplex serve
 | --- | --- |
 | `simplex.plugin` | `activate()` entry point used by Manim. |
 | `simplex.slides` | `BaseSlide`, `OutlineScene`, `OutlinePart`, `Chrome`, `make_chrome`. |
-| `simplex.engine` | `Region`, `Remove`, `clear_scene`, `exit_for`, `register_exit`, `set_exit_animation`, `HighlightResult`, `apply_theme_defaults`. |
+| `simplex.engine` | `Region`, `ExitAnim`, `clear_scene`, `exit_for`, `register_exit`, `set_exit_animation`, `HighlightResult`, `apply_theme_defaults`. |
 | `simplex.mobjects` | `Node`, `Edge`, `ArrayMob`, `ArrayEntry`, `ArrayPointer`, `OutlineProgressBar`, `Paper`, `ShowPaper`, `DismissPaper`, `PickPage`. |
 | `simplex.theme` | `Theme`, `Palette`, `Typography`, `Spacing`, `Motion`, `LatexProfile`, `WebPalette`, `active_theme`, `get_active_theme`, `presets`, `render_web_css`. |
 | `simplex.manifest` | `DeckManifest`, `MainSlide`, `Subsection`, the manifest schema written by the render pipeline. |

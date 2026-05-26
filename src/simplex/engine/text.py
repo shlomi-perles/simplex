@@ -27,12 +27,15 @@ def _minipage_env(width_cm: float) -> str:
 
 
 class Caption(Tex):
-    """Tex sized for captions / annotations (``theme.typography.caption``)."""
+    """Tex sized for captions / annotations (``theme.typography.caption``).
+
+    The font color is left to ``Tex.set_default(color=...)`` (configured by
+    :func:`simplex.engine.defaults.apply_theme_defaults`); only the smaller
+    caption font size is overridden here.
+    """
 
     def __init__(self, *parts: str, **kwargs: Any) -> None:
-        theme = get_active_theme()
-        kwargs.setdefault("font_size", theme.typography.caption)
-        kwargs.setdefault("color", theme.palette.font)
+        kwargs.setdefault("font_size", get_active_theme().typography.caption)
         super().__init__(*parts, **kwargs)
 
 
@@ -47,15 +50,16 @@ class TexPage(Tex):
 
         class WidePage(TexPage):
             width_cm = 16.0
+
+    Font size and color come from ``Tex.set_default(...)`` configured by
+    :func:`simplex.engine.defaults.apply_theme_defaults`; only the
+    ``tex_environment`` is overridden here.
     """
 
     width_cm: ClassVar[float] = 20.0
 
     def __init__(self, *parts: str, width_cm: float | None = None, **kwargs: Any) -> None:
-        theme = get_active_theme()
         resolved_width = self.width_cm if width_cm is None else width_cm
-        kwargs.setdefault("font_size", theme.typography.body)
-        kwargs.setdefault("color", theme.palette.font)
         kwargs.setdefault("tex_environment", _minipage_env(resolved_width))
         super().__init__(*parts, **kwargs)
 

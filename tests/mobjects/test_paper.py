@@ -7,7 +7,7 @@ import pytest
 pytest.importorskip("manim")
 
 import numpy as np
-from manim import ImageMobject, config
+from manim import DOWN, RIGHT, UP, ImageMobject, config
 
 from simplex.mobjects.paper import (
     DismissPaper,
@@ -87,19 +87,19 @@ def test_paper_reorder_to_top(sample_pdf: Path) -> None:
 
 def test_show_paper_constructs(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=2, dpi=72, page_height=3.0)
-    anim = ShowPaper(paper, direction="DOWN")
+    anim = ShowPaper(paper, direction=DOWN)
     assert anim.run_time == 1.5
 
 
 def test_dismiss_paper_constructs(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=2, dpi=72, page_height=3.0)
-    anim = DismissPaper(paper, direction="UP")
+    anim = DismissPaper(paper, direction=UP)
     assert anim.run_time == 1.5
 
 
 def test_pick_page_constructs(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=3, dpi=72, page_height=3.0)
-    anim = PickPage(paper, page_index=2, slide_direction="RIGHT")
+    anim = PickPage(paper, page_index=2, slide_direction=RIGHT)
     assert anim.run_time == 2.0
 
 
@@ -152,7 +152,7 @@ def test_paper_shadow_is_blurred_image(sample_pdf: Path) -> None:
 def test_pick_page_promotes_z_index_only_after_slide_out(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=3, dpi=72, page_height=3.0)
     selected = paper.get_page(1)
-    anim = PickPage(paper, page_index=1, slide_direction="RIGHT")
+    anim = PickPage(paper, page_index=1, slide_direction=RIGHT)
 
     anim.begin()
     other_z = [pg.z_index for pg in paper.page_groups if pg is not selected]
@@ -167,5 +167,5 @@ def test_pick_page_promotes_z_index_only_after_slide_out(sample_pdf: Path) -> No
 
 def test_dismiss_is_show_subclass(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=2, dpi=72, page_height=3.0)
-    anim = DismissPaper(paper, direction="UP")
+    anim = DismissPaper(paper, direction=UP)
     assert isinstance(anim, ShowPaper)
