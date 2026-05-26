@@ -7,6 +7,7 @@ import pytest
 pytest.importorskip("manim")
 
 import numpy as np
+from manim import ImageMobject, config
 
 from simplex.mobjects.paper import (
     DismissPaper,
@@ -136,12 +137,16 @@ def test_paper_with_shadow_and_border(sample_pdf: Path) -> None:
         assert len(pg.submobjects) == 3
 
 
-def test_paper_shadow_is_layered_gradient(sample_pdf: Path) -> None:
+def test_paper_shadow_is_blurred_image(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=1, dpi=72, page_height=3.0, shadow=True, border=False)
     shadow = paper.get_top_page().submobjects[0]
-    assert len(shadow.submobjects) > 1
-    opacities = [layer.get_fill_opacity() for layer in shadow.submobjects]
-    assert opacities[0] < opacities[-1]
+    page_image = paper.get_top_page().submobjects[1]
+
+    assert isinstance(shadow, ImageMobject)
+    assert shadow.width > page_image.width
+    assert shadow.height > page_image.height
+    assert shadow.width < config.frame_width * 0.5
+    assert shadow.height < config.frame_height * 0.7
 
 
 def test_pick_page_promotes_z_index_only_after_slide_out(sample_pdf: Path) -> None:

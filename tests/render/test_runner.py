@@ -7,6 +7,7 @@ import pytest
 
 from simplex.deck.config import DeckConfig
 from simplex.render import runner
+from simplex.render._warnings import PYDUB_SYNTAX_WARNING_FILTER
 
 
 def _deck(tmp_path: Path) -> DeckConfig:
@@ -58,6 +59,31 @@ def test_render_forces_utf8_subprocess_env(tmp_path: Path, captured: list[dict[s
     assert env["SIMPLEX_THEME"] == "academic_light"
     assert env["PYTHONIOENCODING"] == "utf-8"
     assert env["PYTHONUTF8"] == "1"
+
+
+def test_render_filters_pydub_syntax_warning(
+    tmp_path: Path,
+    captured: list[dict[str, Any]],
+) -> None:
+    deck = _deck(tmp_path)
+    runner.render(deck, output_dir=tmp_path / "out")
+    env = captured[0]["env"]
+
+    assert PYDUB_SYNTAX_WARNING_FILTER in env["PYTHONWARNINGS"]
+
+
+def test_render_preserves_existing_pythonwarnings(
+    tmp_path: Path,
+    captured: list[dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PYTHONWARNINGS", "default")
+    deck = _deck(tmp_path)
+    runner.render(deck, output_dir=tmp_path / "out")
+    env = captured[0]["env"]
+
+    assert env["PYTHONWARNINGS"].startswith("default,")
+    assert env["PYTHONWARNINGS"].endswith(PYDUB_SYNTAX_WARNING_FILTER)
 
 
 def test_render_passes_all_scenes_when_filter_empty(

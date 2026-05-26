@@ -8,11 +8,13 @@ and writes one combined PDF. No subprocess, no shell.
 from pathlib import Path
 
 from simplex.deck.config import DeckConfig
+from simplex.render._warnings import filter_pydub_syntax_warning
 from simplex.render.filenames import pdf_name
 
 
 def export(deck: DeckConfig, *, output_dir: Path) -> Path:
     """Write ``<output_dir>/<title>-slides.pdf`` from rendered scenes."""
+    filter_pydub_syntax_warning()
     from manim_slides.convert import PDF
     from manim_slides.present import get_scenes_presentation_config
 

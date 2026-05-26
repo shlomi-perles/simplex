@@ -12,8 +12,9 @@ from __future__ import annotations
 import logging
 import re
 import urllib.request
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Self, cast
 
 import numpy as np
 import pymupdf
@@ -31,10 +32,15 @@ from manim import (
     ImageMobject,
     Rectangle,
     RoundedRectangle,
+    Scene,
     config,
     smooth,
 )
+from manim.camera.camera import Camera
+from manim.mobject.mobject import Mobject
+from manim.utils.color import ParsableManimColor
 from manim.utils.tex_file_writing import tex_hash
+from PIL import ImageFilter
 
 logger = logging.getLogger("simplex.paper")
 
@@ -44,8 +50,8 @@ _DEFAULT_TIMEOUT = 30
 _SHADOW_OPACITY = 0.22
 _SHADOW_COLOR = "#000000"
 _SHADOW_OFFSET_FACTOR = 0.025
-_SHADOW_LAYERS = 5
-_SHADOW_SPREAD_FACTOR = 0.012
+_SHADOW_BLUR = 12.0
+_SHADOW_SCALE = 1.04
 _STACK_OFFSET_FACTOR = 0.08
 _PAGE_HEIGHT = 5.5
 _BORDER_COLOR = WHITE
@@ -158,6 +164,44 @@ def _parse_direction(direction: str | np.ndarray) -> np.ndarray:
     return np.asarray(direction, dtype=float)
 
 
+def _blurred_mobject_image(
+    mobjects: Sequence[Mobject],
+    *,
+    blur_radius: float,
+    scale_first: float,
+) -> ImageMobject:
+    """Rasterize mobjects into a tightly cropped, blurred ``ImageMobject``."""
+    scene = Scene()
+    renderer = scene.renderer
+    camera = cast(Camera, renderer.camera)
+
+    copies = Group(
+        *[mob.copy().scale(scale_first, about_point=mob.get_center()) for mob in mobjects]
+    )
+    camera.set_pixel_array(np.zeros_like(camera.pixel_array))
+    camera.capture_mobjects(copies)
+
+    image = camera.get_image().convert("RGBA").filter(ImageFilter.GaussianBlur(blur_radius))
+    bbox = image.getchannel("A").getbbox()
+    if bbox is None:
+        return ImageMobject(np.array(image))
+
+    cropped = image.crop(bbox)
+    pixel_width = image.width
+    pixel_height = image.height
+    frame_width = float(config.frame_width)
+    frame_height = float(config.frame_height)
+
+    left, top, right, bottom = bbox
+    center_x = ((left + right) / 2 / pixel_width - 0.5) * frame_width
+    center_y = (0.5 - (top + bottom) / 2 / pixel_height) * frame_height
+    width = (right - left) / pixel_width * frame_width
+
+    return (
+        ImageMobject(np.array(cropped)).scale_to_fit_width(width).move_to((center_x, center_y, 0.0))
+    )
+
+
 # ---------------------------------------------------------------------------
 # Paper mobject
 # ---------------------------------------------------------------------------
@@ -181,7 +225,11 @@ class Paper(Group):
     shadow_direction
         Direction the shadow falls (offset direction from page center).
     shadow_opacity
-        Fill opacity of the shadow rectangles.
+        Opacity of the shadow silhouette before it is blurred.
+    shadow_blur
+        Gaussian blur radius in rendered pixels.
+    shadow_scale
+        Scale applied to the shadow silhouette before rasterization.
     border
         Whether to draw a thin border around each page.
     border_color
@@ -206,8 +254,10 @@ class Paper(Group):
         shadow: bool = True,
         shadow_direction: str | np.ndarray = "DL",
         shadow_opacity: float = _SHADOW_OPACITY,
+        shadow_blur: float = _SHADOW_BLUR,
+        shadow_scale: float = _SHADOW_SCALE,
         border: bool = True,
-        border_color: str = _BORDER_COLOR,
+        border_color: ParsableManimColor = _BORDER_COLOR,
         border_stroke_width: float = _BORDER_STROKE_WIDTH,
         stack_direction: str | np.ndarray = "DL",
         stack_offset: float | None = None,
@@ -233,27 +283,23 @@ class Paper(Group):
             parts: list[Any] = []
 
             if shadow:
-                shadow_layers: list[RoundedRectangle] = []
-                for layer in reversed(range(_SHADOW_LAYERS)):
-                    fade = (_SHADOW_LAYERS - layer) / _SHADOW_LAYERS
-                    spread = page_height * _SHADOW_SPREAD_FACTOR * layer
-                    shadow_rect = RoundedRectangle(
-                        width=img.width + spread * 2,
-                        height=img.height + spread * 2,
-                        corner_radius=0.04 + spread * 0.35,
-                        fill_color=_SHADOW_COLOR,
-                        fill_opacity=shadow_opacity * fade**2,
-                        stroke_width=0,
+                shadow_shape = RoundedRectangle(
+                    width=img.width,
+                    height=img.height,
+                    corner_radius=0.04,
+                    fill_color=_SHADOW_COLOR,
+                    fill_opacity=shadow_opacity,
+                    stroke_width=0,
+                )
+                shadow_offset = shadow_dir * page_height * _SHADOW_OFFSET_FACTOR
+                shadow_shape.move_to(img.get_center() + shadow_offset)
+                parts.append(
+                    _blurred_mobject_image(
+                        [shadow_shape],
+                        blur_radius=shadow_blur,
+                        scale_first=shadow_scale,
                     )
-                    shadow_offset = (
-                        shadow_dir
-                        * page_height
-                        * _SHADOW_OFFSET_FACTOR
-                        * (1 + layer / _SHADOW_LAYERS * 0.5)
-                    )
-                    shadow_rect.move_to(img.get_center() + shadow_offset)
-                    shadow_layers.append(shadow_rect)
-                parts.append(Group(*shadow_layers))
+                )
 
             parts.append(img)
 
@@ -368,6 +414,26 @@ class ShowPaper(AnimationGroup):
         If ``True``, use ``FadeOut`` (exit) instead of ``FadeIn`` (intro).
     """
 
+    def __new__(
+        cls,
+        paper: Paper,
+        *,
+        direction: str | np.ndarray = "DOWN",
+        lag_ratio: float = 0.3,
+        dismiss: bool = False,
+        use_override: bool = True,
+        **kwargs: Any,
+    ) -> Self:
+        return super().__new__(
+            cls,
+            paper,
+            direction=direction,
+            lag_ratio=lag_ratio,
+            dismiss=dismiss,
+            use_override=use_override,
+            **kwargs,
+        )
+
     def __init__(
         self,
         paper: Paper,
@@ -393,6 +459,25 @@ class ShowPaper(AnimationGroup):
 
 class DismissPaper(ShowPaper):
     """Exit animation — syntactic sugar for ``ShowPaper(..., dismiss=True)``."""
+
+    def __new__(
+        cls,
+        paper: Paper,
+        *,
+        direction: str | np.ndarray = "DOWN",
+        lag_ratio: float = 0.3,
+        use_override: bool = True,
+        **kwargs: Any,
+    ) -> Self:
+        return super().__new__(
+            cls,
+            paper,
+            direction=direction,
+            lag_ratio=lag_ratio,
+            dismiss=True,
+            use_override=use_override,
+            **kwargs,
+        )
 
     def __init__(
         self,
@@ -423,6 +508,26 @@ class PickPage(Animation):
     overshoot
         How far (Manim units) the page travels out before settling.
     """
+
+    def __new__(
+        cls,
+        paper: Paper,
+        page_index: int = 1,
+        *,
+        slide_direction: str | np.ndarray = "RIGHT",
+        overshoot: float = 3.0,
+        use_override: bool = True,
+        **kwargs: Any,
+    ) -> Self:
+        return super().__new__(
+            cls,
+            paper,
+            page_index,
+            slide_direction=slide_direction,
+            overshoot=overshoot,
+            use_override=use_override,
+            **kwargs,
+        )
 
     def __init__(
         self,

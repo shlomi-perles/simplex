@@ -8,10 +8,12 @@ without extra dependencies.
 from pathlib import Path
 
 from simplex.deck.config import DeckConfig
+from simplex.render._warnings import filter_pydub_syntax_warning
 
 
 def export(deck: DeckConfig, *, output_dir: Path) -> Path:
     """Write ``<output_dir>/<slug>.pptx`` from manim-slides' rendered scenes."""
+    filter_pydub_syntax_warning()
     from manim_slides.convert import PowerPoint
     from manim_slides.present import get_scenes_presentation_config
 
