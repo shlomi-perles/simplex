@@ -4,6 +4,37 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.5.0...manim-simplex-v0.6.0) (2026-05-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* drop Manim 0.20.x reimplementations
+
+### Features
+
+* **dynamics:** enhance keep_orientation function for improved stability and clarity ([a68e982](https://github.com/shlomi-perles/simplex/commit/a68e9823ba95f80e0ca9828bae8b5ce3e8f9cd18))
+* **dynamics:** improve keep_orientation function to maintain object position during rotation ([fb8ed73](https://github.com/shlomi-perles/simplex/commit/fb8ed73c018a69d0cd0b5b2430774de8a33a1394))
+* **styles:** update color codes for SimplexPycharm and add bold style for Token in SimplexSolarizedLight ([22a0e0f](https://github.com/shlomi-perles/simplex/commit/22a0e0f85c847560ee9e953dca04ff36856c950e))
+* **styles:** update Name color in SimplexPycharm style for improved visibility ([db68ce9](https://github.com/shlomi-perles/simplex/commit/db68ce9cfef6311c8d8ebff521a797da10296bad))
+* **styles:** update Token style to use double quotes for consistency ([11d6eab](https://github.com/shlomi-perles/simplex/commit/11d6eabe90508be42e36fe8ef5675182b5e6905d))
+
+
+### Bug Fixes
+
+* **docs:** correct header formatting in README.md for decks section ([0d6d7cd](https://github.com/shlomi-perles/simplex/commit/0d6d7cde3327a40b9a04e357518fc3f968be195f))
+* **dynamics:** update _upright function to use original mobject for boundary points ([bd0fd44](https://github.com/shlomi-perles/simplex/commit/bd0fd44f6172422fda1fb9e1e9f6c3c468907d50))
+
+
+### Documentation
+
+* update README.md for improved clarity and structure ([5594a4a](https://github.com/shlomi-perles/simplex/commit/5594a4adf8f37c54dfccc1e13365b380476658de))
+
+
+### Code Refactoring
+
+* drop Manim 0.20.x reimplementations ([f28b0ff](https://github.com/shlomi-perles/simplex/commit/f28b0ff3ffb66f05c7ea79e68e391c108ae54fa4))
+
 ## [0.5.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.4.1...manim-simplex-v0.5.0) (2026-05-26)
 
 
