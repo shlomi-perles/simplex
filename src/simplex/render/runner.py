@@ -25,6 +25,7 @@ import subprocess
 from pathlib import Path
 
 from simplex.deck.config import DeckConfig
+from simplex.render._warnings import append_pythonwarnings_filter
 
 _QUALITY_FLAGS: dict[str, str] = {
     "low_quality": "l",
@@ -109,6 +110,7 @@ def render(
         **os.environ,
         "PYTHONIOENCODING": "utf-8",
         "PYTHONUTF8": "1",
+        "PYTHONWARNINGS": append_pythonwarnings_filter(os.environ.get("PYTHONWARNINGS")),
         "SIMPLEX_THEME": deck.theme,
     }
 
