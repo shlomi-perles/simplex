@@ -85,7 +85,12 @@ def keep_orientation(*mobjects: Mobject) -> None:
             continue
         initial_angle = angle_of_vector(offsets[ref_index])
 
-        def _upright(m: Mobject, _idx: int = ref_index, _initial: float = initial_angle, orig_mob: Mobject = mob) -> None:
+        def _upright(
+            m: Mobject,
+            _idx: int = ref_index,
+            _initial: float = initial_angle,
+            orig_mob: Mobject = mob,
+        ) -> None:
             points = orig_mob.get_points_defining_boundary()
             if len(points) <= _idx:
                 return
