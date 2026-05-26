@@ -86,12 +86,14 @@ def keep_orientation(*mobjects: Mobject) -> None:
         initial_angle = angle_of_vector(offsets[ref_index])
 
         def _upright(m: Mobject, _idx: int = ref_index, _initial: float = initial_angle) -> None:
-            points = m.get_points_defining_boundary()
+            points = mob.get_points_defining_boundary()
             if len(points) <= _idx:
                 return
             delta = angle_of_vector(points[_idx] - points.mean(axis=0)) - _initial
             if abs(delta) > 1e-9:
-                m.rotate(-delta, about_point=m.get_center())
+                center = m.get_center()
+                m.rotate(-delta, about_point=points.mean(axis=0))
+                m.move_to(center)
 
         mob.add_updater(_upright)
 
