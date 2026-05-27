@@ -7,8 +7,8 @@ Adapted from 3b1b's animation patterns for ManimCE.
 Run with: python -m manim -pql updater_patterns.py SceneName
 """
 
-import numpy as np
 from manim import *
+import numpy as np
 
 
 class BasicUpdater(Scene):
@@ -21,10 +21,10 @@ class BasicUpdater(Scene):
 
         # Follower that always stays next to leader
         follower = Dot(color=BLUE, radius=0.15)
-        follower.add_updater(lambda m: m.next_to(leader, RIGHT, buff=MED_LARGE_BUFF))
+        follower.always.next_to(leader, RIGHT, buff=MED_LARGE_BUFF)
 
         follower_label = Text("Follower", font_size=24, color=BLUE)
-        follower_label.add_updater(lambda m: m.next_to(follower, DOWN))
+        follower_label.always.next_to(follower, DOWN)
 
         self.add(leader, leader_label, follower, follower_label)
 
@@ -43,11 +43,16 @@ class ValueTrackerBasics(Scene):
         tracker = ValueTracker(0)
 
         # DecimalNumber that displays the tracker value
-        number = DecimalNumber(0, num_decimal_places=2, font_size=72, include_sign=True)
+        number = DecimalNumber(
+            0,
+            num_decimal_places=2,
+            font_size=72,
+            include_sign=True
+        )
         number.add_updater(lambda m: m.set_value(tracker.get_value()))
 
         # Label
-        label = Text("Value: ", font_size=48)
+        label = Text("Value: ")
         label.next_to(number, LEFT)
 
         self.add(label, number)
@@ -69,11 +74,19 @@ class CircleRadiusTracker(Scene):
 
         # Circle with radius controlled by tracker
         circle = always_redraw(
-            lambda: Circle(radius=tracker.get_value(), color=BLUE, fill_opacity=0.3)
+            lambda: Circle(
+                radius=tracker.get_value(),
+                color=BLUE,
+                fill_opacity=0.3
+            )
         )
 
         # Radius label
-        radius_text = always_redraw(lambda: MathTex(f"r = {tracker.get_value():.2f}").to_edge(UP))
+        radius_text = always_redraw(
+            lambda: MathTex(
+                f"r = {tracker.get_value():.2f}"
+            ).to_edge(UP)
+        )
 
         self.add(circle, radius_text)
 
@@ -89,7 +102,7 @@ class RotatingUpdater(Scene):
 
     def construct(self):
         # Create rotating group
-        square = Square(side_length=2, color=BLUE, fill_opacity=0.5)
+        square = Square(color=BLUE, fill_opacity=0.5)
         dot = Dot(color=RED).move_to(square.get_corner(UR))
 
         group = VGroup(square, dot)
@@ -114,14 +127,27 @@ class TracedPathExample(Scene):
         dot.move_to(LEFT * 3)
 
         # Traced path follows the dot
-        traced_path = TracedPath(dot.get_center, stroke_color=YELLOW, stroke_width=3)
+        traced_path = TracedPath(
+            dot.get_center,
+            stroke_color=YELLOW,
+            stroke_width=3
+        )
 
         self.add(traced_path, dot)
 
         # Move dot in a pattern
-        self.play(dot.animate.shift(RIGHT * 3 + UP * 2), run_time=1.5)
-        self.play(dot.animate.shift(RIGHT * 2 + DOWN * 3), run_time=1.5)
-        self.play(dot.animate.shift(LEFT * 2 + UP * 1), run_time=1.5)
+        self.play(
+            dot.animate.shift(RIGHT * 3 + UP * 2),
+            run_time=1.5
+        )
+        self.play(
+            dot.animate.shift(RIGHT * 2 + DOWN * 3),
+            run_time=1.5
+        )
+        self.play(
+            dot.animate.shift(LEFT * 2 + UP * 1),
+            run_time=1.5
+        )
         self.wait()
 
 
@@ -143,19 +169,27 @@ class SineWaveTracker(Scene):
         # Sine wave that updates with phase
         sine_wave = always_redraw(
             lambda: axes.plot(
-                lambda x: np.sin(x + phase.get_value()), color=BLUE, x_range=[0, 2 * PI]
+                lambda x: np.sin(x + phase.get_value()),
+                color=BLUE,
+                x_range=[0, 2 * PI]
             )
         )
 
         # Dot that follows the wave
         dot = always_redraw(
-            lambda: Dot(color=RED).move_to(axes.c2p(PI, np.sin(PI + phase.get_value())))
+            lambda: Dot(color=RED).move_to(
+                axes.c2p(PI, np.sin(PI + phase.get_value()))
+            )
         )
 
         self.add(axes, sine_wave, dot)
 
         # Animate phase change (wave shifts)
-        self.play(phase.animate.set_value(2 * PI), run_time=4, rate_func=linear)
+        self.play(
+            phase.animate.set_value(2 * PI),
+            run_time=4,
+            rate_func=linear
+        )
 
 
 class ArrowUpdater(Scene):
@@ -171,13 +205,18 @@ class ArrowUpdater(Scene):
             lambda: Arrow(dot1.get_center(), dot2.get_center(), buff=0.3, color=YELLOW)
         )
 
-        # Distance label
+        # Distance label -- always_redraw is required here because
+        # arrow.get_length() / arrow.get_vector() are function calls that must be
+        # recomputed every frame. `distance.always.set_value(arrow.get_length())`
+        # would sample arrow.get_length() exactly once at attach time.
         distance = always_redraw(
             lambda: DecimalNumber(
-                np.linalg.norm(dot2.get_center() - dot1.get_center()),
-                num_decimal_places=2,
-                font_size=36,
-            ).next_to(arrow, UP)
+                arrow.get_length(), num_decimal_places=2, font_size=36
+            ).next_to(
+                arrow.get_center(),
+                direction=rotate_vector(arrow.get_vector(), PI / 2)
+                * MED_SMALL_BUFF,
+            )
         )
 
         self.add(dot1, dot2, arrow, distance)
@@ -198,20 +237,34 @@ class ParametricCurveTracer(Scene):
 
         # Parametric curve (Lissajous)
         def parametric_func(t):
-            return np.array([2 * np.sin(2 * t), 2 * np.sin(3 * t), 0])
+            return np.array([
+                2 * np.sin(2 * t),
+                2 * np.sin(3 * t),
+                0
+            ])
 
         # Dot at current position
         dot = always_redraw(
-            lambda: Dot(color=RED, radius=0.15).move_to(parametric_func(t_tracker.get_value()))
+            lambda: Dot(color=RED, radius=0.15).move_to(
+                parametric_func(t_tracker.get_value())
+            )
         )
 
         # Traced path
-        path = TracedPath(dot.get_center, stroke_color=BLUE, stroke_width=2)
+        path = TracedPath(
+            dot.get_center,
+            stroke_color=BLUE,
+            stroke_width=2
+        )
 
         self.add(path, dot)
 
         # Trace the curve
-        self.play(t_tracker.animate.set_value(2 * PI), run_time=6, rate_func=linear)
+        self.play(
+            t_tracker.animate.set_value(2 * PI),
+            run_time=6,
+            rate_func=linear
+        )
         self.wait()
 
 
@@ -242,7 +295,11 @@ class MultipleTrackers(Scene):
         # Animate both trackers
         self.play(x_tracker.animate.set_value(3), run_time=1.5)
         self.play(y_tracker.animate.set_value(2), run_time=1.5)
-        self.play(x_tracker.animate.set_value(-2), y_tracker.animate.set_value(-1), run_time=2)
+        self.play(
+            x_tracker.animate.set_value(-2),
+            y_tracker.animate.set_value(-1),
+            run_time=2
+        )
         self.wait()
 
 
@@ -264,14 +321,20 @@ class SpringMassSimulation(Scene):
 
         # Mass (square)
         mass_obj = always_redraw(
-            lambda: Square(side_length=0.8, color=BLUE, fill_opacity=0.8).move_to(
-                UP * position.get_value()
-            )
+            lambda: Square(
+                side_length=0.8,
+                color=BLUE,
+                fill_opacity=0.8
+            ).move_to(UP * position.get_value())
         )
 
         # Spring (simplified as line)
         spring = always_redraw(
-            lambda: Line(ground.get_center() + UP * 0.1, mass_obj.get_bottom(), color=GREY)
+            lambda: Line(
+                ground.get_center() + UP * 0.1,
+                mass_obj.get_bottom(),
+                color=GREY
+            )
         )
 
         self.add(ground, spring, mass_obj)

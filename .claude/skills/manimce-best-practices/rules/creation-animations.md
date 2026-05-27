@@ -41,6 +41,8 @@ class WriteExample(Scene):
 
 Write automatically sets appropriate timing based on text length.
 
+**Prefer introducing `MathTex` / `Tex` mobjects with `Write`.** `FadeIn`, `Create`, `GrowFromCenter` on a brand-new tex mobject reads as a pop-in rather than a derivation step. Transformations between tex mobjects (`TransformFromCopy`, `TransformMatchingTex`, `ReplacementTransform`) are fine -- the source was already Written, so the morph reads as algebra, not as a new appearance.
+
 ## DrawBorderThenFill
 
 Draws the outline first, then fills in the shape.

@@ -24,7 +24,6 @@ class CircleExample(Scene):
             radius=2,
             color=BLUE,
             fill_opacity=0.5,
-            stroke_width=4
         )
 
         self.add(c1, c2)
@@ -72,9 +71,8 @@ class SquareExample(Scene):
 
         # With parameters
         s2 = Square(
-            side_length=2,
             color=RED,
-            fill_opacity=0.8
+            fill_opacity=0.8,
         )
 
         self.add(s1, s2)
@@ -149,7 +147,7 @@ class PolygonExample(Scene):
             color=PINK
         )
 
-        VGroup(pentagon, hexagon, custom).arrange(RIGHT, buff=1)
+        VGroup(pentagon, hexagon, custom).arrange(RIGHT, buff=LARGE_BUFF)
         self.add(pentagon, hexagon, custom)
 ```
 

@@ -23,7 +23,7 @@ eq = MathTex(r"E = mc^2")
 rect = SurroundingRectangle(
     eq,
     color=YELLOW,
-    buff=0.15,              # padding around mobject (or tuple (x, y) since v0.19)
+    buff=0.15,              # padding around mobject (default SMALL_BUFF; or tuple (x, y) since v0.19)
     corner_radius=0.1,      # rounded corners
     stroke_width=2,
 )
@@ -42,7 +42,7 @@ self.play(Write(eq), Create(rect))
 ```python
 eq = MathTex(r"{{ F }} = {{ m }} {{ a }}")
 m_part = eq.get_part_by_tex("m")
-rect = SurroundingRectangle(m_part, color=RED, buff=0.1)
+rect = SurroundingRectangle(m_part, color=RED)
 self.play(Create(rect))
 
 # v0.19+: surround multiple parts with one rect
@@ -88,7 +88,7 @@ self.play(Create(cross))
 
 ```python
 title = Text("Important Result")
-underline = Underline(title, color=YELLOW, buff=0.1)
+underline = Underline(title, color=YELLOW)
 self.play(Write(title), Create(underline))
 ```
 
@@ -99,10 +99,9 @@ A curly brace along one side of a mobject:
 ```python
 group = VGroup(Square(), Square(), Square()).arrange(RIGHT, buff=0.3)
 brace = Brace(
-    group,
-    direction=DOWN,     # which side to place the brace
-    buff=0.1,
-    sharpness=1.0,      # higher = more pointy
+    group,                  # direction defaults to DOWN
+    buff=SMALL_BUFF,
+    sharpness=1.0,          # higher = more pointy (default is 2)
 )
 
 # brace.get_text(...) does NOT accept font_size (forwards to next_to which rejects it).
@@ -142,7 +141,6 @@ arrow = Arrow(
     start=LEFT * 2,
     end=RIGHT * 2,
     buff=0,            # 0 to touch endpoints, >0 for gap
-    stroke_width=4,
     tip_length=0.25,
     color=WHITE,
 )
@@ -170,8 +168,14 @@ dc_arrow = CurvedDoubleArrow(
 
 ```python
 target = Circle(radius=0.5).shift(RIGHT * 2)
-arrow = Arrow(LEFT * 2, target.get_left(), buff=0.1, color=YELLOW)
-label = Text("Look here", font_size=24).next_to(arrow, UP)
+# A LabeledArrow bundles the arrow with its label in one mobject:
+arrow = LabeledArrow(
+    label=Text("Look here", font_size=24),
+    start=LEFT * 2,
+    end=target.get_left(),
+    buff=SMALL_BUFF,
+    color=YELLOW,
+)
 ```
 
 ## DashedLine and DashedVMobject
@@ -224,14 +228,14 @@ class AnnotatedEquation(Scene):
 
         # Highlight force
         f_part = eq.get_part_by_tex("F")
-        f_rect = SurroundingRectangle(f_part, color=YELLOW, buff=0.1)
+        f_rect = SurroundingRectangle(f_part, color=YELLOW)
         f_label = Text("Force", font_size=24, color=YELLOW).next_to(f_rect, UP)
         self.play(Create(f_rect), Write(f_label))
         self.wait()
 
         # Brace under mass
         m_part = eq.get_part_by_tex("m")
-        m_brace = Brace(m_part, DOWN, buff=0.1)
+        m_brace = Brace(m_part, buff=SMALL_BUFF)
         m_label = Tex("mass", font_size=24, color=RED)
         m_brace.put_at_tip(m_label)
         self.play(
@@ -246,7 +250,7 @@ class AnnotatedEquation(Scene):
         a_arrow = Arrow(
             a_part.get_right() + RIGHT * 1.5,
             a_part.get_right(),
-            buff=0.1,
+            buff=SMALL_BUFF,
             color=BLUE,
         )
         a_label = Text("acceleration", font_size=24, color=BLUE).next_to(a_arrow, RIGHT)
@@ -318,7 +322,7 @@ class MultiAnnotation(Scene):
         # Annotate kinetic energy
         ke_parts = VGroup(eq.get_part_by_tex(r"\frac{1}{2}"), eq.get_part_by_tex("m"), eq.get_part_by_tex("v^2"))
         ke_brace = Brace(ke_parts, DOWN, color=BLUE)
-        ke_label = ke_brace.get_tex(r"T = \text{kinetic energy}").set_color(BLUE).scale(0.7)
+        ke_label = ke_brace.get_tex(r"T = \text{kinetic energy}").scale(0.7).set_color(BLUE)
 
         self.play(Create(ke_brace), Write(ke_label))
         self.wait()
@@ -326,7 +330,7 @@ class MultiAnnotation(Scene):
         # Annotate potential energy
         pe_part = eq.get_part_by_tex("V(x)")
         pe_brace = Brace(pe_part, DOWN, color=RED)
-        pe_label = pe_brace.get_tex(r"V = \text{potential energy}").set_color(RED).scale(0.7)
+        pe_label = pe_brace.get_tex(r"V = \text{potential energy}").scale(0.7).set_color(RED)
 
         self.play(
             FadeOut(ke_brace, ke_label),

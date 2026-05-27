@@ -18,19 +18,25 @@ Manim uses a coordinate system where:
 - Z-axis: IN (-) to OUT (+) (for 3D)
 
 ### Direction Constants
-```python
-UP = np.array([0, 1, 0])
-DOWN = np.array([0, -1, 0])
-LEFT = np.array([-1, 0, 0])
-RIGHT = np.array([1, 0, 0])
-ORIGIN = np.array([0, 0, 0])
 
-# Diagonals
-UL = UP + LEFT      # Upper left
-UR = UP + RIGHT     # Upper right
-DL = DOWN + LEFT    # Lower left
-DR = DOWN + RIGHT   # Lower right
+Manim exports these directly — import them from `manim` and use them, do not
+redeclare. Reference values (from `manim/constants.py`):
+
+```text
+UP     = (0,  1,  0)
+DOWN   = (0, -1,  0)
+LEFT   = (-1, 0,  0)
+RIGHT  = (1,  0,  0)
+ORIGIN = (0,  0,  0)
+
+UL = UP + LEFT      # upper-left diagonal
+UR = UP + RIGHT     # upper-right diagonal
+DL = DOWN + LEFT    # lower-left diagonal
+DR = DOWN + RIGHT   # lower-right diagonal
 ```
+
+Use the diagonals directly (`mob.shift(DL)`) rather than rebuilding them
+(`mob.shift(DOWN + LEFT)`).
 
 ## move_to
 
@@ -143,7 +149,7 @@ class EdgeExample(Scene):
         text4 = Text("Right").to_edge(RIGHT)
 
         # With non-default buffer
-        text5 = Text("Buffered").to_edge(UP, buff=1)
+        text5 = Text("Buffered").to_edge(UP, buff=LARGE_BUFF)
 ```
 
 ## Corner Methods

@@ -28,7 +28,7 @@ class CameraDemo(MovingCameraScene):
         # self.camera.frame is the camera rectangle
         # Default: full scene width/height
 
-        circle = Circle(radius=1, color=BLUE).shift(LEFT * 3)
+        circle = Circle(color=BLUE).shift(LEFT * 3)
         square = Square(side_length=1, color=RED).shift(RIGHT * 3)
         self.add(circle, square)
         self.wait()
@@ -240,7 +240,6 @@ class ZoomEquation(MovingCameraScene):
     def construct(self) -> None:
         eq = MathTex(
             r"\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}",
-            font_size=48,
         )
         self.play(Write(eq))
         self.wait()

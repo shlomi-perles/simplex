@@ -32,7 +32,7 @@ Why objects? Because they carry configuration and Manim can compose them
 from manim import *
 class FirstAnimation(Scene):
     def construct(self):
-        circle = Circle(radius=1, color=BLUE)      # mobject, NOT displayed yet
+        circle = Circle(color=BLUE)                # mobject, NOT displayed yet
         self.play(Create(circle))                   # traces outline, then fills
 
         equation = MathTex(r"e^{i\pi} + 1 = 0").next_to(circle, DOWN)
@@ -149,7 +149,7 @@ then creates a Transform from original to copy.
 
 ```python
 self.play(circle.animate.shift(RIGHT * 2))                          # single
-self.play(circle.animate.shift(UP).scale(0.5).set_color(BLUE))     # chained
+self.play(circle.animate.scale(0.5).shift(UP).set_color(BLUE))     # chained
 self.play(circle.animate.move_to(ORIGIN), run_time=3)              # with timing
 self.play(circle.animate.shift(RIGHT * 3), rate_func=there_and_back)
 ```

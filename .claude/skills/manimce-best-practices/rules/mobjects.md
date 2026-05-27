@@ -42,20 +42,20 @@ Group includes an `ImageMobject`? Use `Group`.
 ## Creating shapes
 
 ```python
-# Circle: radius in Manim units. fill_opacity: 0=hollow, 1=solid.
-circle = Circle(radius=1, color=BLUE, fill_opacity=0.5)
-# Square: side_length in Manim units.
-square = Square(side_length=2, color=RED)
+# Circle: radius defaults to 1. fill_opacity: 0=hollow, 1=solid.
+circle = Circle(color=BLUE, fill_opacity=0.5)
+# Square: side_length defaults to 2.
+square = Square(color=RED)
 # Rectangle: independent width and height.
 rect = Rectangle(width=4, height=2)
-# Dot: a tiny filled circle at a point. ORIGIN = screen center (0,0,0).
-dot = Dot(point=ORIGIN, radius=0.08, color=WHITE)
+# Dot: a tiny filled circle at a point. Defaults to ORIGIN with DEFAULT_DOT_RADIUS (0.08).
+dot = Dot(color=WHITE)
 # Line: start/end are points (numpy arrays or direction constants).
 line = Line(start=LEFT, end=RIGHT, color=YELLOW)
 # Arrow: line with tip. buff = gap between tip and endpoint (0 = touching).
 arrow = Arrow(start=LEFT, end=RIGHT, buff=0)
-# Text: rendered with Pango (system fonts, no LaTeX needed).
-text = Text("Hello", font_size=48, color=WHITE)
+# Text: rendered with Pango (system fonts, no LaTeX needed). font_size defaults to 48.
+text = Text("Hello")
 # MathTex: rendered with LaTeX. Use raw strings so backslashes pass through.
 math = MathTex(r"E = mc^2")  # see equations.md for details
 ```
@@ -67,9 +67,10 @@ math = MathTex(r"E = mc^2")  # see equations.md for details
 Manim uses a math coordinate system: origin at screen center, X right, Y up.
 Visible area spans roughly X: [-7.1, 7.1] and Y: [-4, 4].
 
-Direction constants (numpy arrays) let you avoid raw numbers:
+Direction constants (numpy arrays) let you avoid raw numbers. These are
+exported from Manim directly — import and use them, do not redeclare:
 
-```python
+```text
 UP = (0,1,0)    DOWN = (0,-1,0)    LEFT = (-1,0,0)    RIGHT = (1,0,0)
 ORIGIN = (0,0,0)
 UL = UP+LEFT     UR = UP+RIGHT     DL = DOWN+LEFT     DR = DOWN+RIGHT
@@ -102,8 +103,8 @@ mob.align_to(other_mob, UP)            # match top edges
 ### Progressive examples
 
 ```python
-# 1. Circle at center (default position).
-circle = Circle(radius=1, color=BLUE)
+# 1. Circle at center (default position; radius defaults to 1).
+circle = Circle(color=BLUE)
 # 2. Move to upper-right.
 circle.move_to(2 * UP + 3 * RIGHT)
 # 3. Label next to circle with a small gap.
@@ -120,6 +121,32 @@ shapes.arrange(RIGHT, buff=MED_LARGE_BUFF)
 mob.get_center()     mob.get_top()       mob.get_bottom()
 mob.get_left()       mob.get_right()     mob.get_corner(UR)
 ```
+
+## Method order: size and orientation before position and appearance
+
+Mobject methods split into two groups:
+
+- **Dimension/orientation** -- `scale`, `scale_to_fit_width`, `scale_to_fit_height`, `stretch`, `rotate`, `set(width=...)`, `set(height=...)`. These change what the mobject looks like in isolation.
+- **Position/appearance** -- `shift`, `move_to`, `next_to`, `to_edge`, `to_corner`, `align_to`, `set_color`, `set_fill`, `set_stroke`, `set_opacity`. These place the mobject in the scene or color it.
+
+Always call the dimension/orientation methods first, then the position/appearance methods. The reason: positioning is computed from the mobject's bounding box, and rotating or scaling AFTER `next_to(...)` shifts the bounding box without re-running the positioning, leaving the mobject visibly misaligned.
+
+```python
+# GOOD: size first, then place
+label = MathTex(r"\theta").scale(0.8).rotate(PI / 6).next_to(arc, UR)
+
+# BAD: placed first, then rotated -- ends up off the arc
+label = MathTex(r"\theta").next_to(arc, UR).rotate(PI / 6)
+```
+
+When `next_to`/`to_edge`/`align_to` references another mobject, that other mobject must already be in its final position and size. Otherwise the relative placement is computed against a state the viewer never sees.
+
+```python
+title = Text("Header").to_edge(UP)            # title is now final
+subtitle = Text("...").scale(0.8).next_to(title, DOWN)  # safe: title is final
+```
+
+The same logic applies to `VGroup`: call `scale`/`set_height` BEFORE `arrange` (which positions children), and call `arrange` before `next_to`/`to_edge` (which positions the group).
 
 ## Sizing and scaling
 
@@ -180,7 +207,7 @@ group.set_color(RED)                   # colors all three
 
 ```python
 group.arrange(RIGHT, buff=MED_LARGE_BUFF)  # horizontal row with a large gap
-group.arrange(DOWN, buff=0.25)        # vertical stack
+group.arrange(DOWN)                    # vertical stack (buff defaults to MED_SMALL_BUFF)
 group.arrange_in_grid(rows=2, cols=3, buff=MED_LARGE_BUFF)
 ```
 
@@ -208,7 +235,7 @@ Any method becomes a smooth animation when called on `.animate`:
 ```python
 circle.shift(RIGHT)                    # instant (no animation)
 self.play(circle.animate.shift(RIGHT)) # smooth slide over 1 second
-self.play(circle.animate.set_color(RED).scale(2))  # chain multiple changes
+self.play(circle.animate.scale(2).set_color(RED))  # chain multiple changes
 self.play(circle.animate.rotate(PI/2), run_time=2, rate_func=smooth)
 ```
 
@@ -219,7 +246,7 @@ Full details on animations and rate functions in animations.md.
 ```python
 circle_copy = circle.copy()            # independent deep copy
 circle.save_state()                    # snapshot position, color, size, etc.
-circle.set_color(RED).scale(3)         # make temporary changes
+circle.scale(3).set_color(RED)         # make temporary changes
 self.play(Restore(circle))            # animate back to saved state
 ```
 
@@ -278,4 +305,4 @@ self.add(sq, label)
 self.play(sq.animate.to_edge(RIGHT))
 ```
 
-**Caveat:** the call's *arguments* are captured by reference, not re-evaluated. `dot.always.move_to(t.get_value() * RIGHT)` reads the tracker exactly once. For ValueTracker-driven motion use `add_updater(lambda d: d.move_to(...))`. See [updaters.md](updaters.md).
+**Caveat:** the call's *arguments* are evaluated ONCE at attach time and captured by reference; the method is re-called every frame with that snapshot. So any function call you pass in -- `t.get_value()`, `mob.get_end()`, `mob.get_length()`, arithmetic on dynamic values -- gives a stale value forever. Use `add_updater(lambda m: m.method(...))` whenever an argument needs to be recomputed each frame. See [updaters.md](updaters.md).

@@ -84,7 +84,7 @@ class ArrangeExample(Scene):
 
         # With custom buffer
         spaced = VGroup(*[Triangle().scale(0.3) for _ in range(3)])
-        spaced.arrange(RIGHT, buff=1).shift(DOWN * 2)
+        spaced.arrange(RIGHT, buff=LARGE_BUFF).shift(DOWN * 2)
 
         self.add(row, column, spaced)
 ```

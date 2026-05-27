@@ -93,7 +93,7 @@ Stack multiple updaters on one object (they run in order added):
 
 ```python
 label = Text("here")
-label.add_updater(lambda l: l.next_to(dot, UP, buff=0.2))   # follow dot
+label.always.next_to(dot, UP, buff=0.2)                            # follow dot
 label.add_updater(lambda l: l.set_opacity(tracker.get_value() / 10))  # fade
 ```
 
@@ -114,9 +114,9 @@ self.add(sq, label)
 self.play(sq.animate.to_edge(RIGHT))
 ```
 
-> **WARNING:** `mob.always.method(arg)` evaluates `arg` ONCE at attach time, then re-calls `method` with that snapshot every frame. So `dot.always.move_to(t.get_value() * RIGHT)` reads `t.get_value()` exactly once. **For anything that depends on a `ValueTracker`, use `add_updater(lambda d: ...)`** so the closure is re-evaluated each frame. The Manim docs explicitly call this out (see source: `Mobject.always` warning).
+> **WARNING:** `mob.always.method(arg)` evaluates `arg` ONCE at attach time, then re-calls `method` with that snapshot every frame. ANY function call you pass as an argument -- `tracker.get_value()`, `other_mob.get_end()`, `arrow.get_length()`, `arrow.get_vector()`, arithmetic involving those -- is computed exactly once and never refreshed. The arrow-and-distance-label example in [examples/updater_patterns.py](../examples/updater_patterns.py) (`ArrowUpdater`) shows this: the distance label uses `always_redraw` precisely because `arrow.get_length()` inside `mob.always.set_value(...)` would freeze at the initial length. **Whenever the value passed in must change each frame, use `add_updater(lambda d: ...)` (or `always_redraw(lambda: ...)` when the mobject itself must be rebuilt).**
 
-When `always` is the right tool: relationships expressed entirely through other mobjects -- `label.always.next_to(dot, UP)`, `arrow.always.put_start_and_end_on(a.get_center(), b.get_center())`. When you need `add_updater`: anything reading `tracker.get_value()`, scene time, or doing arithmetic on dynamic values.
+When `always` is the right tool: relationships expressed through pure mobject references -- `label.always.next_to(dot, UP)`, `arrow.always.put_start_and_end_on(a.get_center(), b.get_center())`. The argument is the mobject itself; the method computes the dynamic value internally each frame. When you need `add_updater` / `always_redraw`: anything where an argument is the result of a function call on something that changes.
 
 ## Time-based updaters (with dt)
 
@@ -154,29 +154,40 @@ self.play(tracker.animate.set_value(5), run_time=3)
 
 ## always_redraw: the nuclear option
 
-Sometimes you need to completely RECREATE a mobject every frame. A Line's
-geometry (start/end points) is baked in at construction -- you cannot just
-"move" it. You need a new Line with new endpoints each frame.
+Sometimes you need to completely RECREATE a mobject every frame because its
+constructor arguments — not just position — change. `always_redraw(lambda: ...)`
+calls your lambda every frame, gets a fresh mobject, and swaps in the replacement.
 
-`always_redraw(lambda: ...)` calls your lambda every frame, gets a fresh
-mobject, and swaps in the replacement.
+For a `Line` whose endpoints move, prefer `put_start_and_end_on` with `always`
+(in-place, no reconstruction):
 
 ```python
-line = always_redraw(
-    lambda: Line(dot1.get_center(), dot2.get_center(), color=YELLOW)
-)
+line = Line(dot1.get_center(), dot2.get_center(), color=YELLOW)
+line.always.put_start_and_end_on(dot1.get_center(), dot2.get_center())
 self.add(line)
 self.play(dot1.animate.shift(UP * 2), dot2.animate.shift(DOWN * 2))
 ```
 
-**When to use always_redraw vs add_updater:**
-- `add_updater`: object's SHAPE stays the same; you change position, color,
-  scale, or opacity. Fast (modifies in place).
-- `always_redraw`: object's GEOMETRY changes (different endpoints, curve shape,
-  brace width). Slower (reconstructs every frame).
+Use `always_redraw` when the geometry truly has to be rebuilt — for example, an
+`Arrow` between two moving points (the tip has to be regenerated) or a `Brace`
+whose width tracks a changing span:
 
-Rule of thumb: if `move_to`/`next_to`/`set_color` can express the update, use
-`add_updater`. If you need different constructor arguments, use `always_redraw`.
+```python
+arrow = always_redraw(
+    lambda: Arrow(dot1.get_center(), dot2.get_center(), color=YELLOW)
+)
+```
+
+**When to use always_redraw vs add_updater / always:**
+
+- `add_updater` / `mob.always.method(...)`: object's SHAPE stays the same; you
+  change position, color, scale, or opacity. Fast (modifies in place).
+- `always_redraw`: object's GEOMETRY must be rebuilt (Arrow tip, Brace width,
+  curve shape). Slower (reconstructs every frame).
+
+Rule of thumb: if `move_to` / `next_to` / `set_color` / `put_start_and_end_on`
+can express the update, use `always` (or `add_updater`). If you need different
+constructor arguments, use `always_redraw`.
 
 ## Removing updaters
 

@@ -25,13 +25,13 @@ class TextExample(Scene):
 ```python
 text = Text(
     "Hello World",
-    font_size=48,           # Size (default: 48)
     color=BLUE,             # Text color
     font="Arial",           # Font family
     weight=BOLD,            # NORMAL, BOLD, etc.
     slant=ITALIC,           # NORMAL, ITALIC, OBLIQUE
     line_spacing=1.5,       # Space between lines
 )
+# font_size defaults to DEFAULT_FONT_SIZE (48); override only when needed.
 ```
 
 ## Font Size
@@ -39,7 +39,7 @@ text = Text(
 ```python
 # Using font_size parameter
 small = Text("Small", font_size=24)
-medium = Text("Medium", font_size=48)
+medium = Text("Medium")              # uses DEFAULT_FONT_SIZE = 48
 large = Text("Large", font_size=72)
 
 # Using scale after creation

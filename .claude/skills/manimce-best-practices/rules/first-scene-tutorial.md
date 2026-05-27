@@ -62,10 +62,11 @@ class FirstScene(Scene):
         # Everything you want to animate goes here.
 
         # Step 1: Create a circle object
-        circle = Circle(radius=1, color=BLUE, fill_opacity=0.5)
+        circle = Circle(color=BLUE, fill_opacity=0.5)
         # This does NOT show the circle yet. It just creates it in memory.
-        # radius=1 means 1 Manim unit (the screen is ~14 units wide, ~8 tall)
-        # fill_opacity=0.5 means 50% transparent interior
+        # Circle defaults to radius=1, i.e. 1 Manim unit
+        # (the screen is ~14 units wide, ~8 tall).
+        # fill_opacity=0.5 means 50% transparent interior.
 
         # Step 2: Animate the circle appearing on screen
         self.play(Create(circle))
@@ -108,9 +109,9 @@ media/
 class SecondScene(Scene):
     def construct(self):
         # Create objects
-        circle = Circle(radius=1, color=BLUE, fill_opacity=0.5)
-        square = Square(side_length=2, color=RED)
-        text = Text("Hello Manim!", font_size=48)
+        circle = Circle(color=BLUE, fill_opacity=0.5)
+        square = Square(color=RED)
+        text = Text("Hello Manim!")
 
         # Position them: text at top, shapes below side by side
         text.to_edge(UP)           # snap to top of screen

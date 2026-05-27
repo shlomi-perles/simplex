@@ -54,9 +54,9 @@ class EquationExplainer(Scene):
             parts = VGroup(*[eq[i] for i in indices])
             for p in parts:
                 p.set_opacity(1.0)
-            box = SurroundingRectangle(parts, color=color, buff=0.1)
+            box = SurroundingRectangle(parts, color=color)
             label = Text(label_text, font_size=LABEL_SIZE, color=color)
-            label.next_to(box, DOWN, buff=0.3)
+            label.next_to(box, DOWN)
 
             self.play(Create(box), Write(label))
             self.wait(HOLD_MEDIUM)

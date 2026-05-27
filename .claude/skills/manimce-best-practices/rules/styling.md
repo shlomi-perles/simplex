@@ -44,8 +44,8 @@ Stroke controls the outline/border of shapes.
 ```python
 class StrokeExample(Scene):
     def construct(self):
-        # Set stroke on creation
-        circle = Circle(stroke_color=BLUE, stroke_width=4)
+        # Set stroke on creation (width defaults to DEFAULT_STROKE_WIDTH = 4)
+        circle = Circle(stroke_color=BLUE)
 
         # Set stroke after creation
         square = Square()
@@ -101,8 +101,7 @@ square.set_style(
     fill_color=BLUE,
     fill_opacity=0.5,
     stroke_color=WHITE,
-    stroke_width=4,
-    stroke_opacity=1
+    stroke_opacity=1,
 )
 ```
 

@@ -21,7 +21,7 @@ class AnnotateEquation(Scene):
 
         # Highlight the force term with a colored rectangle
         f_part = eq.get_part_by_tex("F")
-        box = SurroundingRectangle(f_part, color=YELLOW, buff=0.1)
+        box = SurroundingRectangle(f_part, color=YELLOW)
         self.play(Create(box))
 
         # Add a brace below "ma" with a label
@@ -64,7 +64,7 @@ class DimAndReveal(Scene):
         ]
         for tex, color, description in terms:
             part = eq.get_part_by_tex(tex)
-            box = SurroundingRectangle(part, color=color, buff=0.1)
+            box = SurroundingRectangle(part, color=color)
             label = Tex(description, font_size=28, color=color)
             label.next_to(box, DOWN)
 
