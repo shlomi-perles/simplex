@@ -18,7 +18,10 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from manim.opengl import OpenGLMobject
 
 import numpy as np
 from manim import (
@@ -294,6 +297,39 @@ class ScalarFieldSurface(OpenGLSurface):
         """``(x, y, z) -> atan2(y - cy, x - cx)``"""
         cx, cy = float(center[0]), float(center[1])
         return lambda x, y, z: np.arctan2(y - cy, x - cx)
+
+    # ── Interpolation ────────────────────────────────────────
+
+    def interpolate(
+        self,
+        mobject1: OpenGLMobject,
+        mobject2: OpenGLMobject,
+        alpha: float,
+        *args: Any,
+        **kwargs: Any,
+    ) -> ScalarFieldSurface:
+        super().interpolate(mobject1, mobject2, alpha, *args, **kwargs)
+        c1 = self._extract_vertex_colors(mobject1)
+        c2 = self._extract_vertex_colors(mobject2)
+        if c1 is not None and c2 is not None and len(c1) == len(c2):
+            self.color_by_val = c1 + (c2 - c1) * alpha
+            self.colorscale = True
+        return self
+
+    @staticmethod
+    def _extract_vertex_colors(mobject: OpenGLMobject) -> np.ndarray | None:
+        cbv = getattr(mobject, "color_by_val", None)
+        if isinstance(cbv, np.ndarray) and len(cbv) > 0:
+            return np.asarray(cbv, dtype=np.float32)
+        n = len(mobject.points) // 3
+        if n == 0:
+            return None
+        rgbas = mobject.rgbas
+        if len(rgbas) == 0:
+            return None
+        if len(rgbas) >= n:
+            return np.asarray(rgbas[:n], dtype=np.float32)
+        return np.broadcast_to(rgbas[:1], (n, 4)).copy().astype(np.float32)
 
     # ── Internals ─────────────────────────────────────────────
 
