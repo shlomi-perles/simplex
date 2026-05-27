@@ -118,14 +118,17 @@ Manim uses a standard math coordinate system:
 - Y increases upward
 - Z increases toward viewer (OUT direction)
 
-```python
-ORIGIN = np.array([0, 0, 0])
-UP     = np.array([0, 1, 0])
-DOWN   = np.array([0, -1, 0])
-LEFT   = np.array([-1, 0, 0])
-RIGHT  = np.array([1, 0, 0])
-OUT    = np.array([0, 0, 1])
-IN     = np.array([0, 0, -1])
+All of these are already exported from `manim` — import and use them, don't
+redeclare. Reference values (from `manim/constants.py`):
+
+```text
+ORIGIN = (0,  0,  0)
+UP     = (0,  1,  0)
+DOWN   = (0, -1,  0)
+LEFT   = (-1, 0,  0)
+RIGHT  = (1,  0,  0)
+OUT    = (0,  0,  1)
+IN     = (0,  0, -1)
 
 # Diagonals
 UL = UP + LEFT

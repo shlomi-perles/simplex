@@ -203,7 +203,7 @@ MathTex(r"\rightarrow \leftarrow \Rightarrow \Leftrightarrow")
 MathTex(r"\in \notin \subset \supset \cup \cap")
 
 # Calculus
-MathTex(r"\int \iint \oint \partial \nabla")
+MathTex(r"\int \iint \o" r"int \partial \nabla")
 ```
 
 ## Font Size
@@ -224,3 +224,4 @@ eq = MathTex(r"E = mc^2").scale(2)
 4. **Split for animation control** - Separate parts you'll animate differently
 5. **Use substrings_to_isolate** - For reliable coloring of repeated elements
 6. **Use tex_to_color_map for construction-time colors** - Prefer it when the mapping is known up front
+7. **Prefer introduce tex with `Write`** - `MathTex` and `Tex` should appear via `Write(eq)`; reserve `TransformFromCopy` /`TransformMatchingTex` / `ReplacementTransform` for morphing between tex steps

@@ -207,7 +207,7 @@ self.add(dot)
 self.play(t.animate.set_value(2 * PI), run_time=4, rate_func=linear)
 ```
 
-> Don't use `dot.always.move_to(axes @ (t.get_value(), ...))` here — `Mobject.always` evaluates `t.get_value()` exactly once. Use `add_updater` or `always_redraw` whenever a `ValueTracker` is involved.
+> Don't use `dot.always.move_to(axes @ (t.get_value(), ...))` here — `Mobject.always` evaluates any function call inside its arguments (like `t.get_value()`) exactly once at attach time. Use `add_updater` or `always_redraw` whenever the value passed in must be recomputed each frame.
 
 ## Tangent Line / Secant Slope Group
 

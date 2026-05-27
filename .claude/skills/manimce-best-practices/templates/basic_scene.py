@@ -26,7 +26,7 @@ class YourScene(Scene):
         # self.camera.background_color = "#1a1a2e"
 
         # Create your mobjects
-        title = Text("Your Animation Title", font_size=48)
+        title = Text("Your Animation Title")
         shape = Circle(color=BLUE, fill_opacity=0.5)
 
         # Position objects

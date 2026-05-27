@@ -15,7 +15,9 @@ class ColorCodedEquation(Scene):
 
     def construct(self):
         # Method 1: Use set_color_by_tex after creation (safer approach)
-        equation = MathTex(r"\vec{v}_1", r"=", r"\begin{bmatrix} 1 \\ \lambda_1 \end{bmatrix}")
+        equation = MathTex(
+            r"\vec{v}_1", r"=", r"\begin{bmatrix} 1 \\ \lambda_1 \end{bmatrix}"
+        )
         equation.scale(1.5)
 
         # Color specific parts
@@ -27,10 +29,10 @@ class ColorCodedEquation(Scene):
         # Second equation with multiple colored parts
         equation2 = MathTex(r"A", r"\vec{v}_1", r"=", r"\lambda_1", r"\vec{v}_1")
         equation2.scale(1.5)
-        equation2[0].set_color(RED)  # A
-        equation2[1].set_color(TEAL)  # first \vec{v}_1
-        equation2[3].set_color(YELLOW)  # \lambda_1
-        equation2[4].set_color(TEAL)  # second \vec{v}_1
+        equation2[0].set_color(RED)      # A
+        equation2[1].set_color(TEAL)     # first \vec{v}_1
+        equation2[3].set_color(YELLOW)   # \lambda_1
+        equation2[4].set_color(TEAL)     # second \vec{v}_1
 
         self.play(TransformMatchingTex(equation, equation2))
         self.wait()
@@ -51,16 +53,25 @@ class EquationDerivation(Scene):
         eq2 = MathTex(r"(x + 2)(x + 3) = 0")
         eq2.next_to(eq1, DOWN, buff=0.8)
 
-        self.play(TransformFromCopy(eq1, eq2), run_time=1.5)
+        self.play(
+            TransformFromCopy(eq1, eq2),
+            run_time=1.5
+        )
         self.wait()
 
         # Solutions
         eq3 = MathTex(r"x = -2", color=BLUE)
         eq4 = MathTex(r"x = -3", color=GREEN)
-        solutions = VGroup(eq3, eq4).arrange(RIGHT, buff=1)
+        solutions = VGroup(eq3, eq4).arrange(RIGHT, buff=LARGE_BUFF)
         solutions.next_to(eq2, DOWN, buff=0.8)
 
-        self.play(LaggedStart(Write(eq3), Write(eq4), lag_ratio=0.3))
+        self.play(
+            LaggedStart(
+                Write(eq3),
+                Write(eq4),
+                lag_ratio=0.3
+            )
+        )
 
         # Highlight solutions
         boxes = VGroup(
@@ -76,7 +87,9 @@ class MatrixTransformation(Scene):
 
     def construct(self):
         # Matrix definition
-        matrix = MathTex(r"A = \begin{bmatrix} 2 & 1 \\ 1 & 3 \end{bmatrix}").scale(1.2)
+        matrix = MathTex(
+            r"A = \begin{bmatrix} 2 & 1 \\ 1 & 3 \end{bmatrix}"
+        ).scale(1.2)
 
         self.play(Write(matrix))
         self.wait()
@@ -85,8 +98,11 @@ class MatrixTransformation(Scene):
         self.play(matrix.animate.to_edge(LEFT))
 
         # Show transformation
-        vector = MathTex(r"\vec{x} = \begin{bmatrix} 1 \\ 1 \end{bmatrix}", color=YELLOW)
-        vector.next_to(matrix, RIGHT, buff=1)
+        vector = MathTex(
+            r"\vec{x} = \begin{bmatrix} 1 \\ 1 \end{bmatrix}",
+            color=YELLOW
+        )
+        vector.next_to(matrix, RIGHT, buff=LARGE_BUFF)
 
         self.play(Write(vector))
         self.wait()
@@ -94,9 +110,9 @@ class MatrixTransformation(Scene):
         # Result
         result = MathTex(
             r"A\vec{x} = \begin{bmatrix} 3 \\ 4 \end{bmatrix}",
-            tex_to_color_map={r"\vec{x}": YELLOW},
+            tex_to_color_map={r"\vec{x}": YELLOW}
         )
-        result.next_to(vector, RIGHT, buff=1)
+        result.next_to(vector, RIGHT, buff=LARGE_BUFF)
 
         arrow = Arrow(vector.get_right(), result.get_left(), buff=0.2)
 
@@ -109,7 +125,10 @@ class IntegralVisualization(Scene):
 
     def construct(self):
         # Integral expression
-        integral = MathTex(r"\int_0^1 x^2 \, dx = \frac{1}{3}", font_size=64)
+        integral = MathTex(
+            r"\int_0^1 x^2 \, dx = \frac{1}{3}",
+            font_size=64
+        )
         integral.to_edge(UP)
 
         self.play(Write(integral))
@@ -142,13 +161,18 @@ class SummationNotation(Scene):
 
     def construct(self):
         # Summation formula
-        formula = MathTex(r"\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}", font_size=64)
+        formula = MathTex(
+            r"\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}",
+            font_size=64
+        )
 
         self.play(Write(formula))
         self.wait()
 
         # Show first few terms
-        terms = MathTex(r"= 1 + \frac{1}{4} + \frac{1}{9} + \frac{1}{16} + \cdots", font_size=48)
+        terms = MathTex(
+            r"= 1 + \frac{1}{4} + \frac{1}{9} + \frac{1}{16} + \cdots",
+        )
         terms.next_to(formula, DOWN, buff=0.8)
 
         self.play(Write(terms))
@@ -172,13 +196,13 @@ class FunctionNotation(Scene):
         self.wait()
 
         # Evaluation at x=3
-        eval_step1 = MathTex(r"f(3) = 3^2 + 2(3) + 1", font_size=48)
-        eval_step2 = MathTex(r"f(3) = 9 + 6 + 1", font_size=48)
-        eval_step3 = MathTex(r"f(3) = 16", font_size=48, color=GREEN)
+        eval_step1 = MathTex(r"f(3) = 3^2 + 2(3) + 1")
+        eval_step2 = MathTex(r"f(3) = 9 + 6 + 1")
+        eval_step3 = MathTex(r"f(3) = 16", color=GREEN)
 
         steps = VGroup(eval_step1, eval_step2, eval_step3)
         steps.arrange(DOWN, buff=MED_LARGE_BUFF)
-        steps.next_to(f_def, DOWN, buff=1)
+        steps.next_to(f_def, DOWN, buff=LARGE_BUFF)
 
         for step in steps:
             self.play(Write(step))
@@ -195,16 +219,21 @@ class LimitNotation(Scene):
 
     def construct(self):
         # Limit expression
-        limit = MathTex(r"\lim_{x \to 0} \frac{\sin x}{x} = 1", font_size=64)
+        limit = MathTex(
+            r"\lim_{x \to 0} \frac{\sin x}{x} = 1",
+            font_size=64
+        )
 
         self.play(Write(limit))
         self.wait()
 
         # Show approaching behavior
         approaching = MathTex(
-            r"x \to 0: \quad", r"\frac{\sin(0.1)}{0.1} \approx 0.998", font_size=40
+            r"x \to 0: \quad",
+            r"\frac{\sin(0.1)}{0.1} \approx 0.998",
+            font_size=40
         )
-        approaching.next_to(limit, DOWN, buff=1)
+        approaching.next_to(limit, DOWN, buff=LARGE_BUFF)
 
         self.play(Write(approaching))
         self.wait()
@@ -214,11 +243,13 @@ class DerivativeChainRule(Scene):
     """Shows the chain rule for derivatives."""
 
     def construct(self):
-        title = Text("Chain Rule", font_size=48, color=BLUE)
+        title = Text("Chain Rule", color=BLUE)
         title.to_edge(UP)
 
         # Chain rule formula
-        rule = MathTex(r"\frac{d}{dx}[f(g(x))] = f'(g(x)) \cdot g'(x)", font_size=48)
+        rule = MathTex(
+            r"\frac{d}{dx}[f(g(x))] = f'(g(x)) \cdot g'(x)",
+        )
 
         # Example
         example_title = Text("Example:", font_size=36)
@@ -230,7 +261,7 @@ class DerivativeChainRule(Scene):
                 r"x^2": YELLOW,
                 r"2x": YELLOW,
             },
-            font_size=44,
+            font_size=44
         )
 
         content = VGroup(rule, example_title, example)
@@ -249,7 +280,10 @@ class TexHighlighting(Scene):
 
     def construct(self):
         # Create equation with substrings to highlight
-        equation = MathTex(r"E", r"=", r"m", r"c^2", font_size=96)
+        equation = MathTex(
+            r"E", r"=", r"m", r"c^2",
+            font_size=96
+        )
 
         self.play(Write(equation))
         self.wait()
@@ -257,9 +291,9 @@ class TexHighlighting(Scene):
         # Highlight individual parts
         self.play(equation[0].animate.set_color(YELLOW))  # E
         self.wait(0.3)
-        self.play(equation[2].animate.set_color(BLUE))  # m
+        self.play(equation[2].animate.set_color(BLUE))    # m
         self.wait(0.3)
-        self.play(equation[3].animate.set_color(RED))  # c^2
+        self.play(equation[3].animate.set_color(RED))     # c^2
         self.wait()
 
         # Add labels

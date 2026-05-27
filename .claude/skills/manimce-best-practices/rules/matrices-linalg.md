@@ -94,7 +94,7 @@ mat.get_entries()[4].set_color(YELLOW)  # entry at index 4 (row 1, col 1)
 ```python
 # 2D vector arrow
 vec = Arrow(ORIGIN, [2, 1, 0], buff=0, color=YELLOW)
-vec_label = MathTex(r"\vec{v}").next_to(vec.get_end(), UR, buff=0.1)
+vec_label = MathTex(r"\vec{v}").next_to(vec.get_end(), UR, buff=SMALL_BUFF)
 
 # Column vector notation
 col_vec = Matrix([[2], [1]], left_bracket="[", right_bracket="]")
@@ -136,7 +136,7 @@ For transforming mobjects by a matrix without `LinearTransformationScene`:
 class MatrixApply(Scene):
     def construct(self) -> None:
         plane = NumberPlane()
-        circle = Circle(radius=1, color=BLUE)
+        circle = Circle(color=BLUE)
 
         self.add(plane, circle)
 
@@ -156,8 +156,9 @@ class MatMul(Scene):
         equals = MathTex(r"=")
         mat_c = Matrix([[19, 22], [43, 50]], left_bracket="[", right_bracket="]")
 
-        equation = VGroup(mat_a, times, mat_b, equals, mat_c).arrange(RIGHT, buff=0.3)
+        equation = VGroup(mat_a, times, mat_b, equals, mat_c)
         equation.scale(0.8)
+        equation.arrange(RIGHT, buff=0.3)
 
         # Animate step by step
         self.play(Write(mat_a))
@@ -202,12 +203,14 @@ class EigenDemo(LinearTransformationScene):
         # Add non-eigenvector for comparison
         other = self.add_vector([1, 0], color=YELLOW)
 
-        # Labels
+        # Labels — use add_updater so ev1.get_end() / ev2.get_end() are
+        # re-evaluated each frame as the vectors transform. `mob.always.method(arg)`
+        # would capture the call result once at attach time and never refresh it.
         ev1_label = MathTex(r"\lambda_1 = 3", color=GREEN, font_size=28)
-        ev1_label.add_updater(lambda l: l.next_to(ev1.get_end(), UR, buff=0.1))
+        ev1_label.add_updater(lambda m: m.next_to(ev1.get_end(), UR, buff=SMALL_BUFF))
 
         ev2_label = MathTex(r"\lambda_2 = 1", color=RED, font_size=28)
-        ev2_label.add_updater(lambda l: l.next_to(ev2.get_end(), UL, buff=0.1))
+        ev2_label.add_updater(lambda m: m.next_to(ev2.get_end(), UL, buff=SMALL_BUFF))
 
         self.add(ev1_label, ev2_label)
 
@@ -265,14 +268,17 @@ class AnnotatedMatrix(Scene):
         )
         self.play(Write(mat))
 
-        # Brace for first column
-        col_brace = Brace(mat.get_columns()[0], DOWN, color=RED)
-        col_label = col_brace.get_tex(r"\vec{v}_1").set_color(RED)
-        self.play(Create(col_brace), Write(col_label))
+        # Brace + label for first column (BraceLabel bundles them)
+        col_brace = BraceLabel(
+            mat.get_columns()[0], r"\vec{v}_1",
+            label_constructor=MathTex, color=RED,
+        )
+        col_brace.label.set_color(RED)
+        self.play(col_brace.creation_anim())
 
         # Highlight diagonal
         diag = VGroup(mat.get_entries()[0], mat.get_entries()[3])
-        rect = SurroundingRectangle(diag, color=YELLOW, buff=0.1)
+        rect = SurroundingRectangle(diag, color=YELLOW)
         self.play(Create(rect))
         self.wait()
 ```

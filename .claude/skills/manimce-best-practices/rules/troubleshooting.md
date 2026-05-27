@@ -88,9 +88,9 @@ for obj in objects:
     label.add_updater(lambda m, o=obj: m.next_to(o, UP))
 ```
 
-### Mobject.always silently freezes when reading a ValueTracker
+### Mobject.always silently freezes when an argument is a function call
 
-`Mobject.always.method(args)` (v0.20+) is sugar for `add_updater(lambda m: m.method(args), call_updater=True)`. The `args` are evaluated **once** when `always.method(...)` is called, then captured by reference. So `t.get_value()` is sampled exactly once -- the updater never sees the tracker change.
+`Mobject.always.method(args)` (v0.20+) is sugar for `add_updater(lambda m: m.method(args), call_updater=True)`. The `args` are evaluated **once** when `always.method(...)` is called, then captured by reference. ANY function call inside `args` -- `t.get_value()`, `other.get_end()`, `arrow.get_length()`, `arrow.get_vector()`, arithmetic involving them -- is sampled exactly once. The updater never sees the value change.
 
 ```python
 t = ValueTracker(0)
@@ -101,9 +101,19 @@ dot.always.move_to(RIGHT * t.get_value())
 
 # GOOD: closure recomputes every frame
 dot.add_updater(lambda d: d.move_to(RIGHT * t.get_value()))
+
+# BAD: arrow.get_length() captured once, label freezes at initial length
+distance.always.set_value(arrow.get_length())
+
+# GOOD: always_redraw rebuilds the mobject (and re-reads get_length()) each frame
+distance = always_redraw(
+    lambda: DecimalNumber(arrow.get_length(), num_decimal_places=2)
+)
 ```
 
-Use `always` for "follow this mobject" relationships (`label.always.next_to(dot, UP)`). Use `add_updater` whenever a tracker, time, or other dynamic value is involved.
+The `ArrowUpdater` scene in [examples/updater_patterns.py](../examples/updater_patterns.py) illustrates the second pattern -- the distance label needs `always_redraw` because `arrow.get_length()` and `arrow.get_vector()` must be recomputed every frame as the endpoints move.
+
+Use `always` for "follow this mobject" relationships where the argument is the mobject itself (`label.always.next_to(dot, UP)` -- `next_to` reads `dot`'s current position each frame). Use `add_updater` / `always_redraw` whenever an argument needs to be recomputed.
 
 ### Brace.get_text() with font_size kwarg
 

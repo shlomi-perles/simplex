@@ -25,7 +25,6 @@ class LineExample(Scene):
         styled_line = Line(
             UP * 2, DOWN * 2,
             color=BLUE,
-            stroke_width=4
         )
 
         self.add(line, styled_line)
@@ -207,7 +206,7 @@ class ConnectMobjects(Scene):
         arrow = Arrow(
             c1.get_right(),  # Right edge of c1
             c2.get_left(),   # Left edge of c2
-            buff=0.1         # Small gap from edges
+            buff=SMALL_BUFF, # Small gap from edges
         )
 
         self.add(c1, c2, line, arrow)

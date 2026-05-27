@@ -100,7 +100,7 @@ Texture coordinates reverse the image's vertical direction internally. For gener
 Use fixed-frame mobjects for titles, formulas, and labels that should remain screen-aligned while the 3D camera moves.
 
 ```python
-title = Text("Loss Landscape", font_size=48).to_corner(UL)
+title = Text("Loss Landscape").to_corner(UL)
 self.add_fixed_in_frame_mobjects(title)
 self.play(FadeIn(title))
 ```

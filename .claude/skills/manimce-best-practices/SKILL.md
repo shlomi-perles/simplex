@@ -164,10 +164,12 @@ class MyScene(Scene):
 3. **Outdated tutorials** - Video tutorials may be outdated; prefer official documentation and local 0.20.1 source.
 4. **Old CONFIG dictionaries** - Modern ManimCE uses constructor kwargs, class attributes, and `config`, not legacy `CONFIG = {...}` patterns
 5. **PATH issues (Windows)** - If `manim` command not found or points to another install, use `python -m manim`
+6. **Method order** - Call dimension/orientation methods (`scale`, `stretch`, `rotate`, `set_height`) BEFORE position/appearance methods (`shift`, `move_to`, `next_to`, `to_edge`, `set_color`). When a mobject is placed relative to another (`next_to`, `to_edge`, `align_to`), the reference mobject must already be in its final position and size. See [rules/mobjects.md](rules/mobjects.md#method-order-size-and-orientation-before-position-and-appearance).
+7. **`Write` for tex** - Introduce every `MathTex` / `Tex` mobject with `Write`. Use `TransformMatchingTex` / `ReplacementTransform` only when morphing between tex steps where the source was already Written.
 
 ### Current 0.20.x Notes
 
-- `Mobject.always` is available for simple "keep this next to that" updater patterns; use `add_updater` or `always_redraw` when arguments depend on a `ValueTracker`.
+- `Mobject.always` is available for simple "keep this next to that" updater patterns; use `add_updater` or `always_redraw` when any argument passed to the method is a function call that must be recomputed each frame (e.g. `tracker.get_value()`, `arrow.get_length()`).
 - `MathTex` splitting is more robust in 0.20.x, and 0.20.1 fixes a double-brace edge case, but precise animation control still benefits from separate strings or `substrings_to_isolate`.
 - `Code` now uses `code_file=` or `code_string=` plus `language=` and `formatter_style=`; use `Code.get_styles_list()` for available styles.
 - `SurroundingRectangle` accepts one or more mobjects; pass `color=...` and `buff=...` as keywords.

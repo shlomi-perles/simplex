@@ -21,11 +21,14 @@ class PaperExplainer(Scene):
     """
 
     def construct(self) -> None:
+        # Tune phase transitions once instead of repeating run_time on every play().
+        FadeOut.set_default(run_time=0.6)
+
         # Hook (10s): show the punchline first.
         self.next_section("Hook")
 
         # TODO: Replace with your paper's key result
-        result = Text("Your key result here", font_size=48, color=YELLOW)
+        result = Text("Your key result here", color=YELLOW)
         self.play(Write(result))
         self.wait(2)
         question = Text("How?", font_size=72, color=WHITE)
@@ -50,13 +53,13 @@ class PaperExplainer(Scene):
         # - Equation dim-and-reveal (copy from equation_explainer.py)
         # - Pipeline diagram (labeled_box + Arrows)
         # - Architecture buildup (bottom-to-top with next_section)
-        method_title = Text("Our Approach", font_size=48)
+        method_title = Text("Our Approach")
         self.play(Write(method_title))
         self.wait(2)
 
         # Example: show your key equation
         eq = MathTex(r"y = f(x)", font_size=44)
-        eq.next_to(method_title, DOWN, buff=1)
+        eq.next_to(method_title, DOWN, buff=LARGE_BUFF)
         self.play(Write(eq))
         self.wait(3)
         self.play(FadeOut(method_title, eq))
@@ -65,7 +68,7 @@ class PaperExplainer(Scene):
         self.next_section("Results")
 
         # TODO: Bar charts, training curves, comparison tables
-        results_title = Text("Results", font_size=48)
+        results_title = Text("Results")
         self.play(Write(results_title))
         self.wait(2)
         self.play(FadeOut(results_title))
