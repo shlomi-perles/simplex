@@ -32,7 +32,7 @@ class VT(ValueTracker):
         return self
 
 
-def DN(  # noqa: N802 -- mirrors the original `DN` shorthand
+def DN(  # noqa: N802 -- PascalCase to match Manim's animation/helper convention (FadeIn, Create, …)
     source: ValueTracker | Callable[[], float],
     *args: Any,
     **kwargs: Any,
@@ -49,9 +49,7 @@ def DN(  # noqa: N802 -- mirrors the original `DN` shorthand
     else:
         raise TypeError("DN source must be a ValueTracker or a zero-arg callable.")
     number = DecimalNumber(getter(), *args, **kwargs)
-    number.add_updater(
-        lambda m: m.set_value(getter())
-    )  # TODO: change to use `always` (manim v0.20.1)
+    number.add_updater(lambda m: m.set_value(getter()))
     return number
 
 
@@ -121,7 +119,7 @@ def maintain_apparent_stroke_width(
         def update(mob: Mobject) -> None:
             mob.set_stroke(width=original_width * original_camera_width / camera.frame.get_width())
 
-        mobject.add_updater(update)  # TODO: change to use `always` (manim v0.20.1)
+        mobject.add_updater(update)
         return mobject
 
     for sub in mobject.get_family():

@@ -6,7 +6,7 @@ pytest.importorskip("manim")
 
 from manim import Square
 
-from simplex.engine.scaling import scale_stroke_aware, scale_to_fit
+from simplex.engine.scaling import scale_to_fit
 
 
 def test_scale_to_fit_x_only() -> None:
@@ -31,8 +31,8 @@ def test_scale_to_fit_buff_subtracts_from_target() -> None:
     assert sq.width == pytest.approx(3.0)
 
 
-def test_scale_stroke_aware_doubles_stroke() -> None:
+def test_scale_to_fit_scales_stroke_with_native_api() -> None:
     sq = Square(side_length=1.0)
     initial_stroke = sq.get_stroke_width()
-    scale_stroke_aware(sq, 2.0)
+    scale_to_fit(sq, len_x=2.0, scale_stroke=True)
     assert sq.get_stroke_width() == pytest.approx(initial_stroke * 2.0)
