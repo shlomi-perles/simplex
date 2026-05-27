@@ -9,10 +9,9 @@ New mobjects:
   to any existing ``OpenGLSurface``.
 
 Named colormaps (passed as a string, e.g. ``colormap="viridis"``) are
-resolved through **matplotlib**. Any name accepted by
-``matplotlib.colormaps[name]`` works. Install matplotlib separately::
-
-    pip install matplotlib
+resolved through the lightweight ``cmap`` package. Any name accepted by
+``cmap.Colormap(name)`` works (all standard matplotlib names are
+supported without pulling in matplotlib itself).
 """
 
 from __future__ import annotations
@@ -53,19 +52,14 @@ def _resolve_colormap(colormap: str | Sequence, n_samples: int = _MPL_SAMPLES) -
     """Return a list of ``ManimColor`` objects from *colormap*.
 
     *colormap* is either a sequence of colors (hex strings, ManimColor,
-    or Manim color constants) or a **matplotlib colormap name** such as
+    or Manim color constants) or a **cmap colormap name** such as
     ``"viridis"``, ``"coolwarm"``, or ``"plasma"``.
     """
     if isinstance(colormap, str):
-        try:
-            import matplotlib as mpl  # type: ignore[import-untyped]
-        except ImportError:
-            raise ImportError(
-                f"matplotlib is required to use the named colormap {colormap!r}. "
-                "Install it with:  pip install matplotlib"
-            ) from None
-        cmap_obj = mpl.colormaps[colormap]  # type: ignore[attr-defined]
-        return [ManimColor(mpl.colors.to_hex(cmap_obj(t))) for t in np.linspace(0, 1, n_samples)]
+        from cmap import Colormap
+
+        cmap_obj = Colormap(colormap)
+        return [ManimColor(cmap_obj(t).hex) for t in np.linspace(0, 1, n_samples)]
     return [ManimColor(c) if isinstance(c, str) else c for c in colormap]
 
 
