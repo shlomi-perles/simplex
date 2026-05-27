@@ -10,16 +10,20 @@ from simplex.mobjects.array import ArrayEntry, ArrayMob, ArrayPointer
 from simplex.mobjects.graph import Edge, Node
 from simplex.mobjects.outline import OutlineProgressBar
 from simplex.mobjects.paper import DismissPaper, Paper, PickPage, ShowPaper
+from simplex.mobjects.surface import ColorBar, ScalarFieldSurface, colorize_surface
 
 __all__ = [
     "ArrayEntry",
     "ArrayMob",
     "ArrayPointer",
+    "ColorBar",
     "DismissPaper",
     "Edge",
     "Node",
     "OutlineProgressBar",
     "Paper",
     "PickPage",
+    "ScalarFieldSurface",
     "ShowPaper",
+    "colorize_surface",
 ]
