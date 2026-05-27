@@ -36,7 +36,7 @@ jobs:
     - run: uv build --no-sources
     - run: uvx twine check dist/*
     - name: Manim checkhealth
-      run: uv run --locked python -m manim checkhealth
+      run: echo n | uv run --locked python -m manim checkhealth
     - name: Plugin import smoke
       run: uv run --locked python -c "import simplex.plugin; simplex.plugin.activate(); print('ok')"
     - name: Plugin discovery smoke
