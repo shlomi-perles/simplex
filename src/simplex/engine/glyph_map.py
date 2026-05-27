@@ -335,5 +335,8 @@ class TransformByGlyphMap(AnimationGroup):
         self.mobA.restore()
         super().clean_up_from_scene(scene)
         # Re-attach mobB as a single parent rather than a bag of orphan submobs.
+        # Preserve z_index across the remove/add cycle so layering isn't reset.
+        saved_z = self.mobB.z_index
         scene.remove(self.mobB)
         scene.add(self.mobB)
+        self.mobB.z_index = saved_z

@@ -12,6 +12,7 @@ wraps content in a fixed-width ``{minipage}{<width>cm}`` environment for long
 prose.
 """
 
+import functools
 from collections.abc import Mapping
 from typing import Any, ClassVar
 
@@ -91,6 +92,11 @@ def search_shape_in_text(text: VMobject, shape: VMobject) -> list[list[slice]]:
     return results
 
 
+@functools.lru_cache(maxsize=256)
+def _build_probe(tex_class: type[Tex], substring: str) -> Tex:
+    return tex_class(substring)
+
+
 def color_tex(
     equation: Tex | MathTex,
     t2c: Mapping[str, str],
@@ -107,7 +113,7 @@ def color_tex(
     Returns ``equation`` so callers can chain.
     """
     for substring, color in t2c.items():
-        probe = tex_class(substring)
+        probe = _build_probe(tex_class, substring)  # type: ignore[arg-type]
         for line_idx, hits in enumerate(search_shape_in_text(equation, probe)):
             for span in hits:
                 equation[line_idx][span].set_color(color)

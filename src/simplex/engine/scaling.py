@@ -1,36 +1,17 @@
 """Multi-axis scaling helpers.
 
 Manim ships per-axis `scale_to_fit_width` / `_height` / `_depth` and a
-plain `scale`. These helpers add: (a) fitting against multiple target
-lengths simultaneously while keeping aspect, plus a buffer; (b) a scale
-that compensates the stroke width so a thin line stays a thin line.
+plain `scale`. These helpers add fitting against multiple target lengths
+simultaneously while keeping aspect, plus a buffer.
+
+Stroke-aware scaling uses Manim 0.19+'s native
+``mob.scale(factor, scale_stroke=True)`` -- no custom helper needed.
 """
 
 from typing import Any
 
 import numpy as np
-from manim import Mobject
-
-
-def scale_stroke_aware(
-    mobject: Mobject,
-    scale_factor: float = 1.0,
-    *,
-    scale_stroke_width: bool = True,
-) -> Mobject:
-    """``mobject.scale(...)`` that also rescales the stroke width across the family.
-
-    Manim's vanilla :meth:`Mobject.scale` keeps stroke widths constant in pixel
-    units, so a thin line stays the same thickness after shrinking, which is
-    usually wrong for diagrams. This helper multiplies each submobject's
-    stroke width by ``scale_factor`` before delegating to ``Mobject.scale``.
-    Pass ``scale_stroke_width=False`` to fall back to vanilla behaviour.
-    """
-    if scale_stroke_width:
-        for sub in mobject.get_family():
-            sub.set_stroke(width=sub.get_stroke_width() * scale_factor)
-    mobject.scale(scale_factor)
-    return mobject
+from manim import Mobject, VMobject
 
 
 def scale_to_fit(
@@ -43,7 +24,7 @@ def scale_to_fit(
     scaleback: float = 1.0,
     min_scale: float | None = None,
     max_scale: float | None = None,
-    scale_stroke_width: bool = False,
+    scale_stroke: bool = False,
 ) -> Mobject:
     """Uniformly scale `mobject` so it fits inside any subset of the given lengths.
 
@@ -63,7 +44,12 @@ def scale_to_fit(
         factors.append(factor)
     if not factors:
         return mobject
-    return scale_stroke_aware(mobject, min(factors), scale_stroke_width=scale_stroke_width)
+    factor = min(factors)
+    if scale_stroke and isinstance(mobject, VMobject):
+        mobject.scale(factor, scale_stroke=True)
+    else:
+        mobject.scale(factor)
+    return mobject
 
 
 def scale_to_fit_mobject(
@@ -81,4 +67,4 @@ def scale_to_fit_mobject(
     )
 
 
-__all__ = ["scale_stroke_aware", "scale_to_fit", "scale_to_fit_mobject"]
+__all__ = ["scale_to_fit", "scale_to_fit_mobject"]

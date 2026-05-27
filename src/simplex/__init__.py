@@ -64,7 +64,6 @@ _EXPORTS: dict[str, str] = {
     "make_chrome": "simplex.slides",
     "presets": "simplex.theme",
     "register_exit": "simplex.engine",
-    "scale_stroke_aware": "simplex.engine.scaling",
     "scale_to_fit": "simplex.engine.scaling",
     "scale_to_fit_mobject": "simplex.engine.scaling",
     "scaffold": "simplex.deck",
@@ -111,7 +110,7 @@ if TYPE_CHECKING:
     from simplex.engine.geometry import get_frame_center, get_surrounding_rectangle
     from simplex.engine.ghost_fade import GhostSlideFade
     from simplex.engine.glyph_map import TransformByGlyphMap
-    from simplex.engine.scaling import scale_stroke_aware, scale_to_fit, scale_to_fit_mobject
+    from simplex.engine.scaling import scale_to_fit, scale_to_fit_mobject
     from simplex.engine.text import Caption, TexPage, color_tex, search_shape_in_text
     from simplex.manifest import DeckManifest, MainSlide, Subsection
     from simplex.mobjects import (

@@ -26,7 +26,7 @@ Cross-package types live one level up:
 - `engine.glyph_map` -- `TransformByGlyphMap` (glyph-indexed Tex transitions)
 - `engine.ghost_fade` -- `GhostSlideFade` (one-shot fade-in/drift/fade-out cue)
 - `engine.dynamics` -- `VT` (`~`/`@`/`@=` over `ValueTracker`), `DN` (auto-tracking `DecimalNumber`), `keep_orientation`, `maintain_apparent_stroke_width`
-- `engine.scaling` -- `scale_to_fit` (multi-axis fit + buff), `scale_to_fit_mobject`, `scale_stroke_aware` (Manim's vanilla `scale` keeps stroke pixel-constant; this helper rescales stroke width across the family)
+- `engine.scaling` -- `scale_to_fit` (multi-axis fit + buff), `scale_to_fit_mobject`. For stroke-aware scaling use Manim's native `mob.scale(factor, scale_stroke=True)` (v0.19+)
 - `engine.debug` -- `bounding_box`, `indexx_labels` (multi-color), `debug_glyph(s)`
 
 ## Don't
