@@ -33,7 +33,9 @@ from manim import (
     VGroup,
 )
 from manim.opengl import OpenGLSurface
-from manim.utils.color import ManimColor, color_to_rgba, interpolate_color
+from manim.utils.color import ManimColor, ParsableManimColor, color_to_rgba, interpolate_color
+
+type _ScalarFunc = Callable[..., Any]
 
 __all__ = [
     "ColorBar",
@@ -48,7 +50,9 @@ _MPL_SAMPLES = 256
 # ── Internal helpers ──────────────────────────────────────────────
 
 
-def _resolve_colormap(colormap: str | Sequence, n_samples: int = _MPL_SAMPLES) -> list:
+def _resolve_colormap(
+    colormap: str | Sequence[ParsableManimColor], n_samples: int = _MPL_SAMPLES
+) -> list[ManimColor]:
     """Return a list of ``ManimColor`` objects from *colormap*.
 
     *colormap* is either a sequence of colors (hex strings, ManimColor,
@@ -60,10 +64,10 @@ def _resolve_colormap(colormap: str | Sequence, n_samples: int = _MPL_SAMPLES) -
 
         cmap_obj = Colormap(colormap)
         return [ManimColor(cmap_obj(t).hex) for t in np.linspace(0, 1, n_samples)]
-    return [ManimColor(c) if isinstance(c, str) else c for c in colormap]
+    return [ManimColor(c) for c in colormap]
 
 
-def _detect_arity(func: Callable) -> int:
+def _detect_arity(func: _ScalarFunc) -> int:
     sig = inspect.signature(func)
     return sum(
         1
@@ -75,7 +79,7 @@ def _detect_arity(func: Callable) -> int:
 
 def _scalars_to_rgba(
     scalars: np.ndarray,
-    colormap: list,
+    colormap: list[ManimColor],
     opacity: float,
     color_range: tuple[float, float] | None,
 ) -> np.ndarray:
@@ -98,7 +102,7 @@ def _scalars_to_rgba(
 
 
 def _eval_scalar_field(
-    func: Callable,
+    func: _ScalarFunc,
     surface: OpenGLSurface,
     arity: int,
 ) -> np.ndarray:
@@ -125,7 +129,7 @@ def _eval_scalar_field(
     return np.array([func(p[0], p[1], p[2]) for p in s_points])
 
 
-def _interpolate_cmap(cmap: list, t: float):
+def _interpolate_cmap(cmap: list[ManimColor], t: float) -> ManimColor:
     t = max(0.0, min(1.0, t))
     n = len(cmap)
     scaled = t * (n - 1)
@@ -140,8 +144,8 @@ def _interpolate_cmap(cmap: list, t: float):
 
 def colorize_surface(
     surface: OpenGLSurface,
-    color_func: Callable,
-    colormap: str | Sequence = (BLUE, GREEN, YELLOW, RED),
+    color_func: _ScalarFunc,
+    colormap: str | Sequence[ParsableManimColor] = (BLUE, GREEN, YELLOW, RED),
     color_range: tuple[float, float] | None = None,
 ) -> OpenGLSurface:
     """Apply scalar-field coloring to any ``OpenGLSurface``.
@@ -161,7 +165,7 @@ def colorize_surface(
     cmap = _resolve_colormap(colormap)
     arity = _detect_arity(color_func)
     scalars = _eval_scalar_field(color_func, surface, arity)
-    surface.color_by_val = _scalars_to_rgba(scalars, cmap, surface.opacity, color_range)
+    surface.color_by_val = _scalars_to_rgba(scalars, cmap, surface.opacity, color_range)  # type: ignore[assignment]  # ndarray accepted at runtime
     surface.colorscale = True
     return surface
 
@@ -191,14 +195,14 @@ class ScalarFieldSurface(OpenGLSurface):
 
     def __init__(
         self,
-        uv_func: Callable | None = None,
+        uv_func: _ScalarFunc | None = None,
         *,
-        color_func: Callable | str | None = None,
-        colormap: str | Sequence = (BLUE, GREEN, YELLOW, RED),
+        color_func: _ScalarFunc | str | None = None,
+        colormap: str | Sequence[ParsableManimColor] = (BLUE, GREEN, YELLOW, RED),
         color_range: tuple[float, float] | None = None,
         **kwargs: Any,
     ) -> None:
-        self._color_func = color_func
+        self._color_func: _ScalarFunc | str | None = color_func
         self._colormap = _resolve_colormap(colormap)
         self._color_range = color_range
         self._arity_cache: int | None = None
@@ -213,9 +217,9 @@ class ScalarFieldSurface(OpenGLSurface):
 
     def set_color_func(
         self,
-        color_func: Callable | str,
+        color_func: _ScalarFunc | str,
         *,
-        colormap: str | Sequence | None = None,
+        colormap: str | Sequence[ParsableManimColor] | None = None,
         color_range: tuple[float, float] | None = None,
     ) -> ScalarFieldSurface:
         """Replace the scalar-field function and recompute colors.
@@ -232,7 +236,7 @@ class ScalarFieldSurface(OpenGLSurface):
         self.refresh_colors()
         return self
 
-    def set_colormap(self, colormap: str | Sequence) -> ScalarFieldSurface:
+    def set_colormap(self, colormap: str | Sequence[ParsableManimColor]) -> ScalarFieldSurface:
         """Change the colormap and recompute."""
         self._colormap = _resolve_colormap(colormap)
         self.refresh_colors()
@@ -266,7 +270,7 @@ class ScalarFieldSurface(OpenGLSurface):
             return self
         arity = self._get_arity(func)
         scalars = _eval_scalar_field(func, self, arity)
-        self.color_by_val = _scalars_to_rgba(
+        self.color_by_val = _scalars_to_rgba(  # type: ignore[assignment]  # ndarray accepted at runtime
             scalars, self._colormap, self.opacity, self._color_range
         )
         self.colorscale = True
@@ -275,30 +279,30 @@ class ScalarFieldSurface(OpenGLSurface):
     # ── Preset factories ──────────────────────────────────────
 
     @staticmethod
-    def height_func() -> Callable:
+    def height_func() -> _ScalarFunc:
         """``(x, y, z) -> z``"""
         return lambda x, y, z: z
 
     @staticmethod
-    def distance_from(center: Sequence[float] = (0, 0, 0)) -> Callable:
+    def distance_from(center: Sequence[float] = (0, 0, 0)) -> _ScalarFunc:
         """``(x, y, z) -> euclidean distance to center``"""
         cx, cy, cz = float(center[0]), float(center[1]), float(center[2])
         return lambda x, y, z: np.sqrt((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2)
 
     @staticmethod
-    def angle_around(center: Sequence[float] = (0, 0)) -> Callable:
+    def angle_around(center: Sequence[float] = (0, 0)) -> _ScalarFunc:
         """``(x, y, z) -> atan2(y - cy, x - cx)``"""
         cx, cy = float(center[0]), float(center[1])
         return lambda x, y, z: np.arctan2(y - cy, x - cx)
 
     # ── Internals ─────────────────────────────────────────────
 
-    def _resolved_func(self) -> Callable | None:
+    def _resolved_func(self) -> _ScalarFunc | None:
         func = self._color_func
         if func is None:
             return None
         if isinstance(func, str):
-            presets: dict[str, Callable[[], Callable]] = {
+            presets: dict[str, Callable[[], _ScalarFunc]] = {
                 "height": self.height_func,
                 "radial": lambda: self.distance_from(),
                 "angle": lambda: self.angle_around(),
@@ -309,7 +313,7 @@ class ScalarFieldSurface(OpenGLSurface):
             return factory()
         return func
 
-    def _get_arity(self, func: Callable) -> int:
+    def _get_arity(self, func: _ScalarFunc) -> int:
         if self._arity_cache is not None:
             return self._arity_cache
         self._arity_cache = _detect_arity(func)
@@ -332,7 +336,7 @@ class ColorBar(VGroup):
 
     def __init__(
         self,
-        colormap: str | Sequence = (BLUE, GREEN, YELLOW, RED),
+        colormap: str | Sequence[ParsableManimColor] = (BLUE, GREEN, YELLOW, RED),
         min_value: float = 0.0,
         max_value: float = 1.0,
         *,
