@@ -53,6 +53,8 @@ dependencies = [
   # directly so we pin them here too.
   "av>=15.0",
   "pillow>=11.0",
+  # Lightweight colormap resolution for ScalarFieldSurface / ColorBar.
+  "cmap>=0.5",
 ]
 description = "Manim plugin and lecture-site CLI for Simplex presentations."
 keywords = [
