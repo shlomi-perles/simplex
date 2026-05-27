@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Self, cast
 
 import numpy as np
-import pymupdf
+import pypdfium2 as pdfium
 from manim import (
     DL,
     DOWN,
@@ -122,16 +122,14 @@ def _render_pages(
     cache.mkdir(parents=True, exist_ok=True)
 
     rendered: list[Path] = []
-    doc = pymupdf.open(pdf_path)
+    doc = pdfium.PdfDocument(pdf_path)
     n = min(pages, len(doc))
+    scale = dpi / 72.0
     for i in range(n):
         out = cache / f"page_{i}_dpi{dpi}.png"
         if not out.exists():
-            page = doc[i]
-            zoom = dpi / 72.0
-            mat = pymupdf.Matrix(zoom, zoom)
-            pix = page.get_pixmap(matrix=mat, alpha=False)
-            pix.save(out)
+            bitmap = doc[i].render(scale=scale)
+            bitmap.to_pil().save(out)
             logger.info("Rendered %s page %d → %s", pdf_path.name, i, out)
         rendered.append(out)
     doc.close()
