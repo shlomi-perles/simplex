@@ -22,16 +22,26 @@ from simplex.mobjects.paper import (
 @pytest.fixture
 def sample_pdf(tmp_path: Path) -> Path:
     """Create a minimal multi-page PDF for testing."""
-    import pymupdf
+    import ctypes
+
+    import pypdfium2 as pdfium
+    import pypdfium2.raw as pdfium_c
 
     pdf_path = tmp_path / "test.pdf"
-    doc = pymupdf.open()
+    doc = pdfium.PdfDocument.new()
+    font = pdfium.PdfFont.load_standard(doc, "Helvetica")
     for i in range(5):
-        page = doc.new_page(width=612, height=792)
-        tw = pymupdf.TextWriter(page.rect)
-        tw.append((72, 72), f"Page {i + 1}", fontsize=24)
-        tw.write_text(page)
-    doc.save(pdf_path)
+        page = doc.new_page(612, 792)
+        text = f"Page {i + 1}"
+        raw_obj = pdfium_c.FPDFPageObj_CreateTextObj(doc.raw, font.raw, 24.0)
+        encoded = (text + "\x00").encode("utf-16-le")
+        buf = ctypes.create_string_buffer(encoded)
+        pdfium_c.FPDFText_SetText(raw_obj, ctypes.cast(buf, ctypes.POINTER(ctypes.c_ushort)))
+        pdfium_c.FPDFPageObj_Transform(raw_obj, 1, 0, 0, 1, 72, 720)
+        pdfium_c.FPDFPage_InsertObject(page.raw, raw_obj)
+        pdfium_c.FPDFPage_GenerateContent(page.raw)
+    with pdf_path.open("wb") as f:
+        doc.save(f)
     doc.close()
     return pdf_path
 
