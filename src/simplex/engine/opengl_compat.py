@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypeGuard
+from typing import Any, TypeGuard, cast
 
 import numpy as np
 from manim import Mobject, VMobject
@@ -30,9 +30,9 @@ def critical_point(mobject: MobjectLike, direction: np.ndarray) -> np.ndarray:
     same concept as ``get_bounding_box_point``.
     """
     if hasattr(mobject, "get_critical_point"):
-        return np.asarray(mobject.get_critical_point(direction), dtype=float)
+        return np.asarray(cast(Any, mobject).get_critical_point(direction), dtype=float)
     if hasattr(mobject, "get_bounding_box_point"):
-        return np.asarray(mobject.get_bounding_box_point(direction), dtype=float)
+        return np.asarray(cast(Any, mobject).get_bounding_box_point(direction), dtype=float)
     raise TypeError(f"{type(mobject).__name__} has no critical-point API")
 
 

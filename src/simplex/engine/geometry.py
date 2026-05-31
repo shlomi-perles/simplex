@@ -12,7 +12,7 @@ sticks to additions that Manim does not provide:
 """
 
 from copy import deepcopy
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from manim import (
@@ -41,8 +41,10 @@ def get_surrounding_rectangle(
 ) -> Rectangle:
     """A rotated `SurroundingRectangle` whose long edge spans the segment a -> b."""
     rect_height = float(np.linalg.norm(a.get_center() - b.get_center()))
-    b_aligned = b.copy().match_x(a)
-    rect = SurroundingRectangle(VGroup(a, b_aligned), **kwargs).scale_to_fit_height(rect_height)
+    b_aligned = cast(Any, b.copy()).match_x(cast(Any, a))
+    rect = SurroundingRectangle(VGroup(cast(Any, a), b_aligned), **kwargs).scale_to_fit_height(
+        rect_height
+    )
     angle = angle_of_vector(a.get_center() - b.get_center())
     rect.rotate(angle, about_point=a.get_center())
     return rect
@@ -150,7 +152,7 @@ class SurroundingRectangleUnion(VGroup, metaclass=ConvertToOpenGL):
         corner_radius: float = 0.0,
         **kwargs: Any,
     ) -> None:
-        rects = VGroup(*(SurroundingRectangle(m, buff=buff) for m in mobjects))
+        rects = VGroup(*(SurroundingRectangle(cast(Any, m), buff=buff) for m in mobjects))
         union = Union(*rects, **kwargs) if len(rects) > 1 else rects[0]
 
         # Manim's ``Union`` is itself a VMobject; ``get_subpaths`` splits its
