@@ -426,8 +426,9 @@ def _refit_background(code: Code) -> None:
     # of the rectangle. ``become`` walks the entire family and would
     # collapse those decorations onto the origin, so we detach them
     # before the replacement and re-add them after.
-    decorations = list(background.submobjects)
-    background.remove(*decorations)
+    background_mobject = cast(Any, background)
+    decorations = list(background_mobject.submobjects)
+    background_mobject.remove(*decorations)
     replacement_config: dict[str, Any] = {
         "buff": getattr(background, "buff", 0.3),
         "stroke_width": background.get_stroke_width(),
@@ -438,10 +439,10 @@ def _refit_background(code: Code) -> None:
         replacement_config["color"] = stroke_color
     replacement_config["fill_color"] = background.get_fill_color()
     bounds = VGroup(inner, *decorations) if decorations else inner
-    replacement = SurroundingRectangle(bounds, **replacement_config)
-    background.become(replacement)
+    replacement = SurroundingRectangle(cast(Any, bounds), **replacement_config)
+    background_mobject.become(replacement)
     if decorations:
-        background.add(*decorations)
+        background_mobject.add(*decorations)
 
 
 def transform_code_lines(
