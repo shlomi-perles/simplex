@@ -4,6 +4,24 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.6.0...manim-simplex-v0.7.0) (2026-05-31)
+
+
+### Features
+
+* add ManimCE OpenGL compatibility ([cbfcf2d](https://github.com/shlomi-perles/simplex/commit/cbfcf2dd36269d68e6f17e82297d37b8dc6a986d))
+* add ScalarFieldSurface, ColorBar, and colorize_surface ([fb64295](https://github.com/shlomi-perles/simplex/commit/fb64295239772e969c3e2c282657bf19a77e03cc))
+* enhance CI workflow with Manim health check and update scaling functions for stroke awareness ([256d81a](https://github.com/shlomi-perles/simplex/commit/256d81ad3629e7098cd5d988ff6ff52025b2c5cf))
+
+
+### Bug Fixes
+
+* add type annotations to surface.py to resolve basedpyright errors ([09439f8](https://github.com/shlomi-perles/simplex/commit/09439f8f58ead9be3a4ece366847aa8576e2a1f1))
+* **ci:** pipe 'n' to manim checkhealth to avoid interactive prompt ([3ec06e0](https://github.com/shlomi-perles/simplex/commit/3ec06e08b2ffd033dd872c5254cae3778a376176))
+* interpolate vertex colors smoothly during animations ([0f8befe](https://github.com/shlomi-perles/simplex/commit/0f8befeff0a55c7da0bc61308be8b3398c60e195))
+* satisfy OpenGL compatibility type checks ([521a50d](https://github.com/shlomi-perles/simplex/commit/521a50dd8d2099bdbfda2800b8401ee9af403e3f))
+* skip OpenGL smoke renders in headless CI ([f5aa90e](https://github.com/shlomi-perles/simplex/commit/f5aa90ef611e8f2adaf97bce15047ee2e6aecad8))
+
 ## [0.6.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.5.0...manim-simplex-v0.6.0) (2026-05-26)
 
 
