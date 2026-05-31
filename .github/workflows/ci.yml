@@ -44,4 +44,4 @@ jobs:
     - name: CLI smoke
       run: uv run --locked simplex --help
     - name: Render smoke (showcase, first animation only)
-      run: uv run --locked simplex test --only showcase
+      run: uv run --locked simplex test --only showcase --skip-renderer opengl

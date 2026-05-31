@@ -102,6 +102,7 @@ def render(
     *,
     output_dir: Path,
     scenes: tuple[str, ...] = (),
+    skip_renderers: tuple[str, ...] = (),
     write_last_frame: bool = False,
 ) -> None:
     """Render every scene in ``deck`` into ``output_dir`` via manim-slides.
@@ -115,6 +116,11 @@ def render(
         raise ValueError(f"deck {deck.slug!r} has no scenes/entrypoints configured")
     if scenes:
         groups = _filter_groups(groups, scenes)
+    if skip_renderers:
+        skipped = set(skip_renderers)
+        groups = tuple(group for group in groups if group.renderer not in skipped)
+        if not groups:
+            return
     output_dir.mkdir(parents=True, exist_ok=True)
     media_dir = output_dir.resolve()
     quality = _quality_flag(deck.quality)

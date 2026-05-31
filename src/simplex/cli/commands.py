@@ -178,6 +178,13 @@ def test(
         list[str] | None,
         typer.Option("--only", help="Only test this deck slug. Repeatable."),
     ] = None,
+    skip_renderer: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--skip-renderer",
+            help="Skip this renderer during smoke tests. Repeatable.",
+        ),
+    ] = None,
 ) -> None:
     """Smoke-render every deck by rendering only the first animation.
 
@@ -195,7 +202,12 @@ def test(
                 continue
             out = _SITE / "decks" / deck.slug
             try:
-                runner.render(deck, output_dir=out, write_last_frame=True)
+                runner.render(
+                    deck,
+                    output_dir=out,
+                    skip_renderers=tuple(skip_renderer or ()),
+                    write_last_frame=True,
+                )
                 console.print(f"[green]ok[/green]   {deck.slug}")
             except (subprocess.CalledProcessError, ValueError) as exc:
                 failures.append((deck.slug, str(exc)))

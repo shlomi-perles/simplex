@@ -180,3 +180,13 @@ def test_render_opengl_entrypoint_adds_renderer_and_movie_flags(
     assert "--renderer=opengl" in args
     assert "--write_to_movie" in args
     assert args[-1] == "Surface"
+
+
+def test_render_skip_renderer_omits_matching_groups(
+    tmp_path: Path,
+    captured: list[dict[str, Any]],
+) -> None:
+    deck = _opengl_deck(tmp_path)
+    runner.render(deck, output_dir=tmp_path / "out", skip_renderers=("opengl",))
+
+    assert captured == []
