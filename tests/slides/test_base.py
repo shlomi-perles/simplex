@@ -1,4 +1,4 @@
-"""BaseSlide section-type resolution -- auto-promotion to MAIN on first call.
+"""Slide section-type resolution -- auto-promotion to MAIN on first call.
 
 Tests the ``_resolve_section_type`` method directly via a minimal stub
 holding the only state it reads (``_current_main``). This isolates the
@@ -15,20 +15,20 @@ pytest.importorskip("manim_slides")
 
 from simplex.engine.region import Region
 from simplex.section import SimplexSectionType
-from simplex.slides.base import BaseSlide, _pretty_class_name
+from simplex.slides.base import Slide, _pretty_class_name
 
 
 class _MiniSlide:
-    """Holds ``_current_main`` and borrows BaseSlide's resolver."""
+    """Holds ``_current_main`` and borrows Slide's resolver."""
 
-    _resolve_section_type = BaseSlide._resolve_section_type
+    _resolve_section_type = Slide._resolve_section_type
 
     def __init__(self) -> None:
         self._current_main: str | None = None
 
 
 class _ChromeSlide:
-    setup_chrome = BaseSlide.setup_chrome
+    setup_chrome = Slide.setup_chrome
 
     def __init__(self) -> None:
         self.header = None

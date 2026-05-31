@@ -36,10 +36,12 @@ from manim import (
     smooth,
 )
 from manim.camera.camera import Camera
-from manim.mobject.mobject import Mobject
+from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 from manim.utils.color import ParsableManimColor
 from manim.utils.tex_file_writing import tex_hash
 from PIL import ImageFilter
+
+from simplex.engine.opengl_compat import MobjectLike
 
 logger = logging.getLogger("simplex.paper")
 
@@ -137,7 +139,7 @@ def _render_pages(
 
 
 def _blurred_mobject_image(
-    mobjects: Sequence[Mobject],
+    mobjects: Sequence[MobjectLike],
     *,
     blur_radius: float,
     scale_first: float,
@@ -179,7 +181,7 @@ def _blurred_mobject_image(
 # ---------------------------------------------------------------------------
 
 
-class Paper(Group):
+class Paper(Group, metaclass=ConvertToOpenGL):
     """A stack of rendered PDF pages displayed as ``ImageMobject`` instances.
 
     Parameters

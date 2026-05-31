@@ -1,6 +1,6 @@
 # mobjects/
 
-Re-usable Simplex mobjects. Mirrors Manim's own `manim.mobject.*`
+Reusable Simplex mobjects. Mirrors Manim's own `manim.mobject.*`
 namespace convention.
 
 ## Public surface
@@ -23,7 +23,7 @@ namespace convention.
 - All mobjects pull colors / strokes / fonts from
   `simplex.theme.context.get_active_theme()` at construction time.
 - All mobjects are vanilla `VMobject` subclasses; they work in any
-  `Scene`, not just `BaseSlide`.
+  `Scene`, not just `Slide`.
 - Exit animations are registered via
   `simplex.engine.animations.set_exit_animation` (no monkey-patching).
 

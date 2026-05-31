@@ -11,7 +11,9 @@ Stroke-aware scaling uses Manim 0.19+'s native
 from typing import Any
 
 import numpy as np
-from manim import Mobject, VMobject
+from manim import Mobject
+
+from simplex.engine.opengl_compat import is_vmobject
 
 
 def scale_to_fit(
@@ -45,7 +47,7 @@ def scale_to_fit(
     if not factors:
         return mobject
     factor = min(factors)
-    if scale_stroke and isinstance(mobject, VMobject):
+    if scale_stroke and is_vmobject(mobject):
         mobject.scale(factor, scale_stroke=True)
     else:
         mobject.scale(factor)

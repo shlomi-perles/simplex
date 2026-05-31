@@ -19,7 +19,7 @@ It contains both halves of the product:
 
 Do not split this import root across multiple distributions. The top-level
 `simplex.__init__` facade is intentionally lazy so authoring imports stay
-pleasant (`from simplex import BaseSlide`) while CLI and web modules do not
+pleasant (`from simplex import Slide`) while CLI and web modules do not
 eagerly import Manim.
 
 ## Don't

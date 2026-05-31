@@ -1,11 +1,11 @@
 """Minimal Simplex deck: one main slide, one sub-stop.
 
 Demonstrates:
-- `BaseSlide.next_slide()` -- first bare call auto-promotes to a main
+- `Slide.next_slide()` -- first bare call auto-promotes to a main
   slide named after the scene class with spaces between PascalCase
   boundaries (``HelloSlide`` -> ``"Hello Slide"``). Pass ``name=`` to
   override the name.
-- `BaseSlide.next_slide()` -- subsequent bare call -> sub-stop of the
+- `Slide.next_slide()` -- subsequent bare call -> sub-stop of the
   current main (RevealJS vertical navigation).
 - `region.place(...)` to position via a Manim direction vector.
 - `Region` body shrunk by `make_chrome` for a clean header + body band.
@@ -13,10 +13,10 @@ Demonstrates:
 
 from manim import ORIGIN, MathTex, Write
 
-from simplex import BaseSlide, make_chrome, presets
+from simplex import Slide, make_chrome, presets
 
 
-class HelloSlide(BaseSlide):
+class HelloSlide(Slide):
     def setup(self) -> None:
         super().setup()
         chrome = make_chrome(presets.SIMPLEX_DARK, self.region, header="Hello, Simplex")

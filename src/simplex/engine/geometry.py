@@ -20,7 +20,6 @@ from manim import (
     LEFT,
     RIGHT,
     UP,
-    Mobject,
     Polygon,
     Rectangle,
     SurroundingRectangle,
@@ -29,12 +28,15 @@ from manim import (
     VMobject,
     config,
 )
+from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 from manim.utils.space_ops import angle_of_vector, normalize
+
+from simplex.engine.opengl_compat import MobjectLike, VMobjectLike, is_mobject
 
 
 def get_surrounding_rectangle(
-    a: VMobject,
-    b: VMobject,
+    a: VMobjectLike,
+    b: VMobjectLike,
     **kwargs: Any,
 ) -> Rectangle:
     """A rotated `SurroundingRectangle` whose long edge spans the segment a -> b."""
@@ -47,7 +49,7 @@ def get_surrounding_rectangle(
 
 
 def _edge_point(
-    obj: Mobject | np.ndarray | None,
+    obj: MobjectLike | np.ndarray | None,
     fallback_dir: np.ndarray,
     getter_name: str,
 ) -> np.ndarray:
@@ -66,17 +68,17 @@ def _edge_point(
         if np.array_equal(fallback_dir, DOWN):
             return np.array([0.0, -half_h, 0.0])
         return np.array([0.0, 0.0, 0.0])
-    if isinstance(obj, Mobject):
+    if is_mobject(obj):
         return getattr(obj, getter_name)()
     return np.asarray(obj, dtype=float)
 
 
 def get_frame_center(
     *,
-    left: Mobject | np.ndarray | None = None,
-    right: Mobject | np.ndarray | None = None,
-    top: Mobject | np.ndarray | None = None,
-    bottom: Mobject | np.ndarray | None = None,
+    left: MobjectLike | np.ndarray | None = None,
+    right: MobjectLike | np.ndarray | None = None,
+    top: MobjectLike | np.ndarray | None = None,
+    bottom: MobjectLike | np.ndarray | None = None,
 ) -> np.ndarray:
     """Center of the rectangle defined by the four edges.
 
@@ -98,7 +100,7 @@ def get_frame_center(
     )
 
 
-class Arc3d(VMobject):
+class Arc3d(VMobject, metaclass=ConvertToOpenGL):
     """A 3D arc spanning from `a` to `b` along a fixed-radius sphere about `center`.
 
     Manim's `ArcBetweenPoints` is implicitly 2D. This walks the chord in
@@ -128,7 +130,7 @@ class Arc3d(VMobject):
             self.add_smooth_curve_to(center + normalize(chord_pt - center) * radius)
 
 
-class SurroundingRectangleUnion(VGroup):
+class SurroundingRectangleUnion(VGroup, metaclass=ConvertToOpenGL):
     """One or more polygons that together surround all `mobjects`.
 
     Build a `SurroundingRectangle` per mobject, union them with Manim's
@@ -142,7 +144,7 @@ class SurroundingRectangleUnion(VGroup):
 
     def __init__(
         self,
-        *mobjects: Mobject,
+        *mobjects: MobjectLike,
         buff: float = 0.1,
         unbuff: float = 0.05,
         corner_radius: float = 0.0,

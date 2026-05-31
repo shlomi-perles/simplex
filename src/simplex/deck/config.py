@@ -4,6 +4,9 @@ Two scene-list spellings are accepted:
 
 - ``entrypoints = ["slides.intro:Title", ...]`` -- preferred, points at scene
   classes inside the deck's ``slides/`` package.
+- ``[[entrypoints]]`` tables -- preferred when a scene needs non-default
+  renderer metadata, e.g. ``target = "slides.surface:Surface"; renderer =
+  "opengl"``.
 - ``scenes = ["Title", ...]`` -- legacy, bare class names in a top-level
   ``slides.py``. Kept for backwards compatibility with the single-file layout.
 
@@ -18,11 +21,12 @@ Three nested override types tune per-deck or per-main-slide behaviour:
   merges with the active theme's defaults field-by-field.
 """
 
+import ast
 import re
 import tomllib
 from datetime import date
 from pathlib import Path
-from typing import Self
+from typing import Literal, NamedTuple, Self
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from pygments.style import Style
@@ -32,6 +36,42 @@ from simplex.theme.tokens import WebPalette
 
 _SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _ENTRYPOINT = re.compile(r"^[A-Za-z_][\w.]*:[A-Za-z_]\w*$")
+type RendererName = Literal["cairo", "opengl"]
+
+
+class ResolvedSceneGroup(NamedTuple):
+    """A renderable batch of scene classes sharing one source file and renderer."""
+
+    source_file: Path
+    scene_names: tuple[str, ...]
+    renderer: RendererName
+
+
+class SceneEntrypoint(BaseModel):
+    """One scene class entrypoint, optionally pinned to a ManimCE renderer."""
+
+    model_config = ConfigDict(frozen=True)
+    target: str
+    renderer: RendererName | None = None
+
+    @field_validator("target")
+    @classmethod
+    def _target_format(cls, value: str) -> str:
+        if not _ENTRYPOINT.match(value):
+            raise ValueError(f"entrypoint must be 'module[.sub]:ClassName', got {value!r}")
+        return value
+
+    @field_validator("renderer", mode="before")
+    @classmethod
+    def _renderer_format(cls, value: object) -> object:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("renderer must be 'cairo' or 'opengl'")
+        renderer = value.lower()
+        if renderer not in {"cairo", "opengl"}:
+            raise ValueError("renderer must be 'cairo' or 'opengl'")
+        return renderer
 
 
 class SlideOverride(BaseModel):
@@ -107,7 +147,7 @@ class DeckConfig(BaseModel):
     tags: tuple[str, ...] = ()
     theme: str = "simplex_dark"
     scenes: tuple[str, ...] = ()
-    entrypoints: tuple[str, ...] = ()
+    entrypoints: tuple[SceneEntrypoint, ...] = ()
     quality: str = "high_quality"
     voiceover: bool = False
     category: str | None = None
@@ -133,12 +173,13 @@ class DeckConfig(BaseModel):
             raise ValueError(f"slug must be kebab-case (a-z0-9 with single hyphens), got {value!r}")
         return value
 
-    @field_validator("entrypoints")
+    @field_validator("entrypoints", mode="before")
     @classmethod
-    def _entrypoint_format(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        for ep in value:
-            if not _ENTRYPOINT.match(ep):
-                raise ValueError(f"entrypoint must be 'module[.sub]:ClassName', got {ep!r}")
+    def _entrypoint_format(cls, value: object) -> object:
+        if value is None:
+            return ()
+        if isinstance(value, tuple | list):
+            return [{"target": item} if isinstance(item, str) else item for item in value]
         return value
 
     @model_validator(mode="after")
@@ -148,23 +189,47 @@ class DeckConfig(BaseModel):
     @property
     def scene_specs(self) -> tuple[str, ...]:
         """Return entrypoints if present, else legacy ``slides.py``-relative scenes."""
+        return tuple(ep.target for ep in self.scene_entrypoints)
+
+    @property
+    def scene_entrypoints(self) -> tuple[SceneEntrypoint, ...]:
+        """Return normalized scene entrypoints from new or legacy config."""
         if self.entrypoints:
             return self.entrypoints
-        return tuple(f"slides:{name}" for name in self.scenes)
+        return tuple(SceneEntrypoint(target=f"slides:{name}") for name in self.scenes)
 
     @property
     def scene_class_names(self) -> tuple[str, ...]:
         """Bare class names extracted from ``scene_specs``."""
         return tuple(spec.rsplit(":", 1)[-1] for spec in self.scene_specs)
 
-    def resolve_entrypoints(self) -> tuple[tuple[Path, tuple[str, ...]], ...]:
-        """Group entrypoints by their source file, in declaration order."""
-        groups: dict[Path, list[str]] = {}
-        for spec in self.scene_specs:
-            module, _, class_name = spec.partition(":")
+    def resolve_entrypoints(self) -> tuple[ResolvedSceneGroup, ...]:
+        """Group entrypoints by source file and resolved renderer."""
+        groups: dict[tuple[Path, RendererName], list[str]] = {}
+        source_renderers: dict[Path, RendererName | None] = {}
+        for entrypoint in self.scene_entrypoints:
+            module, _, class_name = entrypoint.target.partition(":")
             file_path = self._module_to_file(module)
-            groups.setdefault(file_path, []).append(class_name)
-        return tuple((file_path, tuple(names)) for file_path, names in groups.items())
+            source_renderer = source_renderers.setdefault(
+                file_path,
+                detect_source_renderer(file_path),
+            )
+            if (
+                entrypoint.renderer is not None
+                and source_renderer is not None
+                and entrypoint.renderer != source_renderer
+            ):
+                raise ValueError(
+                    f"deck {self.slug!r}: entrypoint {entrypoint.target!r} declares "
+                    f"renderer={entrypoint.renderer!r}, but {file_path} sets "
+                    f"config.renderer={source_renderer!r}"
+                )
+            renderer = entrypoint.renderer or source_renderer or "cairo"
+            groups.setdefault((file_path, renderer), []).append(class_name)
+        return tuple(
+            ResolvedSceneGroup(source_file=file_path, scene_names=tuple(names), renderer=renderer)
+            for (file_path, renderer), names in groups.items()
+        )
 
     def resolved_web_palette(self) -> WebPalette:
         """Merge per-deck ``web`` overrides over the active theme's palette.
@@ -224,3 +289,52 @@ class DeckConfig(BaseModel):
         toml_path = deck_dir / "deck.toml"
         data = tomllib.loads(toml_path.read_text(encoding="utf-8"))
         return cls(**data, path=deck_dir, section_slug=section_slug)
+
+
+def detect_source_renderer(source_file: Path) -> RendererName | None:
+    """Read simple top-level ``config.renderer = "..."`` assignments.
+
+    This preserves Manim-style file-level renderer opt-in for standalone scene
+    authoring while letting deck metadata remain the preferred source of truth.
+    """
+    try:
+        tree = ast.parse(source_file.read_text(encoding="utf-8"), filename=str(source_file))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return None
+
+    renderer: RendererName | None = None
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            if any(_is_config_renderer_target(target) for target in node.targets):
+                renderer = _renderer_literal(node.value) or renderer
+        elif isinstance(node, ast.AnnAssign) and _is_config_renderer_target(node.target):
+            renderer = _renderer_literal(node.value) or renderer
+    return renderer
+
+
+def _is_config_renderer_target(target: ast.AST) -> bool:
+    if isinstance(target, ast.Attribute):
+        return (
+            isinstance(target.value, ast.Name)
+            and target.value.id == "config"
+            and target.attr == "renderer"
+        )
+    if isinstance(target, ast.Subscript):
+        return (
+            isinstance(target.value, ast.Name)
+            and target.value.id == "config"
+            and isinstance(target.slice, ast.Constant)
+            and target.slice.value == "renderer"
+        )
+    return False
+
+
+def _renderer_literal(value: ast.AST | None) -> RendererName | None:
+    if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+        return None
+    renderer = value.value.lower()
+    if renderer == "cairo":
+        return "cairo"
+    if renderer == "opengl":
+        return "opengl"
+    return None

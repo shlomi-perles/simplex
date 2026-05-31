@@ -12,22 +12,24 @@ renderer:
 from manim import *
 from manim.opengl import *
 
-from simplex.engine.scaling import scale_to_fit
-from simplex.engine.text import Caption
-from simplex.mobjects.surface import ColorBar, ScalarFieldSurface, colorize_surface
-from simplex.slides import BaseSlide
-
 config.renderer = "opengl"
 config.write_to_movie = True
 
+from simplex import ThreeDSlide
+from simplex.engine.region import Region
+from simplex.engine.scaling import scale_to_fit_mobject
+from simplex.engine.text import Caption
+from simplex.mobjects.surface import ColorBar, ScalarFieldSurface, colorize_surface
 
-class SurfaceColoring(BaseSlide, ThreeDScene):
+
+class SurfaceColoring(ThreeDSlide):
     """ScalarFieldSurface + ColorBar + colorize_surface with matplotlib colormaps."""
 
     def setup(self) -> None:
         super().setup()
 
     def construct(self) -> None:
+        self.region = Region.full_frame().fix_in_frame()
         # ── Sub-slide 1: ScalarFieldSurface with height coloring ──
         self.set_camera_orientation(phi=60 * DEGREES, theta=-45 * DEGREES)
 
@@ -50,29 +52,25 @@ class SurfaceColoring(BaseSlide, ThreeDScene):
         ).to_edge(RIGHT, buff=0.4)
         self.add_fixed_in_frame_mobjects(bar)
 
-        self.play(FadeIn(surface), FadeIn(bar))
+        self.play(Create(surface), Write(bar))
         self.next_slide()
 
         # ── Sub-slide 2: live colormap switch ─────────────────────
         self.begin_ambient_camera_rotation(rate=0.15)
         self.wait(2)
-        self.stop_ambient_camera_rotation()
 
-        surface.set_colormap("viridis")
         new_bar = ColorBar(
             colormap="viridis",
             min_value=-1,
             max_value=1,
             height=2.8,
-        ).to_edge(RIGHT, buff=0.4)
-        self.add_fixed_in_frame_mobjects(new_bar)
-        self.play(FadeOut(bar), FadeIn(new_bar))
-        bar = new_bar
+        ).move_to(bar)
+
+        new_bar.fix_in_frame()  # Keep the new bar fixed in the frame during the transformation
+        self.play(ReplacementTransform(bar, new_bar), surface.animate.set_colormap("viridis"))
         self.next_slide()
 
         # ── Sub-slide 3: colorize_surface on a plain OpenGLSurface ─
-        self.play(FadeOut(surface), FadeOut(bar))
-        self.remove_fixed_in_frame_mobjects(bar)
 
         plain = OpenGLSurface(
             lambda u, v: np.array([u, v, np.exp(-(u**2 + v**2))]),
@@ -88,19 +86,23 @@ class SurfaceColoring(BaseSlide, ThreeDScene):
         )
 
         bar2 = ColorBar(colormap="plasma", min_value=0, max_value=4, height=2.8)
-        bar2.to_edge(RIGHT, buff=0.4)
-        self.add_fixed_in_frame_mobjects(bar2)
+        bar2.align_to(new_bar, LEFT).match_y(new_bar)
 
-        self.play(FadeIn(plain), FadeIn(bar2))
+        bar2.fix_in_frame()
+        self.play(ReplacementTransform(new_bar, bar2), ReplacementTransform(surface, plain))
         self.begin_ambient_camera_rotation(rate=0.2)
         self.wait(2)
-        self.stop_ambient_camera_rotation()
         self.next_slide()
 
         self.play(FadeOut(plain), FadeOut(bar2))
-        self.remove_fixed_in_frame_mobjects(bar2)
+        # self.remove_fixed_in_frame_mobjects(bar)
 
         # ── Sub-slide 4: matplotlib colormap gallery ──────────────
+        title = Tex(r"Any \texttt{matplotlib} colormap works out of the box")
+        title.scale_to_fit_width(self.region.width * 0.7)
+        self.region.place(title, UP)
+        self.region.update(top=title)
+
         cmap_names = ["viridis", "plasma", "coolwarm", "inferno", "twilight"]
         gallery = VGroup()
 
@@ -116,23 +118,18 @@ class SurfaceColoring(BaseSlide, ThreeDScene):
                 font_size=18,
             )
             label = Caption(name.replace("_", r"\_"))
-            label.scale(0.7)
-            label.next_to(cb, DOWN, buff=0.25)
+            label.scale_to_fit_width(cb.width * 1.2).next_to(cb, DOWN)
             col.add(cb, label)
             gallery.add(col)
 
         gallery.arrange(RIGHT, buff=0.7)
-        scale_to_fit(gallery, len_x=11, len_y=4.5)
-        gallery.move_to(ORIGIN)
+        scale_to_fit_mobject(gallery, self.region, buff=LARGE_BUFF)
+        self.region.place(gallery)
 
-        title = Tex(r"Any \texttt{matplotlib} colormap works out of the box")
-        title.scale(0.75)
-        title.next_to(gallery, UP, buff=0.35)
-
-        self.add_fixed_in_frame_mobjects(title, gallery)
+        title.fix_in_frame()
+        gallery.fix_in_frame()
         self.play(Write(title), FadeIn(gallery))
         self.next_slide()
 
-        self.remove_fixed_in_frame_mobjects(title, gallery)
         self.play(FadeOut(title), FadeOut(gallery))
         self.clear_scene()

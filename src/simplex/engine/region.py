@@ -12,8 +12,11 @@ from typing import Any, Self
 
 import numpy as np
 from manim import Mobject, Rectangle
+from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 
-type EdgeValue = float | np.ndarray | Iterable[float] | Mobject
+from simplex.engine.opengl_compat import MobjectLike, critical_point, is_mobject
+
+type EdgeValue = float | np.ndarray | Iterable[float] | MobjectLike
 
 _EDGE_SPECS = {
     "top": (1, "get_bottom"),
@@ -42,7 +45,7 @@ def _as_dir(anchor: np.ndarray | Iterable[float]) -> np.ndarray:
 
 
 def _edge_coordinate(value: EdgeValue, axis: int, getter_name: str) -> float:
-    if isinstance(value, Mobject):
+    if is_mobject(value):
         value = getattr(value, getter_name)()
     if isinstance(value, Real):
         return float(value)
@@ -58,7 +61,7 @@ def _edge_value(edge: str, value: EdgeValue) -> float:
     return _edge_coordinate(value, axis, getter_name)
 
 
-class Region(Rectangle):
+class Region(Rectangle, metaclass=ConvertToOpenGL):
     """A transparent, mutable, axis-aligned region in Manim frame coordinates."""
 
     def __init__(
@@ -153,7 +156,7 @@ class Region(Rectangle):
 
     def _anchor_point(self, direction: np.ndarray) -> np.ndarray:
         """Map a normalized direction vector to the matching point of this region."""
-        return self.get_critical_point(direction)
+        return critical_point(self, direction)
 
     def place(
         self,
@@ -169,7 +172,7 @@ class Region(Rectangle):
         from manim import ORIGIN
 
         direction = _as_dir(ORIGIN if anchor is None else anchor)
-        mob.move_to(self.get_critical_point(direction), aligned_edge=direction)
+        mob.move_to(critical_point(self, direction), aligned_edge=direction)
         if buff:
             mob.shift(-direction * buff)
         return mob

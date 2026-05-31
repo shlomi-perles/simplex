@@ -39,9 +39,11 @@ _EXPORTS: dict[str, str] = {
     "SIMPLEX_DARK": "simplex.theme.presets",
     "ScalarFieldSurface": "simplex.mobjects",
     "ShowPaper": "simplex.mobjects",
+    "Slide": "simplex.slides",
     "SimplexSectionType": "simplex.section",
     "Subsection": "simplex.manifest",
     "TexPage": "simplex.engine.text",
+    "ThreeDSlide": "simplex.slides",
     "TransformByGlyphMap": "simplex.engine.glyph_map",
     "VT": "simplex.engine.dynamics",
     "active_theme": "simplex.theme",
@@ -132,6 +134,14 @@ if TYPE_CHECKING:
         colorize_surface,
     )
     from simplex.section import SimplexSectionType
-    from simplex.slides import BaseSlide, Chrome, OutlinePart, OutlineScene, make_chrome
+    from simplex.slides import (
+        BaseSlide,
+        Chrome,
+        OutlinePart,
+        OutlineScene,
+        Slide,
+        ThreeDSlide,
+        make_chrome,
+    )
     from simplex.theme import active_theme, get_active_theme, presets
     from simplex.theme.presets import SIMPLEX_DARK

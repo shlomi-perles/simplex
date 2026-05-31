@@ -7,10 +7,10 @@ paper from ArXiv. Shows the full lifecycle: intro -> pick -> dismiss.
 from manim import DL, DOWN, RIGHT, UP, Tex, Write
 
 from simplex.mobjects.paper import DismissPaper, Paper, PickPage, ShowPaper
-from simplex.slides import BaseSlide
+from simplex.slides import Slide
 
 
-class PaperShowcase(BaseSlide):
+class PaperShowcase(Slide):
     """Paper Mobject -- ArXiv PDF stacking, picking, and dismissal."""
 
     def setup(self) -> None:

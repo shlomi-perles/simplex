@@ -1,8 +1,8 @@
-"""BaseSlide -- thin manim-slides ``Slide`` with the Simplex hierarchy API.
+"""Slide classes built on manim-slides with the Simplex hierarchy API.
 
 Theme and Manim defaults are wired in ``simplex.plugin:activate`` (the
 ``manim.plugins`` entry-point) once per render process. What stays in
-``BaseSlide`` is the slide-hierarchy override:
+``Slide`` / ``ThreeDSlide`` is the slide-hierarchy override:
 
 - ``self.next_slide(name="Title")`` -> **main** slide, named ``"Title"``.
 - ``self.next_slide()`` *as the first call* -> auto-promoted to a **main**
@@ -20,9 +20,10 @@ in ``simplex.render.reconcile`` reads back to build the main/sub tree.
 
 import re
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, cast
 
-from manim_slides.slide import Slide
+from manim_slides.slide import Slide as ManimSlide
+from manim_slides.slide import ThreeDSlide as ManimThreeDSlide
 
 from simplex.engine.animations import clear_scene as _clear_scene
 from simplex.engine.region import Region
@@ -49,8 +50,8 @@ def _pretty_class_name(name: str) -> str:
     return _CAMEL_LOWER.sub(r"\1 \2", spaced)
 
 
-class BaseSlide(Slide):
-    """``manim_slides.Slide`` with the Simplex hierarchy + ``clear_scene``."""
+class _SimplexSlideMixin:
+    """Simplex behavior shared by 2D and 3D manim-slides scenes."""
 
     header: ChromeContent = None
     footer: ChromeContent = None
@@ -58,7 +59,7 @@ class BaseSlide(Slide):
     _current_main: str | None
 
     def setup(self) -> None:
-        super().setup()
+        cast(Any, super()).setup()
         self.region = Region.full_frame()
         self._current_main = None
         self.setup_chrome()
@@ -80,7 +81,7 @@ class BaseSlide(Slide):
         theme = chrome_kwargs.pop("theme", get_active_theme())
         region = chrome_kwargs.pop("region", self.region)
         chrome = make_chrome(theme, region, **chrome_kwargs)
-        self.add_to_canvas(**chrome.mobjects)
+        cast(Any, self).add_to_canvas(**chrome.mobjects)
         self.region = chrome.body_region
         return chrome
 
@@ -113,7 +114,7 @@ class BaseSlide(Slide):
             "vertical" if resolved.is_sub else "horizontal",
         )
 
-        super().next_slide(
+        cast(Any, super()).next_slide(
             name=name or self._current_main or "unnamed",
             section_type=resolved.value,
             loop=loop,
@@ -143,3 +144,14 @@ class BaseSlide(Slide):
     def clear_scene(self, *, exclude: Iterable[Any] = ()) -> None:
         """Play the registered exit animation for every mobject not in ``exclude``."""
         _clear_scene(self, exclude=exclude)
+
+
+class Slide(_SimplexSlideMixin, ManimSlide):
+    """``manim_slides.Slide`` with Simplex hierarchy, regions, and chrome."""
+
+
+class ThreeDSlide(_SimplexSlideMixin, ManimThreeDSlide):
+    """``manim_slides.ThreeDSlide`` with Simplex hierarchy, regions, and chrome."""
+
+
+BaseSlide = Slide

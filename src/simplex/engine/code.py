@@ -33,10 +33,10 @@ from manim import (
     Text,
     TransformMatchingShapes,
     VGroup,
-    VMobject,
     Write,
 )
 
+from simplex.engine.opengl_compat import is_vmobject
 from simplex.theme.context import get_active_theme
 from simplex.theme.pygments_style import register_style
 
@@ -416,7 +416,7 @@ def _refit_background(code: Code) -> None:
     button decorations attached as submobjects of the background.
     """
     background = getattr(code, "background", None)
-    if background is None or not isinstance(background, VMobject):
+    if background is None or not is_vmobject(background):
         return
     inner = VGroup(*(m for m in code.submobjects if m is not background))
     if len(inner) == 0:

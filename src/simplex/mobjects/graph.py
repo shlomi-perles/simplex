@@ -8,12 +8,13 @@ from the active Simplex theme at construction time and register a
 from typing import Any
 
 from manim import Circle, Line, MathTex, ShrinkToCenter, VMobject
+from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 
 from simplex.engine.animations import set_exit_animation
 from simplex.theme.context import get_active_theme
 
 
-class Node(VMobject):
+class Node(VMobject, metaclass=ConvertToOpenGL):
     """Filled circle with a centered MathTex label."""
 
     def __init__(self, label: str | int = "", radius: float = 0.35, **kwargs: Any) -> None:
@@ -32,7 +33,7 @@ class Node(VMobject):
         set_exit_animation(self, ShrinkToCenter)
 
 
-class Edge(VMobject):
+class Edge(VMobject, metaclass=ConvertToOpenGL):
     """Line between two anchors, with an optional weight label at the midpoint."""
 
     def __init__(

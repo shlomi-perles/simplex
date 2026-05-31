@@ -41,7 +41,9 @@ from manim import (
     VGroup,
     VMobject,
 )
+from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 
+from simplex.engine.opengl_compat import MobjectLike, is_mobject
 from simplex.theme.context import get_active_theme
 
 _DEFAULT_CHAR = "-"
@@ -54,7 +56,7 @@ def _is_blank(x: Any) -> bool:
     return x is None or x == ""
 
 
-class ArrayEntry(VGroup):
+class ArrayEntry(VGroup, metaclass=ConvertToOpenGL):
     """One cell of an ArrayMob: a frame + value + optional index label."""
 
     def __init__(
@@ -147,7 +149,7 @@ class ArrayEntry(VGroup):
         return self
 
 
-class ArrayMob(VGroup):
+class ArrayMob(VGroup, metaclass=ConvertToOpenGL):
     """A named horizontal array of cells with animation helpers.
 
     Indices are author-facing (start at ``starting_index``). Internal storage
@@ -339,7 +341,7 @@ class ArrayPointer(Vector):
         self,
         array: ArrayMob,
         index: int,
-        text: str | Mobject | None = None,
+        text: str | MobjectLike | None = None,
         *,
         text_scale: float = 0.6,
         direction: np.ndarray | None = None,
@@ -366,10 +368,10 @@ class ArrayPointer(Vector):
         self.text_mob = self._make_text(text)
         self.add(self.text_mob)
 
-    def _make_text(self, text: str | Mobject | None) -> Mobject:
+    def _make_text(self, text: str | MobjectLike | None) -> MobjectLike:
         if _is_blank(text):
             return Text(".").set_opacity(0)
-        mob: Mobject = text if isinstance(text, Mobject) else MathTex(str(text), **self.text_config)
+        mob = text if is_mobject(text) else MathTex(str(text), **self.text_config)
         mob.scale(self.text_scale)
         mob.next_to(self.arrow, direction=-self.get_vector(), buff=SMALL_BUFF)
         mob.set_color(self.get_color())
@@ -385,7 +387,7 @@ class ArrayPointer(Vector):
         self,
         index: int,
         *,
-        text: str | Mobject | None = None,
+        text: str | MobjectLike | None = None,
         **kwargs: Any,
     ) -> AnimationGroup:
         anims: list[Animation] = []

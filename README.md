@@ -81,10 +81,10 @@ JSON output.
 ```python
 from manim import ORIGIN, MathTex, Write
 
-from simplex import BaseSlide
+from simplex import Slide
 
 
-class HelloSlide(BaseSlide):
+class HelloSlide(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(header="Hello, Simplex")
@@ -117,7 +117,7 @@ uv run simplex serve
 | Module | Public surface |
 | --- | --- |
 | `simplex.plugin` | `activate()` entry point used by Manim. |
-| `simplex.slides` | `BaseSlide`, `OutlineScene`, `OutlinePart`, `Chrome`, `make_chrome`. |
+| `simplex.slides` | `Slide`, `ThreeDSlide`, `OutlineScene`, `OutlinePart`, `Chrome`, `make_chrome`. |
 | `simplex.engine` | `Region`, `ExitAnim`, `clear_scene`, `exit_for`, `register_exit`, `set_exit_animation`, `HighlightResult`, `apply_theme_defaults`. |
 | `simplex.mobjects` | `Node`, `Edge`, `ArrayMob`, `ArrayEntry`, `ArrayPointer`, `OutlineProgressBar`, `Paper`, `ShowPaper`, `DismissPaper`, `PickPage`. |
 | `simplex.theme` | `Theme`, `Palette`, `Typography`, `Spacing`, `Motion`, `LatexProfile`, `WebPalette`, `active_theme`, `get_active_theme`, `presets`, `render_web_css`. |
