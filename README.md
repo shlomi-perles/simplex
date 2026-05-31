@@ -173,6 +173,13 @@ entrypoints = ["slides.intro:Intro", "slides.intro:KeyIdea"]
 notes_anchor = "key-idea"
 ```
 
+Append `@opengl` to one entrypoint when a scene should render with ManimCE's
+OpenGL renderer:
+
+```toml
+entrypoints = ["slides.intro:Intro", "slides.surface:SurfaceColoring@opengl"]
+```
+
 ## Development
 
 ```bash

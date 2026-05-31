@@ -11,9 +11,11 @@ standalone scene files.
 
 - Canonical authoring imports are `simplex.Slide` and `simplex.ThreeDSlide`.
   `BaseSlide` remains a compatibility alias for `Slide`.
-- Deck metadata is the preferred renderer source:
-  `[[entrypoints]] target = "slides.surface:Surface"; renderer = "opengl"`.
-- String entrypoints remain Cairo shorthand.
+- Deck metadata is the preferred renderer source. The canonical form is one
+  ordered list:
+  `entrypoints = ["slides.intro:Intro", "slides.surface:Surface@opengl"]`.
+- Plain string entrypoints render with Cairo unless the source file declares a
+  file-level renderer; `@opengl` pins only that one entrypoint to OpenGL.
 - File-level `config.renderer = "opengl"` is detected as a fallback when
   entrypoint metadata does not declare a renderer.
 - If deck metadata and file-level renderer config conflict, rendering fails
@@ -24,7 +26,7 @@ standalone scene files.
 
 ## Implementation Surface
 
-- `simplex.deck.config` normalizes string and table entrypoints into
+- `simplex.deck.config` normalizes compact string entrypoints into
   `SceneEntrypoint` objects and resolves render batches by source file and
   renderer.
 - `simplex.render.runner` renders Cairo and OpenGL batches separately.
@@ -36,7 +38,7 @@ standalone scene files.
 
 ## Verification
 
-- Unit tests cover structured entrypoints, renderer fallback detection,
+- Unit tests cover compact renderer-marked entrypoints, renderer fallback detection,
   metadata conflicts, OpenGL runner flags, public slide imports, and Region /
   critical-point behavior with OpenGL mobjects.
 - The showcase deck is copied into `simplex-test-cases` after implementation

@@ -8,8 +8,7 @@ Layout:
       <section>/<slug>/deck.toml         # sectioned decks
 
 Recursion is exactly one level deep. Decks placed deeper than that raise.
-The walker preserves legacy single-file `slides.py` decks as well as the
-new `slides/` package layout.
+Scene entrypoints usually live in each deck's `slides/` package.
 """
 
 from pathlib import Path

@@ -3,8 +3,8 @@
 Author content lives here, one directory per deck.
 
 Each deck contains:
-- `deck.toml` -- DeckConfig fields (slug, title, summary, tags, theme, scenes, quality)
-- `slides.py` -- vanilla Manim subclassing `simplex.slides.*`
+- `deck.toml` -- DeckConfig fields, including the ordered `entrypoints` list
+- `slides/` -- Manim scene modules using `simplex.Slide` or `simplex.ThreeDSlide`
 - `notes.md` -- academic-style notes (KaTeX math, `^[sidenotes]`,
   `[slide:N]` jump links, `\cite{key}` citations)
 - `refs.bib` -- optional BibTeX bibliography; cited entries appear as
@@ -14,6 +14,10 @@ Each deck contains:
 Scaffold a new deck with:
 
     uv run simplex new my-slug
+
+Direct a single scene to ManimCE's OpenGL renderer by suffixing its entrypoint:
+
+    entrypoints = ["slides.intro:Intro", "slides.surface:SurfaceColoring@opengl"]
 
 Directories whose name starts with `_` (e.g. `_template/`) are skipped by `discover()`.
 

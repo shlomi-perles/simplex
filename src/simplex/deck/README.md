@@ -15,5 +15,5 @@ Per-deck configuration, sectioned discovery, scaffolding.
 - Don't load `deck.toml` outside of `DeckConfig.load`.
 - Don't recurse deeper than one level -- decks live at `decks/<slug>/` or
   `decks/<section>/<slug>/`, never below.
-- Don't add fields without a default. Older decks must keep validating
-  after a config bump.
+- Don't add required config fields unless every scaffolded deck is updated in
+  the same change.
