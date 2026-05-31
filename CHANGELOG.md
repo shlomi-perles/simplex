@@ -4,6 +4,13 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.7.0...manim-simplex-v0.8.0) (2026-05-31)
+
+
+### Features
+
+* add compact renderer entrypoint syntax ([4496222](https://github.com/shlomi-perles/simplex/commit/4496222fc047617992270673529a925d345656f1))
+
 ## [0.7.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.6.0...manim-simplex-v0.7.0) (2026-05-31)
 
 
