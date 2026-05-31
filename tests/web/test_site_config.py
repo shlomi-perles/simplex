@@ -30,6 +30,23 @@ def test_load_reads_committed_toml(tmp_path: Path) -> None:
     )
 
 
+def test_load_reads_global_slide_theme_settings(tmp_path: Path) -> None:
+    (tmp_path / "site.toml").write_text(
+        'brand = "Foo"\n'
+        "\n"
+        "[slide_themes]\n"
+        "enabled = false\n"
+        'dark = "simplex_dark"\n'
+        'light = "simplex_light"\n',
+        encoding="utf-8",
+    )
+    cfg = SiteConfig.load(repo_root=tmp_path)
+    resolved = cfg.slide_themes.resolve()
+    assert resolved.enabled is False
+    assert resolved.dark == "simplex_dark"
+    assert resolved.light == "simplex_light"
+
+
 def test_env_overrides_take_precedence(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

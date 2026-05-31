@@ -1,8 +1,8 @@
 """Theme tokens and active-theme registry."""
 
 from simplex.theme import presets
-from simplex.theme.context import active_theme, get_active_theme
-from simplex.theme.presets import SIMPLEX_DARK
+from simplex.theme.context import active_theme, get_active_theme, set_default_theme
+from simplex.theme.presets import SIMPLEX_DARK, SIMPLEX_LIGHT
 from simplex.theme.pygments_style import (
     SimplexPycharm,
     SimplexSolarizedLight,
@@ -22,6 +22,7 @@ from simplex.theme.web_css import render_web_css
 
 __all__ = [
     "SIMPLEX_DARK",
+    "SIMPLEX_LIGHT",
     "LatexProfile",
     "Motion",
     "Palette",
@@ -37,4 +38,5 @@ __all__ = [
     "register_all_builtin_styles",
     "register_style",
     "render_web_css",
+    "set_default_theme",
 ]

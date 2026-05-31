@@ -89,7 +89,6 @@ class WebPalette(BaseModel):
     text_primary: str = "#FFFFFF"
     text_muted: str = "#A0A0A0"
     link: str = "#58C4DD"
-    code_background: str = "#111111"
     font_family_sans: str = "system-ui, sans-serif"
     font_family_mono: str = "'JetBrains Mono', monospace"
     font_size_base: str = "1rem"

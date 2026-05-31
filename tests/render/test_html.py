@@ -43,6 +43,8 @@ def test_render_html_writes_slides_html(tmp_path: Path) -> None:
     assert "tap-zone" in body
     assert "/static/reveal.js/reveal.js" in body
     assert "--simplex-bg" in body  # palette CSS injected
+    assert "restoreVideoPlayback" in body
+    assert "finiteNumber(data.time)" in body
 
 
 def test_render_html_copies_videos_when_present(tmp_path: Path) -> None:

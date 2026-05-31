@@ -2,6 +2,7 @@
 
 from simplex import (
     SIMPLEX_DARK,
+    SIMPLEX_LIGHT,
     BaseSlide,
     Caption,
     Paper,
@@ -25,4 +26,5 @@ def test_top_level_authoring_imports() -> None:
     assert Paper.__name__ == "Paper"
     assert ShowPaper.__name__ == "ShowPaper"
     assert SIMPLEX_DARK is presets.SIMPLEX_DARK
+    assert SIMPLEX_LIGHT is presets.SIMPLEX_LIGHT
     assert callable(make_chrome)

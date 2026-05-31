@@ -25,7 +25,7 @@ from datetime import date
 from pathlib import Path
 from typing import Literal, NamedTuple, Self
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pygments.style import Style
 
 from simplex.theme.presets import get as get_theme
@@ -34,6 +34,8 @@ from simplex.theme.tokens import WebPalette
 _SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _ENTRYPOINT = re.compile(r"^[A-Za-z_][\w.]*:[A-Za-z_]\w*$")
 type RendererName = Literal["cairo", "opengl"]
+type SlideThemeVariant = Literal["dark", "light"]
+type SlideThemeSelection = Literal["all", "dark", "light"]
 
 
 class ResolvedSceneGroup(NamedTuple):
@@ -96,7 +98,6 @@ class WebOverride(BaseModel):
     text_primary: str | None = None
     text_muted: str | None = None
     link: str | None = None
-    code_background: str | None = None
     font_family_sans: str | None = None
     font_family_mono: str | None = None
     font_size_base: str | None = None
@@ -136,6 +137,65 @@ class WebOverride(BaseModel):
     template: Path | None = None
 
 
+class ResolvedSlideThemes(BaseModel):
+    """Fully resolved true-theme rendering options for a deck."""
+
+    model_config = ConfigDict(frozen=True)
+    enabled: bool = True
+    dark: str = "simplex_dark"
+    light: str = "simplex_light"
+    default: SlideThemeVariant = "dark"
+
+    @model_validator(mode="after")
+    def _themes_exist(self) -> Self:
+        get_theme(self.dark)
+        get_theme(self.light)
+        return self
+
+    def theme_name(self, variant: SlideThemeVariant) -> str:
+        return self.dark if variant == "dark" else self.light
+
+    def selected_variants(
+        self,
+        selection: SlideThemeSelection = "all",
+    ) -> tuple[SlideThemeVariant, ...]:
+        if selection == "all":
+            return ("dark", "light")
+        return (selection,)
+
+    def default_variant(
+        self,
+        available: tuple[SlideThemeVariant, ...],
+    ) -> SlideThemeVariant:
+        if self.default in available:
+            return self.default
+        return available[0]
+
+
+class SlideThemeConfig(BaseModel):
+    """Partial true-theme options from ``site.toml`` or ``deck.toml``.
+
+    ``enabled = true`` renders real dark/light slide videos and thumbnails.
+    ``enabled = false`` keeps the legacy single render plus CSS-filter toggle.
+    ``None`` fields inherit from the site-level config or package defaults.
+    """
+
+    model_config = ConfigDict(frozen=True)
+    enabled: bool | None = None
+    dark: str | None = None
+    light: str | None = None
+    default: SlideThemeVariant | None = None
+
+    def resolve(self, base: ResolvedSlideThemes | None = None) -> ResolvedSlideThemes:
+        base = base or ResolvedSlideThemes()
+        return ResolvedSlideThemes(
+            enabled=base.enabled if self.enabled is None else self.enabled,
+            dark=self.dark or base.dark,
+            light=self.light or base.light,
+            default=self.default or base.default,
+        )
+
+
 class DeckConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
     slug: str
@@ -162,6 +222,7 @@ class DeckConfig(BaseModel):
     slides: dict[str, SlideOverride] = {}
     slide_order: tuple[str, ...] = ()
     web: WebOverride = WebOverride()
+    slide_themes: SlideThemeConfig = Field(default_factory=SlideThemeConfig)
 
     @field_validator("slug")
     @classmethod
@@ -228,13 +289,13 @@ class DeckConfig(BaseModel):
             for (file_path, renderer), names in groups.items()
         )
 
-    def resolved_web_palette(self) -> WebPalette:
+    def resolved_web_palette(self, theme_name: str | None = None) -> WebPalette:
         """Merge per-deck ``web`` overrides over the active theme's palette.
 
         Returns a fully-resolved ``WebPalette`` (every field set). Used by
         the web builder + RevealJS template injection.
         """
-        theme = get_theme(self.theme)
+        theme = get_theme(theme_name or self.theme)
         base = theme.web_palette
         web = self.web
         return WebPalette(
@@ -244,15 +305,14 @@ class DeckConfig(BaseModel):
             text_primary=web.text_primary or base.text_primary,
             text_muted=web.text_muted or base.text_muted,
             link=web.link or base.link,
-            code_background=web.code_background or base.code_background,
             font_family_sans=web.font_family_sans or base.font_family_sans,
             font_family_mono=web.font_family_mono or base.font_family_mono,
             font_size_base=web.font_size_base or base.font_size_base,
         )
 
-    def resolved_code_style(self) -> type[Style]:
+    def resolved_code_style(self, theme_name: str | None = None) -> type[Style]:
         """Return the Pygments style class for this deck's theme."""
-        theme = get_theme(self.theme)
+        theme = get_theme(theme_name or self.theme)
         style: type[Style] | None = getattr(theme, "code_style", None)
         if style is not None:
             return style

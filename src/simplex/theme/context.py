@@ -7,6 +7,7 @@ from contextvars import ContextVar
 from simplex.theme.tokens import Theme
 
 _active: ContextVar[Theme | None] = ContextVar("simplex_active_theme", default=None)
+_default: ContextVar[Theme | None] = ContextVar("simplex_default_theme", default=None)
 
 
 @contextmanager
@@ -19,9 +20,16 @@ def active_theme(theme: Theme) -> Generator[Theme]:
         _active.reset(token)
 
 
+def set_default_theme(theme: Theme) -> None:
+    """Set the process default theme used when no active override is pushed."""
+    _default.set(theme)
+
+
 def get_active_theme() -> Theme:
     """Return the active theme, falling back to SIMPLEX_DARK."""
     theme = _active.get()
+    if theme is None:
+        theme = _default.get()
     if theme is None:
         from simplex.theme.presets import SIMPLEX_DARK
 

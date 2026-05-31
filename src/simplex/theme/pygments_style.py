@@ -18,8 +18,10 @@ __all__ = [
     "BUILTIN_STYLES",
     "SimplexPycharm",
     "SimplexSolarizedLight",
+    "background_color_for_style",
     "register_style",
     "resolve_style",
+    "style_name_for_class",
 ]
 
 
@@ -49,6 +51,19 @@ def register_style(style_cls: type[Style], style_name: str | None = None) -> Non
     styles[cls_name] = (mod_name, style_name, ())
     name_map: dict[str, tuple[str, str]] = pygments.styles._STYLE_NAME_TO_MODULE_MAP  # type: ignore[assignment]
     name_map[style_name] = (mod_name, cls_name)
+
+
+def style_name_for_class(style_cls: type[Style]) -> str:
+    """Return the registered Simplex/Pygments style name for ``style_cls``."""
+    return _class_name_to_style_name(style_cls.__name__)
+
+
+def background_color_for_style(style_cls: type[Style]) -> str:
+    """Return a code style's background, falling back to Simplex dark."""
+    background = style_cls.__dict__.get("background_color")
+    if isinstance(background, str) and background:
+        return background
+    return SimplexPycharm.background_color
 
 
 def register_all_builtin_styles() -> None:

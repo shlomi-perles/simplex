@@ -36,9 +36,10 @@ from manim import (
     Write,
 )
 
+from simplex.engine.defaults import code_theme_defaults
 from simplex.engine.opengl_compat import is_vmobject
 from simplex.theme.context import get_active_theme
-from simplex.theme.pygments_style import register_style
+from simplex.theme.pygments_style import register_style, style_name_for_class
 
 __all__ = ["HighlightResult"]
 
@@ -70,9 +71,7 @@ def _resolve_formatter_style(formatter_style: str | None) -> str:
         return formatter_style
     style_cls = theme.code_style
     register_style(style_cls)
-    from simplex.theme.pygments_style import _class_name_to_style_name
-
-    return _class_name_to_style_name(style_cls.__name__)
+    return style_name_for_class(style_cls)
 
 
 def code_block(
@@ -93,15 +92,16 @@ def code_block(
     """
     resolved = _resolve_formatter_style(formatter_style)
     theme = get_active_theme()
-    paragraph_kwargs: dict[str, Any] = {"font": theme.typography.mono_family}
+    _, paragraph_kwargs, background_kwargs = code_theme_defaults(theme)
     paragraph_kwargs.update(paragraph_config or {})
+    background_kwargs.update(background_config or {})
     return Code(
         code_string=code,
         language=language,
         formatter_style=resolved,
         background=background,  # type: ignore[arg-type]
         paragraph_config=paragraph_kwargs,
-        background_config=background_config,
+        background_config=background_kwargs,
         **kwargs,
     )
 

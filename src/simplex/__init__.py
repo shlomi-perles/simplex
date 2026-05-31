@@ -37,6 +37,7 @@ _EXPORTS: dict[str, str] = {
     "PickPage": "simplex.mobjects",
     "Region": "simplex.engine",
     "SIMPLEX_DARK": "simplex.theme.presets",
+    "SIMPLEX_LIGHT": "simplex.theme.presets",
     "ScalarFieldSurface": "simplex.mobjects",
     "ShowPaper": "simplex.mobjects",
     "Slide": "simplex.slides",
@@ -144,4 +145,4 @@ if TYPE_CHECKING:
         make_chrome,
     )
     from simplex.theme import active_theme, get_active_theme, presets
-    from simplex.theme.presets import SIMPLEX_DARK
+    from simplex.theme.presets import SIMPLEX_DARK, SIMPLEX_LIGHT

@@ -39,6 +39,13 @@
   class="deck-grid"
   data-deck-slug="{{ deck.slug }}"
   data-slide-count="{{ slide_count }}"
+  data-slide-theme-mode="{{ slide_theme_mode }}"
+  data-default-slide-theme="{{ default_slide_theme }}"
+  data-available-slide-themes="{{ available_slide_themes|join(',') }}"
+  {% for variant, href in slide_theme_iframes.items() %}
+  {% set version = slide_theme_versions.get(variant, '') %}
+  data-slide-theme-{{ variant }}-src="{{ href }}{% if version %}?v={{ version }}{% endif %}"
+  {% endfor %}
   data-default-slide-number="{% if deck.web.show_slide_number %}true{% else %}false{% endif %}"
   data-default-clock="{% if deck.web.show_clock %}true{% else %}false{% endif %}"
   data-default-stopwatch="{% if deck.web.show_stopwatch %}true{% else %}false{% endif %}"
@@ -46,7 +53,9 @@
   <div class="deck-viewer">
     <div class="deck-viewer-frame">
       <iframe
-        src="slides.html{% if slides_version %}?v={{ slides_version }}{% endif %}"
+        {% set default_iframe = slide_theme_iframes.get(default_slide_theme, "slides.html") %}
+        {% set default_version = slide_theme_versions.get(default_slide_theme, "") %}
+        src="{{ default_iframe }}{% if default_version %}?v={{ default_version }}{% endif %}"
         title="{{ deck.title }} presentation"
         allowfullscreen
         allow="autoplay; fullscreen"
@@ -140,7 +149,11 @@
               </button>
             </div>
           </div>
-          <div class="deck-setting-row deck-setting-row-action">
+          {% set can_toggle_slide_theme = slide_theme_mode == "filter" or available_slide_themes|length > 1 %}
+          <div
+            class="deck-setting-row deck-setting-row-action"
+            {% if not can_toggle_slide_theme %}hidden{% endif %}
+          >
             <span><i data-lucide="palette" aria-hidden="true"></i>Slide Theme</span>
             <button
               type="button"
@@ -173,6 +186,9 @@
             {% if slide.thumbnail %}
             <img
               src="{{ slide.thumbnail }}"
+              {% for variant, thumb in slide.theme_thumbnails.items() %}
+              data-thumb-{{ variant }}="{{ thumb }}"
+              {% endfor %}
               alt=""
               loading="lazy"
               decoding="async"

@@ -11,7 +11,9 @@ from pathlib import Path
 from typing import Any, Self
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from simplex.deck.config import SlideThemeConfig
 
 
 class NavLink(BaseModel):
@@ -27,6 +29,7 @@ class SiteConfig(BaseModel):
     tagline: str | None = None
     nav: tuple[NavLink, ...] = ()
     default_section_order: tuple[str, ...] = ()
+    slide_themes: SlideThemeConfig = Field(default_factory=SlideThemeConfig)
 
     # Deployment-only fields (loaded from env, not committed).
     ga_tag: str = ""

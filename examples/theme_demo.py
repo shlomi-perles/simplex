@@ -15,7 +15,7 @@ class ThemeDemo(Scene):
     def construct(self) -> None:
         with active_theme(presets.SIMPLEX_DARK):
             dark_label = Tex("dark theme")
-        with active_theme(presets.ACADEMIC_LIGHT):
+        with active_theme(presets.SIMPLEX_LIGHT):
             light_label = Tex("light theme")
 
         dark_label.shift([0, 1, 0])

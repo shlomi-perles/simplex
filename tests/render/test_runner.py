@@ -16,7 +16,7 @@ def _deck(tmp_path: Path) -> DeckConfig:
     (deck_dir / "deck.toml").write_text(
         'slug = "demo"\n'
         'title = "Demo"\n'
-        'theme = "academic_light"\n'
+        'theme = "simplex_light"\n'
         'quality = "low_quality"\n'
         'entrypoints = ["slides.scenes:Foo", "slides.scenes:Bar"]\n',
         encoding="utf-8",
@@ -95,7 +95,7 @@ def test_render_forces_utf8_subprocess_env(tmp_path: Path, captured: list[dict[s
     deck = _deck(tmp_path)
     runner.render(deck, output_dir=tmp_path / "out")
     env = captured[0]["env"]
-    assert env["SIMPLEX_THEME"] == "academic_light"
+    assert env["SIMPLEX_THEME"] == "simplex_light"
     assert env["PYTHONIOENCODING"] == "utf-8"
     assert env["PYTHONUTF8"] == "1"
 
