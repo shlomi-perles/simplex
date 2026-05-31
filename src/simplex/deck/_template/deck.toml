@@ -9,5 +9,11 @@ theme = "simplex_dark"
 title = "__TITLE__"
 voiceover = false
 
+[slide_themes]
+dark = "simplex_dark"
+default = "dark"
+enabled = true
+light = "simplex_light"
+
 [slides."Key Idea"]
 notes_anchor = "key-idea"

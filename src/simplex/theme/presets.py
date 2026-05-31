@@ -38,7 +38,6 @@ SIMPLEX_DARK: Theme = Theme(
         text_primary="#FFFFFF",
         text_muted="#A0A0A0",
         link="#58C4DD",
-        code_background="#111111",
         font_family_sans="system-ui, -apple-system, sans-serif",
         font_family_mono="'JetBrains Mono', 'Fira Code', monospace",
         font_size_base="1rem",
@@ -46,8 +45,8 @@ SIMPLEX_DARK: Theme = Theme(
     code_style=SimplexPycharm,
 )
 
-ACADEMIC_LIGHT: Theme = Theme(
-    name="academic_light",
+SIMPLEX_LIGHT: Theme = Theme(
+    name="simplex_light",
     palette=Palette(
         background="#FFFFFF",
         font="#1A1A1A",
@@ -60,7 +59,7 @@ ACADEMIC_LIGHT: Theme = Theme(
         label="#1A1A1A",
         distance="#B45309",
     ),
-    typography=Typography(),
+    typography=Typography(mono_family="JetBrains Mono"),
     latex=LatexProfile(),
     web_palette=WebPalette(
         accent="#0066CC",
@@ -69,7 +68,6 @@ ACADEMIC_LIGHT: Theme = Theme(
         text_primary="#1A1A1A",
         text_muted="#6B6B6B",
         link="#0066CC",
-        code_background="#F8F8F8",
         font_family_sans="system-ui, -apple-system, sans-serif",
         font_family_mono="'JetBrains Mono', 'Fira Code', monospace",
         font_size_base="1rem",
@@ -79,7 +77,7 @@ ACADEMIC_LIGHT: Theme = Theme(
 
 PRESETS: dict[str, Theme] = {
     SIMPLEX_DARK.name: SIMPLEX_DARK,
-    ACADEMIC_LIGHT.name: ACADEMIC_LIGHT,
+    SIMPLEX_LIGHT.name: SIMPLEX_LIGHT,
 }
 
 

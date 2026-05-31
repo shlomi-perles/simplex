@@ -41,6 +41,7 @@ def stub_render(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
         calls.append(
             {
                 "deck": deck.slug,
+                "theme": deck.theme,
                 "output_dir": output_dir,
                 "scenes": scenes,
                 "write_last_frame": write_last_frame,
@@ -62,20 +63,33 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_render_calls_runner(project: Path, stub_render: list[dict[str, Any]]) -> None:
     result = CliRunner().invoke(app, ["render", "demo"])
     assert result.exit_code == 0, result.stdout
-    assert len(stub_render) == 1
-    assert stub_render[0]["scenes"] == ()
+    assert len(stub_render) == 2
+    assert {call["theme"] for call in stub_render} == {"simplex_dark", "simplex_light"}
+    assert {call["scenes"] for call in stub_render} == {()}
+    assert stub_render[0]["output_dir"].parts[-2:] == ("themes", "dark")
 
 
 def test_render_scene_filter(project: Path, stub_render: list[dict[str, Any]]) -> None:
     result = CliRunner().invoke(app, ["render", "demo", "--scene", "Foo"])
     assert result.exit_code == 0, result.stdout
-    assert stub_render[0]["scenes"] == ("Foo",)
+    assert {call["scenes"] for call in stub_render} == {("Foo",)}
 
 
 def test_render_triple_syntax_scene(project: Path, stub_render: list[dict[str, Any]]) -> None:
     result = CliRunner().invoke(app, ["render", "demo::Foo"])
     assert result.exit_code == 0, result.stdout
-    assert stub_render[0]["scenes"] == ("Foo",)
+    assert {call["scenes"] for call in stub_render} == {("Foo",)}
+
+
+def test_render_can_limit_true_theme_variant(
+    project: Path,
+    stub_render: list[dict[str, Any]],
+) -> None:
+    result = CliRunner().invoke(app, ["render", "demo", "--slide-theme", "light"])
+    assert result.exit_code == 0, result.stdout
+    assert len(stub_render) == 1
+    assert stub_render[0]["theme"] == "simplex_light"
+    assert stub_render[0]["output_dir"].parts[-2:] == ("themes", "light")
 
 
 def test_render_unknown_scene_fails(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -58,9 +58,11 @@ def activate() -> None:
     import manim
 
     from simplex.engine.defaults import apply_theme_defaults
+    from simplex.theme.context import set_default_theme
     from simplex.theme.pygments_style import register_all_builtin_styles
 
     theme = _resolve_theme()
+    set_default_theme(theme)
     apply_theme_defaults(theme)
     manim.config.tex_template = theme.latex.as_tex_template()
     manim.config.background_color = theme.palette.background

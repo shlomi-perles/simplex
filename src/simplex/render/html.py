@@ -98,6 +98,7 @@ def render_html(
     *,
     output_dir: Path,
     static_prefix: str,
+    theme_name: str | None = None,
     watch: bool = False,
 ) -> Path:
     """Write ``output_dir/slides.html`` and copy its video segments.
@@ -107,7 +108,10 @@ def render_html(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     main_views = _copy_segments(manifest, output_dir)
-    palette_css = render_web_css(deck.resolved_web_palette(), code_style=deck.resolved_code_style())
+    palette_css = render_web_css(
+        deck.resolved_web_palette(theme_name),
+        code_style=deck.resolved_code_style(theme_name),
+    )
     deck_custom_css = ""
     if deck.web.custom_css_path is not None:
         candidate = deck.path / deck.web.custom_css_path

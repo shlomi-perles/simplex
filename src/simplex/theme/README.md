@@ -6,11 +6,11 @@ palette) plus a ContextVar-based active-theme registry.
 ## Public surface
 
 - `Theme`, `Palette`, `Typography`, `Spacing`, `Motion`, `LatexProfile`, `WebPalette`
-- `presets.SIMPLEX_DARK`, `presets.ACADEMIC_LIGHT`, `presets.get(name)`
+- `presets.SIMPLEX_DARK`, `presets.SIMPLEX_LIGHT`, `presets.get(name)`
 - `active_theme(theme)` -- context manager
 - `get_active_theme()` -- read the current theme (falls back to `SIMPLEX_DARK`)
-- `render_web_css(palette)` -- emits a `:root { --simplex-* }` block for the portal and RevealJS pages
-- `pygments_style.DarculaStyle`, `register_darcula(name="darcula")`
+- `render_web_css(palette, code_style=None)` -- emits a `:root { --simplex-* }` block for the portal and RevealJS pages; code colors come from the Pygments style
+- `pygments_style.SimplexPycharm`, `pygments_style.SimplexSolarizedLight`, `register_style(...)`
 
 ## Don't
 

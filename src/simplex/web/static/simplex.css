@@ -1818,7 +1818,9 @@ body.sidenote-popover-open {
   transition: filter 180ms ease;
 }
 .deck-grid.is-slide-theme-light .deck-viewer-frame,
-.deck-grid.is-slide-theme-light .deck-slide-thumb {
+.deck-grid.is-slide-theme-light .deck-slide-thumb,
+.deck-grid.is-true-slide-theme-light .deck-viewer-frame,
+.deck-grid.is-true-slide-theme-light .deck-slide-thumb {
   background: #f4f4f4;
 }
 .deck-grid.is-slide-theme-light .deck-iframe,

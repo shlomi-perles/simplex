@@ -21,20 +21,42 @@ import contextlib
 import hashlib
 import shutil
 import subprocess
+from dataclasses import dataclass
 from datetime import UTC, datetime, time
 from pathlib import Path
 from typing import Any, cast
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
-from simplex.deck.config import DeckConfig
+from simplex.deck.config import DeckConfig, SlideThemeSelection, SlideThemeVariant
 from simplex.deck.registry import Section, SectionedRegistry, discover
 from simplex.deck.section import SectionConfig
-from simplex.render import filenames, html, notes_pdf, pdf, reconcile, runner, thumbnail
+from simplex.manifest import DeckManifest
+from simplex.render import filenames, html, notes_pdf, pdf, reconcile, runner, themes, thumbnail
 from simplex.theme.web_css import render_web_css
 from simplex.web import notes, vendor
 from simplex.web.bibliography import Bibliography
 from simplex.web.site_config import SiteConfig
+
+
+@dataclass(frozen=True, slots=True)
+class _SlideView:
+    index: int
+    scene: str
+    name: str
+    duration_s: float
+    thumbnail: str | None
+    theme_thumbnails: dict[str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class _BuiltVariant:
+    variant: SlideThemeVariant
+    deck: DeckConfig
+    output_dir: Path
+    manifest: DeckManifest
+    thumbs: dict[int, Path]
+    slides_html: Path
 
 
 def _static_source_dir() -> Path:
@@ -113,6 +135,45 @@ def _maybe_render(
         pdf.export(deck, output_dir=media_dir)
 
 
+def _build_variant_output(
+    deck: DeckConfig,
+    *,
+    variant: SlideThemeVariant,
+    output_dir: Path,
+    cache_dir: Path,
+    site_cfg: SiteConfig,
+    render: bool,
+    scenes: tuple[str, ...],
+    watch: bool,
+    theme_name: str | None = None,
+) -> _BuiltVariant:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _maybe_render(deck, output_dir, render=render, scenes=scenes)
+
+    manifest = reconcile.build_manifest(deck, media_dir=output_dir)
+    thumbs = thumbnail.generate(deck, manifest, site_deck_dir=output_dir, cache_dir=cache_dir)
+    enriched = tuple(
+        main.model_copy(update={"thumbnail": thumbs.get(main.index)})
+        for main in manifest.main_slides
+    )
+    slides_html = html.render_html(
+        deck,
+        manifest.model_copy(update={"main_slides": enriched}),
+        output_dir=output_dir,
+        static_prefix=site_cfg.url("static"),
+        theme_name=theme_name,
+        watch=watch,
+    )
+    return _BuiltVariant(
+        variant=variant,
+        deck=deck,
+        output_dir=output_dir,
+        manifest=manifest.model_copy(update={"main_slides": enriched}),
+        thumbs=thumbs,
+        slides_html=slides_html,
+    )
+
+
 def _has_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
     return (deck_dir / filenames.pdf_name(deck, "slides")).exists()
 
@@ -155,17 +216,55 @@ def _load_bibliography(deck_path: Path) -> Bibliography | None:
     return Bibliography.load(refs) if refs.exists() else None
 
 
-def _site_thumb(deck_out: Path, thumbs: dict[int, Path]) -> str | None:
-    """Return the cover thumbnail (main slide #1) for a deck card."""
-    first = thumbs.get(1)
-    if first is None:
+def _theme_rel(
+    variant: SlideThemeVariant,
+    path: Path | None,
+) -> Path | None:
+    """Convert a variant-local relative path into a deck-page relative path."""
+    if path is None:
         return None
-    if first.is_absolute():
-        try:
-            first = first.relative_to(deck_out)
-        except ValueError:
-            return None
-    return first.as_posix()
+    return Path("themes") / variant / path
+
+
+def _copy_default_slides_pdf(deck: DeckConfig, source_dir: Path, deck_out: Path) -> None:
+    """Expose the default variant's slides PDF at the deck root for downloads."""
+    source = source_dir / filenames.pdf_name(deck, "slides")
+    if not source.exists():
+        return
+    target = deck_out / source.name
+    if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
+        shutil.copy2(source, target)
+
+
+def _build_slide_views(
+    manifest: DeckManifest,
+    *,
+    default_variant: SlideThemeVariant | None,
+    variant_thumbs: dict[SlideThemeVariant, dict[int, Path]],
+) -> tuple[_SlideView, ...]:
+    slides: list[_SlideView] = []
+    for main in manifest.main_slides:
+        per_theme: dict[str, str] = {}
+        for variant, thumbs in variant_thumbs.items():
+            rel = _theme_rel(variant, thumbs.get(main.index))
+            if rel is not None:
+                per_theme[variant] = rel.as_posix()
+        thumbnail: str | None = None
+        if default_variant is not None:
+            thumbnail = per_theme.get(default_variant)
+        if thumbnail is None and main.thumbnail is not None:
+            thumbnail = main.thumbnail.as_posix()
+        slides.append(
+            _SlideView(
+                index=main.index,
+                scene=main.scene,
+                name=main.name,
+                duration_s=main.duration_s,
+                thumbnail=thumbnail,
+                theme_thumbnails=per_theme,
+            )
+        )
+    return tuple(slides)
 
 
 def _deck_created_timestamp(deck: DeckConfig) -> float:
@@ -210,44 +309,96 @@ def _build_deck(
     env: Environment,
     render: bool,
     scenes: tuple[str, ...] = (),
+    theme_selection: SlideThemeSelection = "all",
     watch: bool = False,
 ) -> tuple[str | None, str | None]:
     """Render one deck. Returns ``(cover thumbnail, carousel gif)`` hrefs."""
     deck_out = site_dir / "decks" / deck.slug
     deck_out.mkdir(parents=True, exist_ok=True)
 
-    _maybe_render(deck, deck_out, render=render, scenes=scenes)
+    slide_theme_config = themes.resolve_slide_themes(deck, site_cfg.slide_themes)
+    slide_theme_mode = "true" if slide_theme_config.enabled else "filter"
+    available_slide_themes: tuple[SlideThemeVariant, ...]
+    default_slide_theme: SlideThemeVariant
+    slide_theme_iframes: dict[str, str] = {}
+    slide_theme_versions: dict[str, str] = {}
+    preview_gif_href: str | None = None
 
-    manifest = reconcile.build_manifest(deck, media_dir=deck_out)
-    thumbs = thumbnail.generate(deck, manifest, site_deck_dir=deck_out, cache_dir=deck_out)
-    preview_gif = thumbnail.generate_carousel_gif(
-        deck,
-        manifest,
-        site_deck_dir=deck_out,
-        cache_dir=deck_out,
-    )
+    if slide_theme_config.enabled:
+        available_slide_themes = themes.selected_variants(slide_theme_config, theme_selection)
+        default_slide_theme = slide_theme_config.default_variant(available_slide_themes)
+        built_by_variant: dict[SlideThemeVariant, _BuiltVariant] = {}
+        for variant in available_slide_themes:
+            themed_deck = themes.variant_deck(deck, slide_theme_config, variant)
+            variant_dir = themes.variant_output_dir(deck_out, variant)
+            built = _build_variant_output(
+                themed_deck,
+                variant=variant,
+                output_dir=variant_dir,
+                cache_dir=deck_out,
+                site_cfg=site_cfg,
+                render=render,
+                scenes=scenes,
+                theme_name=themed_deck.theme,
+                watch=watch,
+            )
+            built_by_variant[variant] = built
+            slide_theme_iframes[variant] = (Path("themes") / variant / "slides.html").as_posix()
+            slide_theme_versions[variant] = _file_version(built.slides_html)
 
-    enriched = tuple(
-        main.model_copy(update={"thumbnail": thumbs.get(main.index)})
-        for main in manifest.main_slides
-    )
-
-    slides_html = html.render_html(
-        deck,
-        manifest.model_copy(update={"main_slides": enriched}),
-        output_dir=deck_out,
-        static_prefix=site_cfg.url("static"),
-        watch=watch,
-    )
+        default_built = built_by_variant[default_slide_theme]
+        _copy_default_slides_pdf(default_built.deck, default_built.output_dir, deck_out)
+        preview_gif = thumbnail.generate_carousel_gif(
+            default_built.deck,
+            default_built.manifest,
+            site_deck_dir=default_built.output_dir,
+            cache_dir=deck_out,
+        )
+        if preview_gif is not None:
+            preview_gif_href = (Path("themes") / default_slide_theme / preview_gif).as_posix()
+        slides = _build_slide_views(
+            default_built.manifest,
+            default_variant=default_slide_theme,
+            variant_thumbs={variant: built.thumbs for variant, built in built_by_variant.items()},
+        )
+    else:
+        available_slide_themes = ("dark", "light")
+        default_slide_theme = "dark"
+        built = _build_variant_output(
+            deck,
+            variant="dark",
+            output_dir=deck_out,
+            cache_dir=deck_out,
+            site_cfg=site_cfg,
+            render=render,
+            scenes=scenes,
+            watch=watch,
+        )
+        preview_gif = thumbnail.generate_carousel_gif(
+            deck,
+            built.manifest,
+            site_deck_dir=deck_out,
+            cache_dir=deck_out,
+        )
+        preview_gif_href = preview_gif.as_posix() if preview_gif is not None else None
+        slides = _build_slide_views(
+            built.manifest,
+            default_variant=None,
+            variant_thumbs={},
+        )
+        slide_theme_iframes["dark"] = "slides.html"
+        slide_theme_iframes["light"] = "slides.html"
+        slide_theme_versions["dark"] = _file_version(built.slides_html)
+        slide_theme_versions["light"] = slide_theme_versions["dark"]
 
     notes_md = deck.path / "notes.md"
     notes_html = ""
-    slide_refs = _slide_ref_labels(deck, enriched)
+    slide_refs = _slide_ref_labels(deck, slides)
     if notes_md.exists():
         bib = _load_bibliography(deck.path)
         notes_html = notes.render(
             notes_md,
-            slide_count=len(enriched),
+            slide_count=len(slides),
             slide_refs=slide_refs,
             bibliography=bib,
             code_style=deck.resolved_notes_code_style(),
@@ -266,15 +417,15 @@ def _build_deck(
                     bibliography=bib,
                 )
 
-    total_seconds = sum(m.duration_s for m in enriched)
+    total_seconds = sum(m.duration_s for m in slides)
     total_minutes: int | None = int(total_seconds // 60) if total_seconds > 0 else None
     if deck.duration_minutes is not None:
         total_minutes = deck.duration_minutes
 
     page = env.get_template("deck.html").render(
         deck=deck,
-        slides=enriched,
-        slide_count=len(enriched),
+        slides=slides,
+        slide_count=len(slides),
         total_duration_min=total_minutes,
         has_pdf=_has_pdf(deck, deck_out),
         has_notes_pdf=_has_notes_pdf(deck, deck_out),
@@ -284,13 +435,15 @@ def _build_deck(
         palette_css=render_web_css(
             deck.resolved_web_palette(), code_style=deck.resolved_notes_code_style()
         ),
-        slides_version=_file_version(slides_html),
+        slide_theme_mode=slide_theme_mode,
+        available_slide_themes=available_slide_themes,
+        default_slide_theme=default_slide_theme,
+        slide_theme_iframes=slide_theme_iframes,
+        slide_theme_versions=slide_theme_versions,
     )
     (deck_out / "index.html").write_text(page, encoding="utf-8")
-    return (
-        _site_thumb(deck_out, thumbs),
-        preview_gif.as_posix() if preview_gif is not None else None,
-    )
+    cover = slides[0].thumbnail if slides else None
+    return (cover, preview_gif_href)
 
 
 def _build_section_page(
@@ -351,6 +504,7 @@ def build(
     site_cfg: SiteConfig | None = None,
     only: tuple[str, ...] = (),
     scenes: tuple[str, ...] = (),
+    theme_selection: SlideThemeSelection = "all",
     watch: bool = False,
 ) -> None:
     """Discover decks, render them, write the static site."""
@@ -375,6 +529,7 @@ def build(
                 env=env,
                 render=render,
                 scenes=scenes,
+                theme_selection=theme_selection,
                 watch=watch,
             )
 

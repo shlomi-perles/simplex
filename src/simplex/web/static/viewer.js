@@ -4,7 +4,7 @@
  *   - Bridges the deck iframe (RevealJS) <-> sidebar / controls / slide-refs
  *     via postMessage. The iframe template is at
  *     src/simplex/web/templates/revealjs.html.j2 and emits
- *     {type:'simplex.slide', idx, total} on every slide change.
+ *     {type:'simplex.slide', idx, sub, total} on every slide change.
  */
 
 (function () {
@@ -208,8 +208,16 @@
     var stopwatchReset = deck.querySelector('[data-stopwatch-action="reset"]');
     var total = parseInt(deck.dataset.slideCount || "0", 10) || slideButtons.length;
     var currentIdx = 0;
+    var currentSub = 0;
+    var slideThemeMode = deck.dataset.slideThemeMode || "filter";
+    var availableSlideThemes = (deck.dataset.availableSlideThemes || "dark,light")
+      .split(",")
+      .filter(Boolean);
     var slideThemeManual = false;
-    var slideTheme = normalizeTheme(document.documentElement.dataset.theme || "dark");
+    var slideTheme = chooseSlideTheme(
+      document.documentElement.dataset.theme || deck.dataset.defaultSlideTheme || "dark"
+    );
+    var pendingThemeGoto = null;
 
     function targetOrigin() {
       if (!iframe || !iframe.src) return "*";
@@ -223,13 +231,93 @@
     function normalizeTheme(theme) {
       return theme === "light" ? "light" : "dark";
     }
+    function themeAvailable(theme) {
+      if (slideThemeMode !== "true") return true;
+      return availableSlideThemes.indexOf(theme) !== -1;
+    }
+    function chooseSlideTheme(theme) {
+      var normalized = normalizeTheme(theme);
+      if (themeAvailable(normalized)) return normalized;
+      if (themeAvailable(deck.dataset.defaultSlideTheme)) {
+        return normalizeTheme(deck.dataset.defaultSlideTheme);
+      }
+      return themeAvailable("dark") ? "dark" : "light";
+    }
     function pageTheme() {
       return normalizeTheme(document.documentElement.dataset.theme || "dark");
     }
+    function slideThemeSrc(theme) {
+      var key = theme === "light" ? "slideThemeLightSrc" : "slideThemeDarkSrc";
+      return deck.dataset[key] || "";
+    }
+    function finiteOrNull(value) {
+      return Number.isFinite(value) ? value : null;
+    }
+    function currentIframeVideoState() {
+      if (!iframe) return {};
+      try {
+        var doc = iframe.contentDocument ||
+          (iframe.contentWindow && iframe.contentWindow.document);
+        var video = doc && doc.querySelector(".reveal .slides .present video");
+        if (!video) return {};
+        return {
+          time: finiteOrNull(video.currentTime),
+          duration: finiteOrNull(video.duration),
+        };
+      } catch (_) {
+        return {};
+      }
+    }
+    function pendingGotoForCurrentSlide() {
+      if (currentIdx <= 0) return null;
+      var videoState = currentIframeVideoState();
+      return {
+        idx: currentIdx,
+        sub: currentSub,
+        time: videoState.time,
+        duration: videoState.duration,
+        freeze: true,
+      };
+    }
+    function sendThemeGoto(target) {
+      send({
+        type: "simplex.goto",
+        idx: target.idx,
+        sub: target.sub,
+        time: target.time,
+        duration: target.duration,
+        freeze: true,
+      });
+    }
+    function setIframeSourceForTheme(theme) {
+      if (slideThemeMode !== "true" || !iframe) return;
+      var src = slideThemeSrc(theme);
+      if (!src) return;
+      var current = iframe.getAttribute("src") || "";
+      if (current === src) return;
+      pendingThemeGoto = pendingGotoForCurrentSlide();
+      iframe.setAttribute("src", src);
+    }
+    function applyThumbnailTheme(theme) {
+      if (slideThemeMode !== "true") return;
+      var key = theme === "light" ? "thumbLight" : "thumbDark";
+      deck.querySelectorAll(".deck-slide-thumb img").forEach(function (img) {
+        var src = img.dataset[key];
+        if (src && img.getAttribute("src") !== src) {
+          img.setAttribute("src", src);
+        }
+      });
+    }
     function applySlideTheme(theme, manual) {
-      slideTheme = normalizeTheme(theme);
+      slideTheme = chooseSlideTheme(theme);
       slideThemeManual = slideThemeManual || !!manual;
-      deck.classList.toggle("is-slide-theme-light", slideTheme === "light");
+      deck.classList.toggle(
+        "is-slide-theme-light",
+        slideThemeMode === "filter" && slideTheme === "light"
+      );
+      deck.classList.toggle("is-true-slide-theme-light", slideTheme === "light");
+      setIframeSourceForTheme(slideTheme);
+      applyThumbnailTheme(slideTheme);
       send({
         type: "simplex.set-theme",
         theme: slideTheme,
@@ -360,6 +448,7 @@
       if (typeof d !== "object") return;
       if (d.type === "simplex.slide") {
         if (Number.isInteger(d.total) && d.total > 0) total = d.total;
+        if (Number.isInteger(d.sub)) currentSub = d.sub;
         if (Number.isInteger(d.idx)) setActive(d.idx);
       } else if (d.type === "simplex.play-state") {
         setPlayState(!!d.playing);
@@ -500,7 +589,17 @@
         send({ type: "simplex.stopwatch-reset" });
       });
     }
-    if (iframe) iframe.addEventListener("load", sendChromeSettings);
+    if (iframe) {
+      iframe.addEventListener("load", function () {
+        sendChromeSettings();
+        var target = pendingThemeGoto;
+        pendingThemeGoto = null;
+        if (target && target.idx > 0) {
+          window.setTimeout(function () { sendThemeGoto(target); }, 80);
+          window.setTimeout(function () { sendThemeGoto(target); }, 260);
+        }
+      });
+    }
     window.addEventListener("simplex.theme", syncThemeSetting);
     if (settingsToggle) {
       settingsToggle.addEventListener("click", function (e) {

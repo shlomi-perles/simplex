@@ -16,6 +16,7 @@ file when needed.
 from pygments.style import Style
 from pygments.token import Comment, Keyword, Literal, Name, Operator, Punctuation, String, Text
 
+from simplex.theme.pygments_style import SimplexPycharm, background_color_for_style
 from simplex.theme.tokens import WebPalette
 
 _TOKEN_CSS_MAP: list[tuple[object, str]] = [
@@ -45,10 +46,7 @@ def _extract_color(style_str: str) -> str | None:
 
 def render_code_style_css(style_cls: type[Style]) -> str:
     """Return CSS custom properties derived from a Pygments style class."""
-    lines: list[str] = []
-    bg = getattr(style_cls, "background_color", None)
-    if bg:
-        lines.append(f"  --simplex-code-bg: {bg};")
+    lines = [f"  --simplex-code-bg: {background_color_for_style(style_cls)};"]
     style_map = getattr(style_cls, "styles", {})
     seen_vars: set[str] = set()
     for token, css_var in _TOKEN_CSS_MAP:
@@ -64,9 +62,7 @@ def render_code_style_css(style_cls: type[Style]) -> str:
 
 def render_web_css(palette: WebPalette, code_style: type[Style] | None = None) -> str:
     """Return a CSS variables block for `palette` and optionally a code style."""
-    code_vars = ""
-    if code_style is not None:
-        code_vars = "\n" + render_code_style_css(code_style)
+    code_vars = "\n" + render_code_style_css(code_style or SimplexPycharm)
     return f""":root {{
   --simplex-accent: {palette.accent};
   --simplex-bg: {palette.background};
@@ -74,7 +70,6 @@ def render_web_css(palette: WebPalette, code_style: type[Style] | None = None) -
   --simplex-text: {palette.text_primary};
   --simplex-text-muted: {palette.text_muted};
   --simplex-link: {palette.link};
-  --simplex-code-bg: {palette.code_background};
   --simplex-font-sans: {palette.font_family_sans};
   --simplex-font-mono: {palette.font_family_mono};
   --simplex-font-size: {palette.font_size_base};{code_vars}

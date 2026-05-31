@@ -23,6 +23,10 @@ def test_load_minimal(tmp_path: Path) -> None:
     assert cfg.title == "Demo"
     assert cfg.theme == "simplex_dark"
     assert cfg.quality == "high_quality"
+    resolved = cfg.slide_themes.resolve()
+    assert resolved.enabled is True
+    assert resolved.dark == "simplex_dark"
+    assert resolved.light == "simplex_light"
 
 
 def test_invalid_slug_raises(tmp_path: Path) -> None:
@@ -80,6 +84,24 @@ def test_created_at_and_carousel_gif_options_load(tmp_path: Path) -> None:
     assert cfg.created_at == date(2026, 5, 19)
     assert cfg.web.carousel_gif == Path("preview.gif")
     assert cfg.web.carousel_gif_slides == (1, 3)
+
+
+def test_slide_themes_can_be_disabled_per_deck(tmp_path: Path) -> None:
+    deck_dir = _write_toml(
+        tmp_path,
+        'slug = "demo"\n'
+        'title = "Demo"\n'
+        "\n"
+        "[slide_themes]\n"
+        "enabled = false\n"
+        'dark = "simplex_dark"\n'
+        'light = "simplex_light"\n',
+    )
+    cfg = DeckConfig.load(deck_dir)
+    resolved = cfg.slide_themes.resolve()
+    assert resolved.enabled is False
+    assert resolved.dark == "simplex_dark"
+    assert resolved.light == "simplex_light"
 
 
 def test_string_entrypoints_load_as_cairo_shorthand(tmp_path: Path) -> None:

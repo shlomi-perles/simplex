@@ -32,6 +32,13 @@ def test_fenced_code_block_uses_default_notes_keyword_color() -> None:
     assert "#DB7448" in html.upper() or "#db7448" in html
 
 
+def test_fenced_code_block_uses_default_notes_function_color() -> None:
+    html = render_text("```python\ndef f(x):\n    return x\n```\n")
+    html_upper = html.upper()
+
+    assert "#06C" in html_upper or "#0066CC" in html_upper
+
+
 def test_fenced_code_block_can_override_code_style() -> None:
     from simplex.theme.styles.simplex_pycharm import SimplexPycharm
 

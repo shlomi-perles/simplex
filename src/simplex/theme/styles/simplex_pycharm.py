@@ -17,7 +17,7 @@ from pygments.token import (
 class SimplexPycharm(Style):
     """Dark Pygments scheme inspired by PyCharm's Darcula palette."""
 
-    background_color = "#111111"
+    background_color = "#1A1A1A"
     highlight_color = "#333333"
 
     styles = {  # noqa: RUF012 -- Pygments declares `styles` as a class attribute

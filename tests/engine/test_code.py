@@ -1,8 +1,12 @@
 """Style registration + HighlightResult shape + inline math helpers."""
 
+import inspect
+
 import pytest
 
 pytest.importorskip("pygments")
+
+from pygments.token import Name, Text
 
 from simplex.engine.code import (
     HighlightResult,
@@ -39,11 +43,19 @@ def test_register_all_registers_both_styles() -> None:
 
 
 def test_simplex_pycharm_has_expected_background() -> None:
-    assert SimplexPycharm.background_color == "#111111"
+    assert SimplexPycharm.background_color == "#1A1A1A"
 
 
 def test_simplex_solarized_light_has_expected_background() -> None:
     assert SimplexSolarizedLight.background_color == "#fffce4"
+
+
+def test_simplex_solarized_light_function_color_is_distinct() -> None:
+    styles = SimplexSolarizedLight.styles
+
+    assert styles[Name.Function] == "#0066CC"
+    assert styles[Name.Function] != styles[Name]
+    assert styles[Name.Function] != styles[Text]
 
 
 def test_highlight_result_iterates_fade_only_when_indicate_is_none() -> None:
@@ -129,6 +141,96 @@ def test_code_with_math_returns_a_manim_code() -> None:
     block = code_with_math("x = $1$", language="python")
     assert isinstance(block, Code)
     assert len(block.code_lines) == 1
+
+
+def test_code_block_uses_active_light_theme_style() -> None:
+    pytest.importorskip("manim")
+    from simplex.engine.code import code_block
+    from simplex.theme.context import active_theme
+    from simplex.theme.presets import SIMPLEX_LIGHT
+
+    with active_theme(SIMPLEX_LIGHT):
+        block = code_block("def f():\n    return 1", language="python")
+
+    html = str(block._code_html).upper()
+    assert block.background.get_fill_color().to_hex() == "#FFFCE4"
+    assert "#DB7448" in html
+    assert "#06C" in html or "#0066CC" in html
+
+
+def test_code_block_uses_active_dark_theme_background() -> None:
+    pytest.importorskip("manim")
+    from simplex.engine.code import code_block
+    from simplex.theme.context import active_theme
+    from simplex.theme.presets import SIMPLEX_DARK
+
+    with active_theme(SIMPLEX_DARK):
+        block = code_block("def f():\n    return 1", language="python")
+
+    assert block.background.get_fill_color().to_hex() == "#1A1A1A"
+    assert "#CC7832" in str(block._code_html)
+
+
+def test_code_block_passes_theme_font_and_background(monkeypatch: pytest.MonkeyPatch) -> None:
+    from simplex.engine import code as code_mod
+    from simplex.engine.code import code_block
+    from simplex.theme.context import active_theme
+    from simplex.theme.presets import SIMPLEX_DARK, SIMPLEX_LIGHT
+
+    calls: list[dict[str, object]] = []
+
+    def fake_code(**kwargs: object) -> dict[str, object]:
+        calls.append(kwargs)
+        return kwargs
+
+    monkeypatch.setattr(code_mod, "Code", fake_code)
+
+    with active_theme(SIMPLEX_LIGHT):
+        code_block("x = 1")
+    with active_theme(SIMPLEX_DARK):
+        code_block("x = 1")
+
+    assert calls[0]["formatter_style"] == "simplex_solarized_light"
+    assert calls[0]["paragraph_config"] == {"font": "JetBrains Mono"}
+    assert calls[0]["background_config"] == {
+        "fill_color": "#fffce4",
+        "stroke_color": "#1A1A1A",
+        "fill_opacity": 1,
+    }
+    assert calls[1]["formatter_style"] == "simplex_pycharm"
+    assert calls[1]["paragraph_config"] == {"font": "JetBrains Mono"}
+    assert calls[1]["background_config"] == {
+        "fill_color": "#1A1A1A",
+        "stroke_color": "#FFFFFF",
+        "fill_opacity": 1,
+    }
+
+
+def test_apply_theme_defaults_updates_vanilla_code_default() -> None:
+    pytest.importorskip("manim")
+    from manim import Code
+
+    from simplex.engine.defaults import apply_theme_defaults
+    from simplex.theme.presets import SIMPLEX_DARK, SIMPLEX_LIGHT
+
+    try:
+        apply_theme_defaults(SIMPLEX_LIGHT)
+        block = Code(code_string="def f():\n    return 1", language="python")
+        assert block.background.get_fill_color().to_hex() == "#FFFCE4"
+        assert "#DB7448" in str(block._code_html)
+        signature = inspect.signature(Code.__init__)
+        assert signature.parameters["formatter_style"].default == "simplex_solarized_light"
+        assert signature.parameters["paragraph_config"].default == {"font": "JetBrains Mono"}
+
+        apply_theme_defaults(SIMPLEX_DARK)
+        block = Code(code_string="def f():\n    return 1", language="python")
+        assert block.background.get_fill_color().to_hex() == "#1A1A1A"
+        assert "#CC7832" in str(block._code_html)
+        signature = inspect.signature(Code.__init__)
+        assert signature.parameters["formatter_style"].default == "simplex_pycharm"
+        assert signature.parameters["paragraph_config"].default == {"font": "JetBrains Mono"}
+    finally:
+        apply_theme_defaults(SIMPLEX_DARK)
 
 
 def test_code_with_math_preserves_background_padding() -> None:

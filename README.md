@@ -136,10 +136,12 @@ uv run simplex serve
 | `simplex init [dir]` | Create a lectures repo from the GitHub template. |
 | `simplex render <slug>` | Render one deck into `site/decks/<slug>/`. |
 | `simplex render <slug>::<Scene>` | Render one scene from a deck. |
+| `simplex render <slug> --slide-theme light` | Render only one true slide theme for a deck. |
 | `simplex build` | Render decks and build the static portal under `site/`. |
 | `simplex build --no-render` | Rebuild portal HTML from existing render output. |
+| `simplex build --slide-theme dark` | Build only one true slide theme (`dark` or `light`) for faster tests. |
 | `simplex serve [--watch]` | Serve `site/` locally, optionally with live reload. |
-| `simplex test` | Smoke-render decks by rendering only the first animation. |
+| `simplex test --slide-theme dark` | Smoke-render decks by rendering only the first animation. |
 | `simplex clean` | Remove generated `site/` and `media/` output. |
 | `simplex doctor` | Check required binaries on `PATH`. |
 
@@ -169,8 +171,31 @@ theme = "simplex_dark"
 quality = "high_quality"
 entrypoints = ["slides.intro:Intro", "slides.intro:KeyIdea"]
 
+[slide_themes]
+enabled = true
+dark = "simplex_dark"
+light = "simplex_light"
+default = "dark"
+
 [slides."Key Idea"]
 notes_anchor = "key-idea"
+```
+
+`[slide_themes] enabled = true` renders real dark and light slide videos,
+thumbnail images, and slide HTML into isolated `themes/dark/` and
+`themes/light/` folders. The deck player swaps between those compiled
+artifacts when the slide-theme toggle changes, so light mode is not a CSS
+filter over dark pixels. The package defaults are `simplex_dark` and
+`simplex_light`; set `[slide_themes] enabled = false` in `site.toml` or a
+deck's `deck.toml` to keep the legacy single render plus filter toggle. Deck
+settings override site settings.
+
+During local iteration or CI smoke tests, render one true variant:
+
+```bash
+uv run simplex build --slide-theme dark
+uv run simplex render hash-tables --slide-theme light
+uv run simplex test --slide-theme dark
 ```
 
 Append `@opengl` to one entrypoint when a scene should render with ManimCE's

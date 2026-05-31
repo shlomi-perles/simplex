@@ -357,6 +357,9 @@
         function currentVideo() {
           return document.querySelector('.reveal .slides .present video');
         }
+        function finiteNumber(value) {
+          return typeof value === 'number' && Number.isFinite(value);
+        }
         function postPlayState(playing) {
           try {
             window.parent.postMessage(
@@ -364,6 +367,38 @@
               parentOrigin
             );
           } catch (_) { /* */ }
+        }
+        function restoreVideoPlayback(data) {
+          const v = currentVideo();
+          if (!v) return;
+          const targetTime = finiteNumber(data.time)
+            ? data.time
+            : finiteNumber(data.duration)
+              ? data.duration
+              : null;
+          const apply = function () {
+            if (targetTime !== null) {
+              let t = Math.max(0, targetTime);
+              if (finiteNumber(v.duration) && v.duration > 0) {
+                t = Math.min(t, Math.max(0, v.duration - 0.04));
+              }
+              try { v.currentTime = t; } catch (_) { /* */ }
+            }
+            if (data.freeze || data.paused !== false) {
+              v.pause();
+              postPlayState(false);
+            } else {
+              const p = v.play();
+              if (p && typeof p.catch === 'function') p.catch(function () {});
+              window.setTimeout(function () { postPlayState(!v.paused); }, 0);
+            }
+          };
+          if (v.readyState >= 1) {
+            apply();
+          } else {
+            v.addEventListener('loadedmetadata', apply, { once: true });
+            window.setTimeout(apply, 250);
+          }
         }
         function emit() {
           const idx = Reveal.getIndices();
@@ -448,6 +483,15 @@
             // (``data-slide-target``). Reveal's horizontal index is 0-based,
             // so subtract one before dispatching.
             Reveal.slide(data.idx - 1, data.sub || 0);
+            if (
+              finiteNumber(data.time) ||
+              finiteNumber(data.duration) ||
+              typeof data.freeze === 'boolean' ||
+              typeof data.paused === 'boolean'
+            ) {
+              window.setTimeout(function () { restoreVideoPlayback(data); }, 0);
+              window.setTimeout(function () { restoreVideoPlayback(data); }, 120);
+            }
           } else if (data.type === 'simplex.next') {
             Reveal.next();
           } else if (data.type === 'simplex.prev') {
