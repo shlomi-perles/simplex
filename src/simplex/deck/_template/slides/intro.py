@@ -2,10 +2,10 @@
 
 from manim import DOWN, ORIGIN, VGroup, Tex, Write, FadeIn
 
-from simplex import BaseSlide, get_active_theme
+from simplex import Slide, get_active_theme
 
 
-class Intro(BaseSlide):
+class Intro(Slide):
     title: str = "Hello, Simplex"
     subtitle: str = r"$f(x) = e^{i\pi} + 1 = 0$"
 
@@ -20,7 +20,7 @@ class Intro(BaseSlide):
         self.next_slide()
 
 
-class KeyIdea(BaseSlide):
+class KeyIdea(Slide):
     title: str = "A Second Slide"
     body: str = "Use notes for citations, slide refs, and supporting detail."
 

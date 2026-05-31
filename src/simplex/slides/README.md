@@ -1,12 +1,12 @@
 # slides/
 
-Slide base class + chrome factory built on `manim_slides.Slide`. Theme
+Slide classes + chrome factory built on `manim_slides`. Theme
 defaults are applied by the `simplex.plugin:activate` entry-point, not
 here.
 
 ## Public surface
 
-- `BaseSlide` -- `clear_scene(exclude=...)` and a hierarchy-aware `next_slide`:
+- `Slide` -- `clear_scene(exclude=...)` and a hierarchy-aware `next_slide`:
   - `self.next_slide(name="Foo")` -> **main** slide named `"Foo"`.
   - `self.next_slide()` as the *first* call -> **main** auto-named
     after the scene class (silent; the name is the only thing that
@@ -28,12 +28,16 @@ here.
   mobjects. Buff distances are read from `theme.spacing.header_buff` /
   `footer_buff`.
 - `Chrome` -- the NamedTuple returned by `make_chrome`.
+- `ThreeDSlide` -- the 3D equivalent of `Slide`, built on
+  `manim_slides.ThreeDSlide`.
+- `BaseSlide` -- compatibility alias for `Slide`; new decks should import
+  `Slide`.
 
 Slide numbering and a wall clock are presentation chrome, not rendered
 chrome: they're driven by the RevealJS template / `[web]` deck overrides
 (see `simplex.web`), so they survive without being re-rendered.
 
-Re-usable mobjects (`Node`, `Edge`, `ArrayMob`, ...) live in
+Reusable mobjects (`Node`, `Edge`, `ArrayMob`, ...) live in
 `simplex.mobjects`, not here.
 
 ## Don't

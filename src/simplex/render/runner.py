@@ -1,7 +1,7 @@
 """Invoke ``manim-slides render`` via subprocess.
 
 The theme/quality used to flow in via ``SIMPLEX_THEME`` / ``SIMPLEX_QUALITY``
-env vars consumed by a per-scene shim in ``BaseSlide.__init__``. As of
+env vars consumed by a per-scene shim in the slide base class. As of
 v0.2.0 each deck declares ``plugins = simplex`` in its ``manim.cfg``; the
 plugin entry-point applies theme defaults and ``save_sections = True`` at
 ``import manim`` time. The runner re-introduces the ``SIMPLEX_THEME`` env
@@ -21,16 +21,18 @@ via ``--media_dir``.
 
 Quality keys (``low_quality``, ``medium_quality``, ...) come from
 ``manim.constants.QUALITIES`` -- the same dict Manim's own CLI reads. No
-Simplex-side enum re-declares them; see :func:`_quality_flag`.
+Simplex-side enum redeclares them; see :func:`_quality_flag`.
 """
 
 import os
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from manim.constants import QUALITIES
 
-from simplex.deck.config import DeckConfig
+from simplex.deck.config import DeckConfig, ResolvedSceneGroup
 from simplex.render._warnings import append_pythonwarnings_filter
 
 
@@ -54,23 +56,45 @@ def _quality_flag(quality_key: str) -> str:
 
 
 def _filter_groups(
-    groups: tuple[tuple[Path, tuple[str, ...]], ...],
+    groups: tuple[ResolvedSceneGroup, ...],
     scenes: tuple[str, ...],
-) -> tuple[tuple[Path, tuple[str, ...]], ...]:
+) -> tuple[ResolvedSceneGroup, ...]:
     """Keep only entries whose class name is in ``scenes``. Drop empty groups."""
     wanted = set(scenes)
-    available = {name for _, names in groups for name in names}
+    available = {name for group in groups for name in group.scene_names}
     unknown = wanted - available
     if unknown:
         raise ValueError(
             f"unknown scene name(s): {sorted(unknown)!r}; known: {sorted(available)!r}"
         )
-    filtered: list[tuple[Path, tuple[str, ...]]] = []
-    for source_file, names in groups:
+    filtered: list[ResolvedSceneGroup] = []
+    for group in groups:
+        names = group.scene_names
         kept = tuple(n for n in names if n in wanted)
         if kept:
-            filtered.append((source_file, kept))
+            filtered.append(
+                ResolvedSceneGroup(
+                    source_file=group.source_file,
+                    scene_names=kept,
+                    renderer=group.renderer,
+                )
+            )
     return tuple(filtered)
+
+
+def _manim_slides_command() -> list[str]:
+    """Return an executable command for the active environment's manim-slides."""
+    found = shutil.which("manim-slides")
+    if found:
+        return [found]
+
+    scripts_dir = Path(sys.executable).resolve().parent
+    executable_name = "manim-slides.exe" if os.name == "nt" else "manim-slides"
+    sibling = scripts_dir / executable_name
+    if sibling.exists():
+        return [str(sibling)]
+
+    return [sys.executable, "-m", "manim_slides"]
 
 
 def render(
@@ -96,7 +120,7 @@ def render(
     quality = _quality_flag(deck.quality)
 
     base_args: list[str] = [
-        "manim-slides",
+        *_manim_slides_command(),
         "render",
         "--quality",
         quality,
@@ -123,10 +147,16 @@ def render(
         "SIMPLEX_THEME": deck.theme,
     }
 
-    for source_file, scene_names in groups:
+    for group in groups:
         args = [
             *base_args,
-            str(source_file.resolve()),
-            *scene_names,
         ]
+        if group.renderer == "opengl":
+            args.extend(["--renderer=opengl", "--write_to_movie"])
+        args.extend(
+            [
+                str(group.source_file.resolve()),
+                *group.scene_names,
+            ]
+        )
         subprocess.run(args, check=True, cwd=media_dir, env=env)

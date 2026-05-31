@@ -18,7 +18,7 @@ from enum import StrEnum
 
 
 class SimplexSectionType(StrEnum):
-    """Section types ``BaseSlide.next_slide`` writes into the section JSON.
+    """Section types ``Slide.next_slide`` writes into the section JSON.
 
     A *main* slide is what the viewer perceives as one numbered slide.
     *Sub* slides are sub-stops within that main (RevealJS vertical

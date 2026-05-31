@@ -32,6 +32,8 @@ from manim import (
 )
 from manim.utils.color import ParsableManimColor
 
+from simplex.engine.opengl_compat import critical_point
+
 _RAINBOW: tuple[ParsableManimColor, ...] = (RED_D, ORANGE, YELLOW, GREEN_D, BLUE_D, PURPLE)
 
 
@@ -60,16 +62,16 @@ def bounding_box(
     size = min(mobject.get_width(), mobject.get_height())
     dot_radius = float(np.clip(size / 12, 0.02, 0.06))
     corners = [
-        Dot(mobject.get_critical_point(direction), radius=dot_radius, color=GREEN_D)
+        Dot(critical_point(mobject, direction), radius=dot_radius, color=GREEN_D)
         for direction in (UL, UR, DR, DL)
     ]
     edges_dots = [
-        Dot(mobject.get_critical_point(direction), radius=dot_radius, color=RED_B)
+        Dot(critical_point(mobject, direction), radius=dot_radius, color=RED_B)
         for direction in (LEFT, RIGHT, UP, DOWN)
     ]
     extras = []
     if include_center:
-        extras.append(Dot(mobject.get_critical_point(ORIGIN), radius=dot_radius, color=BLUE_D))
+        extras.append(Dot(critical_point(mobject, ORIGIN), radius=dot_radius, color=BLUE_D))
     outline = VGroup(
         *(
             Line(

@@ -61,10 +61,10 @@ from simplex.engine.glyph_map import TransformByGlyphMap
 from simplex.engine.scaling import scale_to_fit, scale_to_fit_mobject
 from simplex.engine.text import Caption, TexPage, color_tex
 from simplex.mobjects import ArrayMob, ArrayPointer, Edge, Node
-from simplex.slides import BaseSlide, OutlinePart, OutlineScene
+from simplex.slides import OutlinePart, OutlineScene, Slide
 
 
-class TextHelpers(BaseSlide):
+class TextHelpers(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -107,7 +107,7 @@ class TextHelpers(BaseSlide):
         self.clear_scene()
 
 
-class CodeHelpers(BaseSlide):
+class CodeHelpers(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -161,7 +161,7 @@ class CodeHelpers(BaseSlide):
         self.clear_scene()
 
 
-class CodeWithMath(BaseSlide):
+class CodeWithMath(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -224,7 +224,7 @@ class CodeWithMath(BaseSlide):
         self.clear_scene()
 
 
-class GraphAndArray(BaseSlide):
+class GraphAndArray(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -274,7 +274,7 @@ class GraphAndArray(BaseSlide):
         self.clear_scene()
 
 
-class RegionAnchors(BaseSlide):
+class RegionAnchors(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -363,7 +363,7 @@ class OutlineHelpers(OutlineScene):
         )
 
 
-class ExitAnimations(BaseSlide):
+class ExitAnimations(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -395,7 +395,7 @@ class ExitAnimations(BaseSlide):
         self.clear_scene()
 
 
-class GeometryHelpers(BaseSlide):
+class GeometryHelpers(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -411,7 +411,7 @@ class GeometryHelpers(BaseSlide):
         self.clear_scene()
 
 
-class GlyphMapTransform(BaseSlide):
+class GlyphMapTransform(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -457,7 +457,7 @@ class GlyphMapTransform(BaseSlide):
         self.clear_scene()
 
 
-class TrackingHelpers(BaseSlide):
+class TrackingHelpers(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -511,7 +511,7 @@ class TrackingHelpers(BaseSlide):
         self.clear_scene()
 
 
-class ShapeAndDebug(BaseSlide):
+class ShapeAndDebug(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
@@ -576,7 +576,7 @@ class ShapeAndDebug(BaseSlide):
         self.clear_scene()
 
 
-class ScalingHelpers(BaseSlide):
+class ScalingHelpers(Slide):
     """``engine/scaling.py`` -- multi-axis fit + stroke-aware scaling."""
 
     def setup(self) -> None:

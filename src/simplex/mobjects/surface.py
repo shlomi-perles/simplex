@@ -35,6 +35,7 @@ from manim import (
     Rectangle,
     VGroup,
 )
+from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 from manim.opengl import OpenGLSurface
 from manim.utils.color import ManimColor, ParsableManimColor, color_to_rgba, interpolate_color
 
@@ -359,10 +360,10 @@ class ScalarFieldSurface(OpenGLSurface):
 # ── ColorBar ──────────────────────────────────────────────────────
 
 
-class ColorBar(VGroup):
+class ColorBar(VGroup, metaclass=ConvertToOpenGL):
     """Vertical gradient legend for a scalar colormap.
 
-    In a ``ThreeDScene``, pin to the screen with
+    In a ``ThreeDSlide`` / ``ThreeDScene``, pin to the screen with
     ``self.add_fixed_in_frame_mobjects(bar)``::
 
         bar = ColorBar(colormap="thermal", min_value=-1, max_value=1)

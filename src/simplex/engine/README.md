@@ -5,12 +5,12 @@ Small additive helpers that augment vanilla Manim. **Never wrap Manim's construc
 ## Public surface
 
 - `apply_theme_defaults(theme)` -- calls `Mobject.set_default(...)` for Tex / MathTex / Text / Line / Dot / Arrow / Rectangle / Square (invoked by `simplex.plugin:activate`)
-- `Region` -- transparent Manim `Rectangle` subclass used as a mutable drawing area; default lives on `BaseSlide.region`
+- `Region` -- transparent Manim `Rectangle` subclass used as a mutable drawing area; default lives on `Slide.region`
 - `ExitAnim(mob, **kw)` -- exit animation lookup; dispatches through `exit_for(mob)` (named `ExitAnim` so it never collides with Manim's `Add` Animation pair)
 - `exit_for(mob, **kw)` -- per-instance override (WeakKeyDictionary) -> MRO match in defaults -> `FadeOut`
 - `register_exit(mob_type, factory)` -- register a default exit for a Mobject class
 - `set_exit_animation(mob, factory)` -- per-instance exit override (stored in a `WeakKeyDictionary`; no monkey-patching)
-- `clear_scene(scene, *, exclude=())` -- free function used by `BaseSlide.clear_scene`
+- `clear_scene(scene, *, exclude=())` -- free function used by `Slide.clear_scene`
 - `HighlightResult` -- typed return for `highlight_code_lines` (fade + optional indicate, iterable)
 
 Cross-package types live one level up:
@@ -34,5 +34,5 @@ Cross-package types live one level up:
 - Don't call `Mobject.set_default(...)` outside `apply_theme_defaults`.
 - Don't subclass Manim Mobjects to inject defaults; use `set_default` via `apply_theme_defaults`.
 - Don't reimplement what Manim ships: `ValueTracker` arithmetic ops, `index_labels`, `ConvexHull` (with QuickHull) and `Polygon.round_corners`, `Union`, `manim.utils.space_ops.normalize` / `angle_of_vector` / `rotate_vector`, `manim.constants.QUALITIES` (`flag` field), `scale_to_fit_height/_width/_depth`, `BraceLabel`/`BraceText`, `Mobject.always` -- all already in 0.20.x.
-- Don't reimplement Manim geometry in layout helpers. `Region` is a transparent `Rectangle`, so use native methods such as `get_critical_point`, `move_to(..., aligned_edge=...)`, and `get_center_of_mass` where they fit.
+- Don't reimplement Manim geometry in layout helpers. Use `simplex.engine.opengl_compat.critical_point` when a helper must work on both Cairo and OpenGL mobjects.
 - Don't monkey-patch Mobjects (no `_simplex_*` attributes). Use the `WeakKeyDictionary` registry in `animations.py` instead.

@@ -1,6 +1,6 @@
 # tests/slides/
 
-Tests for `simplex.slides`: `BaseSlide.next_slide` section-type
+Tests for `simplex.slides`: `Slide.next_slide` section-type
 resolution (silent auto-promotion on first bare call, SUB after a named
 main, explicit overrides) and the `make_chrome` purity contract.
 

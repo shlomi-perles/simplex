@@ -1,4 +1,4 @@
-"""``make_chrome`` -- header / footer factory for ``BaseSlide``.
+"""``make_chrome`` -- header / footer factory for ``Slide``.
 
 Authors call ``self.add_to_canvas(**chrome.mobjects)`` in their scene's
 ``setup()`` and re-bind ``self.region = chrome.body_region``. The chrome
@@ -17,12 +17,13 @@ RevealJS template / web settings (see ``simplex.web``).
 
 from typing import Any, NamedTuple
 
-from manim import DL, UP, Mobject, Tex
+from manim import DL, UP, Tex
 
+from simplex.engine.opengl_compat import MobjectLike, is_mobject
 from simplex.engine.region import Region
 from simplex.theme.tokens import Theme
 
-type ChromeContent = str | Mobject | None
+type ChromeContent = str | MobjectLike | None
 
 
 class Chrome(NamedTuple):
@@ -71,8 +72,8 @@ def make_chrome(
     return Chrome(mobjects=mobs, body_region=body)
 
 
-def _as_chrome_mobject(content: ChromeContent, *, font_size: float) -> Mobject:
-    if isinstance(content, Mobject):
+def _as_chrome_mobject(content: ChromeContent, *, font_size: float) -> MobjectLike:
+    if is_mobject(content):
         return content
     if content is None:
         raise ValueError("chrome content cannot be None")

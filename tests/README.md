@@ -15,7 +15,7 @@ Pytest suites for the `manim-simplex` package.
   animations, geometry, dynamics, text, scaling, debug. Manim-touching
   cases use `pytest.importorskip("manim")`.
 - `tests/mobjects/` -- smoke construction tests for `Node`, `Edge`, ...
-- `tests/slides/` -- `BaseSlide.next_slide` section-type resolution
+- `tests/slides/` -- `Slide.next_slide` section-type resolution
   (no auto-promotion, fail-loudly path) and `make_chrome` purity tests.
 - `tests/deck/` -- deck config, section config, discovery, and scaffolding.
 - `tests/render/` -- manifest reconciliation, HTML/PDF helpers, thumbnails,

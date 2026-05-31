@@ -28,6 +28,26 @@ def _deck(tmp_path: Path) -> DeckConfig:
     return DeckConfig.load(deck_dir)
 
 
+def _opengl_deck(tmp_path: Path) -> DeckConfig:
+    deck_dir = tmp_path / "demo"
+    deck_dir.mkdir()
+    (deck_dir / "deck.toml").write_text(
+        'slug = "demo"\n'
+        'title = "Demo"\n'
+        'quality = "low_quality"\n'
+        "\n"
+        "[[entrypoints]]\n"
+        'target = "slides.surface:Surface"\n'
+        'renderer = "opengl"\n',
+        encoding="utf-8",
+    )
+    slides_pkg = deck_dir / "slides"
+    slides_pkg.mkdir()
+    (slides_pkg / "__init__.py").write_text("", encoding="utf-8")
+    (slides_pkg / "surface.py").write_text("class Surface: ...\n", encoding="utf-8")
+    return DeckConfig.load(deck_dir)
+
+
 @pytest.fixture
 def captured(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     calls: list[dict[str, Any]] = []
@@ -50,6 +70,28 @@ def test_render_passes_save_sections(tmp_path: Path, captured: list[dict[str, An
     assert len(captured) == 1
     args = captured[0]["args"]
     assert "--save_sections" in args
+
+
+def test_render_finds_manim_slides_next_to_python(
+    tmp_path: Path,
+    captured: list[dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scripts_dir = tmp_path / "venv" / "Scripts"
+    scripts_dir.mkdir(parents=True)
+    python_exe = scripts_dir / "python.exe"
+    script_name = "manim-slides.exe" if runner.os.name == "nt" else "manim-slides"
+    manim_slides = scripts_dir / script_name
+    python_exe.write_text("", encoding="utf-8")
+    manim_slides.write_text("", encoding="utf-8")
+
+    monkeypatch.setattr(runner.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(runner.sys, "executable", str(python_exe))
+
+    deck = _deck(tmp_path)
+    runner.render(deck, output_dir=tmp_path / "out")
+
+    assert captured[0]["args"][0] == str(manim_slides)
 
 
 def test_render_forces_utf8_subprocess_env(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
@@ -125,3 +167,16 @@ def test_render_caching_disabled_adds_flag(tmp_path: Path, captured: list[dict[s
     runner.render(deck, output_dir=tmp_path / "out")
     args = captured[0]["args"]
     assert "--disable_caching" in args
+
+
+def test_render_opengl_entrypoint_adds_renderer_and_movie_flags(
+    tmp_path: Path,
+    captured: list[dict[str, Any]],
+) -> None:
+    deck = _opengl_deck(tmp_path)
+    runner.render(deck, output_dir=tmp_path / "out")
+    args = captured[0]["args"]
+
+    assert "--renderer=opengl" in args
+    assert "--write_to_movie" in args
+    assert args[-1] == "Surface"

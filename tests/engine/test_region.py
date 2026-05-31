@@ -6,8 +6,25 @@ import pytest
 pytest.importorskip("manim")
 
 from manim import DOWN, DR, LEFT, ORIGIN, RIGHT, UL, UP, UR
+from manim.mobject.opengl.opengl_mobject import OpenGLMobject
 
 from simplex.engine.region import Region
+
+
+def _opengl_box(*, left: float, right: float, bottom: float, top: float) -> OpenGLMobject:
+    mob = OpenGLMobject()
+    mob.set_points(
+        np.array(
+            [
+                [left, bottom, 0.0],
+                [right, bottom, 0.0],
+                [right, top, 0.0],
+                [left, top, 0.0],
+            ],
+            dtype=float,
+        )
+    )
+    return mob
 
 
 def test_full_frame_center_is_origin() -> None:
@@ -66,6 +83,21 @@ def test_update_uses_mobject_inner_edges() -> None:
     bottom_ref = Square(side_length=2.0).move_to(np.array([0.0, -5.0, 0.0]))
     left_ref = Square(side_length=2.0).move_to(np.array([-5.0, 0.0, 0.0]))
     right_ref = Square(side_length=2.0).move_to(np.array([5.0, 0.0, 0.0]))
+
+    r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
+    r.update(top=top_ref, bottom=bottom_ref, left=left_ref, right=right_ref)
+
+    assert r.top == pytest.approx(top_ref.get_bottom()[1])
+    assert r.bottom == pytest.approx(bottom_ref.get_top()[1])
+    assert r.left == pytest.approx(left_ref.get_right()[0])
+    assert r.right == pytest.approx(right_ref.get_left()[0])
+
+
+def test_update_uses_opengl_mobject_inner_edges() -> None:
+    top_ref = _opengl_box(left=-1.0, right=1.0, bottom=4.0, top=6.0)
+    bottom_ref = _opengl_box(left=-1.0, right=1.0, bottom=-6.0, top=-4.0)
+    left_ref = _opengl_box(left=-6.0, right=-4.0, bottom=-1.0, top=1.0)
+    right_ref = _opengl_box(left=4.0, right=6.0, bottom=-1.0, top=1.0)
 
     r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
     r.update(top=top_ref, bottom=bottom_ref, left=left_ref, right=right_ref)
@@ -151,6 +183,16 @@ def test_place_corner_uses_mobject_aligned_edge() -> None:
 
     assert sq.get_right()[0] == pytest.approx(r.right - 0.25)
     assert sq.get_top()[1] == pytest.approx(r.top - 0.25)
+
+
+def test_place_opengl_mobject_with_buff_pulls_inward() -> None:
+    r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
+    mob = _opengl_box(left=-0.5, right=0.5, bottom=-0.5, top=0.5)
+
+    r.place(mob, UR, buff=0.25)
+
+    assert mob.get_right()[0] == pytest.approx(r.right - 0.25)
+    assert mob.get_top()[1] == pytest.approx(r.top - 0.25)
 
 
 def test_place_rejects_string_anchor() -> None:

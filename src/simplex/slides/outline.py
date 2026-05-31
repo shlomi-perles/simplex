@@ -26,15 +26,15 @@ from manim import (
     ReplacementTransform,
     TransformMatchingShapes,
     VGroup,
-    VMobject,
     Write,
 )
 
+from simplex.engine.opengl_compat import is_vmobject
 from simplex.engine.region import Region
 from simplex.engine.scaling import scale_to_fit
 from simplex.mobjects.outline import OutlineProgressBar
 from simplex.section import SimplexSectionType
-from simplex.slides.base import BaseSlide
+from simplex.slides.base import Slide
 from simplex.theme.context import get_active_theme
 
 type VisualAnimation = Animation | Callable[[Mobject], Animation]
@@ -71,7 +71,7 @@ class OutlinePart:
     thumbnail_scale: float = 1.0
 
 
-class OutlineScene(BaseSlide):
+class OutlineScene(Slide):
     """Animated lecture outline built from :class:`OutlinePart` objects.
 
     Progress dots are positioned through ``self.region.linspace(RIGHT, n)`` by
@@ -228,7 +228,7 @@ class OutlineScene(BaseSlide):
         if part.visual is None:
             return
         self._place_feature_visual(part.visual, part)
-        if isinstance(part.visual, VMobject):
+        if is_vmobject(part.visual):
             self.play(DrawBorderThenFill(part.visual))
         else:
             self.play(FadeIn(part.visual))
@@ -382,14 +382,14 @@ class OutlineScene(BaseSlide):
         return self.region.width
 
     def _enter(self, mob: Mobject) -> Any:
-        return Write(mob) if isinstance(mob, VMobject) else FadeIn(mob)
+        return Write(mob) if is_vmobject(mob) else FadeIn(mob)
 
     def _animate_progress(self, index: int) -> Any:
         builder = cast(Any, self.progress_bar.animate)
         return builder(run_time=self.progress_run_time).set_index(index)
 
     def _title_to_label_animation(self, title: Mobject, label: Mobject) -> Animation:
-        if isinstance(title, VMobject) and isinstance(label, VMobject):
+        if is_vmobject(title) and is_vmobject(label):
             return TransformMatchingShapes(title, label)
         return ReplacementTransform(title, label)
 

@@ -23,12 +23,13 @@ from manim import (
     Line,
     VGroup,
 )
+from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 
 from simplex.engine.region import Region
 from simplex.theme.context import get_active_theme
 
 
-class OutlineProgressBar(VGroup):
+class OutlineProgressBar(VGroup, metaclass=ConvertToOpenGL):
     """A dot progress bar for outline slides.
 
     Use :meth:`from_region` when constructing from a Simplex ``Region``. Its
