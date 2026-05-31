@@ -1,4 +1,20 @@
 category = "Reference"
+entrypoints = [
+  "slides.scenes:TextHelpers",
+  "slides.scenes:CodeHelpers",
+  "slides.scenes:CodeWithMath",
+  "slides.scenes:GraphAndArray",
+  "slides.scenes:RegionAnchors",
+  "slides.scenes:OutlineHelpers",
+  "slides.scenes:ExitAnimations",
+  "slides.scenes:GeometryHelpers",
+  "slides.scenes:GlyphMapTransform",
+  "slides.scenes:TrackingHelpers",
+  "slides.scenes:ShapeAndDebug",
+  "slides.scenes:ScalingHelpers",
+  "slides.paper_showcase:PaperShowcase",
+  "slides.surface_showcase:SurfaceColoring@opengl",
+]
 order = 0
 quality = "medium_quality"
 slug = "showcase"
@@ -7,49 +23,6 @@ tags = ["reference", "showcase"]
 theme = "simplex_dark"
 title = "Simplex showcase"
 voiceover = false
-
-[[entrypoints]]
-target = "slides.scenes:TextHelpers"
-
-[[entrypoints]]
-target = "slides.scenes:CodeHelpers"
-
-[[entrypoints]]
-target = "slides.scenes:CodeWithMath"
-
-[[entrypoints]]
-target = "slides.scenes:GraphAndArray"
-
-[[entrypoints]]
-target = "slides.scenes:RegionAnchors"
-
-[[entrypoints]]
-target = "slides.scenes:OutlineHelpers"
-
-[[entrypoints]]
-target = "slides.scenes:ExitAnimations"
-
-[[entrypoints]]
-target = "slides.scenes:GeometryHelpers"
-
-[[entrypoints]]
-target = "slides.scenes:GlyphMapTransform"
-
-[[entrypoints]]
-target = "slides.scenes:TrackingHelpers"
-
-[[entrypoints]]
-target = "slides.scenes:ShapeAndDebug"
-
-[[entrypoints]]
-target = "slides.scenes:ScalingHelpers"
-
-[[entrypoints]]
-target = "slides.paper_showcase:PaperShowcase"
-
-[[entrypoints]]
-renderer = "opengl"
-target = "slides.surface_showcase:SurfaceColoring"
 
 # Slide chrome lives in the RevealJS host, not the rendered frames.
 # Toggling these on costs nothing -- no re-render needed.

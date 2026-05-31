@@ -1,14 +1,11 @@
 """DeckConfig -- pydantic model loaded from each deck's deck.toml.
 
-Two scene-list spellings are accepted:
+The canonical scene list is a single ordered ``entrypoints`` array:
 
-- ``entrypoints = ["slides.intro:Title", ...]`` -- preferred, points at scene
-  classes inside the deck's ``slides/`` package.
-- ``[[entrypoints]]`` tables -- preferred when a scene needs non-default
-  renderer metadata, e.g. ``target = "slides.surface:Surface"; renderer =
-  "opengl"``.
-- ``scenes = ["Title", ...]`` -- legacy, bare class names in a top-level
-  ``slides.py``. Kept for backwards compatibility with the single-file layout.
+- ``"slides.intro:Title"`` renders with Cairo unless the source file declares
+  a file-level renderer.
+- ``"slides.surface:Surface@opengl"`` pins one scene to ManimCE's OpenGL
+  renderer.
 
 ``section_slug`` is populated by the registry, not the author.
 
@@ -179,7 +176,7 @@ class DeckConfig(BaseModel):
         if value is None:
             return ()
         if isinstance(value, tuple | list):
-            return [{"target": item} if isinstance(item, str) else item for item in value]
+            return [_parse_entrypoint_item(item) for item in value]
         return value
 
     @model_validator(mode="after")
@@ -188,12 +185,12 @@ class DeckConfig(BaseModel):
 
     @property
     def scene_specs(self) -> tuple[str, ...]:
-        """Return entrypoints if present, else legacy ``slides.py``-relative scenes."""
+        """Return entrypoints if present, else ``slides.py``-relative scenes."""
         return tuple(ep.target for ep in self.scene_entrypoints)
 
     @property
     def scene_entrypoints(self) -> tuple[SceneEntrypoint, ...]:
-        """Return normalized scene entrypoints from new or legacy config."""
+        """Return normalized scene entrypoints."""
         if self.entrypoints:
             return self.entrypoints
         return tuple(SceneEntrypoint(target=f"slides:{name}") for name in self.scenes)
@@ -289,6 +286,15 @@ class DeckConfig(BaseModel):
         toml_path = deck_dir / "deck.toml"
         data = tomllib.loads(toml_path.read_text(encoding="utf-8"))
         return cls(**data, path=deck_dir, section_slug=section_slug)
+
+
+def _parse_entrypoint_item(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+    target, separator, renderer = value.rpartition("@")
+    if not separator:
+        return {"target": value}
+    return {"target": target, "renderer": renderer}
 
 
 def detect_source_renderer(source_file: Path) -> RendererName | None:

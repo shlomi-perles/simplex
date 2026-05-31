@@ -35,10 +35,7 @@ def _opengl_deck(tmp_path: Path) -> DeckConfig:
         'slug = "demo"\n'
         'title = "Demo"\n'
         'quality = "low_quality"\n'
-        "\n"
-        "[[entrypoints]]\n"
-        'target = "slides.surface:Surface"\n'
-        'renderer = "opengl"\n',
+        'entrypoints = ["slides.surface:Surface@opengl"]\n',
         encoding="utf-8",
     )
     slides_pkg = deck_dir / "slides"

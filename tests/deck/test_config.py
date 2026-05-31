@@ -97,6 +97,33 @@ def test_string_entrypoints_load_as_cairo_shorthand(tmp_path: Path) -> None:
     assert cfg.resolve_entrypoints()[0].renderer == "cairo"
 
 
+def test_string_entrypoint_renderer_suffix_loads(tmp_path: Path) -> None:
+    deck_dir = _write_toml(
+        tmp_path,
+        'slug = "demo"\ntitle = "Demo"\nentrypoints = ["slides.surface:Surface@opengl"]\n',
+    )
+    slides_dir = deck_dir / "slides"
+    slides_dir.mkdir()
+    (slides_dir / "surface.py").write_text("", encoding="utf-8")
+
+    cfg = DeckConfig.load(deck_dir)
+    group = cfg.resolve_entrypoints()[0]
+
+    assert cfg.scene_specs == ("slides.surface:Surface",)
+    assert group.renderer == "opengl"
+    assert group.scene_names == ("Surface",)
+
+
+def test_string_entrypoint_renderer_suffix_validates(tmp_path: Path) -> None:
+    deck_dir = _write_toml(
+        tmp_path,
+        'slug = "demo"\ntitle = "Demo"\nentrypoints = ["slides.surface:Surface@vulkan"]\n',
+    )
+
+    with pytest.raises(ValidationError, match="renderer must be"):
+        DeckConfig.load(deck_dir)
+
+
 def test_structured_entrypoint_renderer_loads(tmp_path: Path) -> None:
     deck_dir = _write_toml(
         tmp_path,
@@ -132,12 +159,7 @@ def test_source_renderer_fallback_detects_top_level_config(tmp_path: Path) -> No
 def test_entrypoint_renderer_conflict_raises(tmp_path: Path) -> None:
     deck_dir = _write_toml(
         tmp_path,
-        'slug = "demo"\n'
-        'title = "Demo"\n'
-        "\n"
-        "[[entrypoints]]\n"
-        'target = "slides.surface:Surface"\n'
-        'renderer = "cairo"\n',
+        'slug = "demo"\ntitle = "Demo"\nentrypoints = ["slides.surface:Surface@cairo"]\n',
     )
     slides_dir = deck_dir / "slides"
     slides_dir.mkdir()
