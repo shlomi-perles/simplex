@@ -3,10 +3,11 @@
 Why we keep a custom template (instead of ``manim_slides.convert.RevealJS``):
 
 The template at ``web/templates/revealjs.html.j2`` carries a polished
-RevealJS host -- postMessage bridge to the parent ``deck.html``, touch tap
-zones, disabled RevealJS layout (so videos fill the iframe natively),
-custom progress bar styling via CSS variables. The manim-slides default
-template doesn't have any of that. We do still use
+standalone RevealJS export/debug page, touch tap zones, disabled RevealJS
+layout (so videos fill the frame natively), and custom progress bar styling
+via CSS variables. The manim-slides default template doesn't have any of that.
+The main ``deck.html`` page is now driven by the parent-owned media player.
+We do still use
 ``manim_slides.convert.PDF`` / ``PowerPoint`` for those formats; they have
 no custom layout requirements.
 
