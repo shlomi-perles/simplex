@@ -10,6 +10,7 @@ dev = [
   "ruff>=0.6",
   "basedpyright>=1.13",
   "pre-commit>=3.7",
+  "playwright>=1.60.0",
 ]
 
 [project]
@@ -148,4 +149,7 @@ packages = ["src/simplex"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
+markers = [
+  "browser: browser-level checks for generated static HTML and player JavaScript",
+]
 testpaths = ["tests"]

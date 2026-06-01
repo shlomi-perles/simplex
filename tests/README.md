@@ -21,7 +21,7 @@ Pytest suites for the `manim-simplex` package.
 - `tests/render/` -- manifest reconciliation, HTML/PDF helpers, thumbnails,
   runner command construction.
 - `tests/web/` -- notes rendering, citations, equations, site config, portal
-  builder.
+  builder, and browser-level generated player checks.
 - `tests/cli/` -- Typer command surface and thin orchestration behavior.
 
 ## Don't
@@ -30,3 +30,6 @@ Pytest suites for the `manim-simplex` package.
   too slow. Render-smoke lives in CI via `simplex test --only showcase`.
 - Don't import `manim` in `conftest.py`; keep collection fast.
 - Don't call `apply_theme_defaults` -- it mutates global Manim state.
+- Don't add browser tests for static markup that a normal HTML assertion can
+  cover; keep Playwright focused on iframe, postMessage, storage, and real DOM
+  behavior.

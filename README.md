@@ -211,6 +211,7 @@ entrypoints = ["slides.intro:Intro", "slides.surface:SurfaceColoring@opengl"]
 git clone https://github.com/shlomi-perles/simplex.git
 cd simplex
 uv sync --all-extras
+uv run playwright install chromium
 uv run pre-commit install
 ```
 
@@ -222,6 +223,7 @@ uv run ruff check .
 uv run ruff format --check .
 uv run basedpyright
 uv run pytest -q
+uv run pytest tests/web/test_player_browser.py -q
 uv run python tools/vendor_web_assets.py
 uv build --no-sources
 uvx twine check dist/*
