@@ -25,6 +25,8 @@ jobs:
     - name: Pin Python ${{ matrix.python-version }}
       run: uv python pin ${{ matrix.python-version }}
     - run: uv sync --locked --all-extras
+    - name: Install Playwright browser
+      run: uv run --locked playwright install --with-deps chromium
     - name: README structure
       run: python tools/check_readmes.py
     - run: uv run --locked ruff check .
