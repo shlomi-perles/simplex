@@ -31,5 +31,5 @@ Pytest suites for the `manim-simplex` package.
 - Don't import `manim` in `conftest.py`; keep collection fast.
 - Don't call `apply_theme_defaults` -- it mutates global Manim state.
 - Don't add browser tests for static markup that a normal HTML assertion can
-  cover; keep Playwright focused on iframe, postMessage, storage, and real DOM
-  behavior.
+  cover; keep Playwright focused on media-player behavior, storage, and real
+  DOM behavior.

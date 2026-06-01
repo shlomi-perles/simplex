@@ -56,6 +56,7 @@ class _BuiltVariant:
     output_dir: Path
     manifest: DeckManifest
     thumbs: dict[int, Path]
+    player_frames: dict[tuple[int, int], dict[str, Path]]
     slides_html: Path
 
 
@@ -152,6 +153,13 @@ def _build_variant_output(
 
     manifest = reconcile.build_manifest(deck, media_dir=output_dir)
     thumbs = thumbnail.generate(deck, manifest, site_deck_dir=output_dir, cache_dir=cache_dir)
+    player_frames = thumbnail.generate_player_frames(
+        deck,
+        manifest,
+        site_deck_dir=output_dir,
+        cache_dir=cache_dir,
+        extract_missing=render,
+    )
     enriched = tuple(
         main.model_copy(update={"thumbnail": thumbs.get(main.index)})
         for main in manifest.main_slides
@@ -170,6 +178,7 @@ def _build_variant_output(
         output_dir=output_dir,
         manifest=manifest.model_copy(update={"main_slides": enriched}),
         thumbs=thumbs,
+        player_frames=player_frames,
         slides_html=slides_html,
     )
 
@@ -267,6 +276,144 @@ def _build_slide_views(
     return tuple(slides)
 
 
+def _prefixed_path(prefix: str, path: Path | None) -> str | None:
+    if path is None:
+        return None
+    rel = path.as_posix()
+    return f"{prefix}/{rel}" if prefix else rel
+
+
+def _segment_path(main_idx: int, sub_idx: int) -> Path:
+    return Path("segments") / f"{main_idx:04d}_{sub_idx:02d}.mp4"
+
+
+def _variant_main_map(
+    built_by_variant: dict[SlideThemeVariant, _BuiltVariant],
+) -> dict[SlideThemeVariant, dict[int, Any]]:
+    return {
+        variant: {main.index: main for main in built.manifest.main_slides}
+        for variant, built in built_by_variant.items()
+    }
+
+
+def _sub_at(main: Any, sub_idx: int) -> Any | None:
+    subs = tuple(getattr(main, "subsections", ()) or ())
+    return subs[sub_idx] if sub_idx < len(subs) else None
+
+
+def _theme_asset(
+    *,
+    prefix: str,
+    built: _BuiltVariant,
+    main: Any,
+    sub_idx: int,
+) -> dict[str, str | None]:
+    sub = _sub_at(main, sub_idx)
+    frames = built.player_frames.get((int(main.index), sub_idx), {})
+    fallback = built.thumbs.get(int(main.index))
+    first_frame = frames.get("first") or fallback
+    last_frame = frames.get("last") or first_frame
+    has_video = sub is not None and sub.video is not None and sub.video.exists()
+    return {
+        "video": _prefixed_path(
+            prefix, _segment_path(int(main.index), sub_idx) if has_video else None
+        ),
+        "firstFrame": _prefixed_path(prefix, first_frame),
+        "lastFrame": _prefixed_path(prefix, last_frame),
+        "thumbnail": _prefixed_path(prefix, fallback),
+    }
+
+
+def _build_player_manifest(
+    *,
+    deck: DeckConfig,
+    default_manifest: DeckManifest,
+    built_by_variant: dict[SlideThemeVariant, _BuiltVariant],
+    variant_prefixes: dict[SlideThemeVariant, str],
+    available_slide_themes: tuple[SlideThemeVariant, ...],
+    default_slide_theme: SlideThemeVariant,
+    slide_theme_mode: str,
+) -> dict[str, Any]:
+    variant_mains = _variant_main_map(built_by_variant)
+    slides: list[dict[str, Any]] = []
+    for main in default_manifest.main_slides:
+        sub_count = max(1, len(main.subsections))
+        subslides: list[dict[str, Any]] = []
+        for sub_idx in range(sub_count):
+            default_sub = _sub_at(main, sub_idx)
+            themes_by_variant: dict[str, dict[str, str | None]] = {}
+            for variant in available_slide_themes:
+                variant_main = variant_mains.get(variant, {}).get(main.index, main)
+                themes_by_variant[variant] = _theme_asset(
+                    prefix=variant_prefixes.get(variant, ""),
+                    built=built_by_variant[variant],
+                    main=variant_main,
+                    sub_idx=sub_idx,
+                )
+            subslides.append(
+                {
+                    "subIndex": sub_idx,
+                    "name": str(default_sub.name if default_sub is not None else main.name),
+                    "sectionType": str(
+                        default_sub.section_type.value
+                        if default_sub is not None
+                        else main.section_type.value
+                    ),
+                    "duration": float(
+                        default_sub.duration_s if default_sub is not None else main.duration_s
+                    ),
+                    "themes": themes_by_variant,
+                }
+            )
+        slides.append(
+            {
+                "mainIndex": int(main.index),
+                "scene": str(main.scene),
+                "name": str(main.name),
+                "duration": float(main.duration_s),
+                "subslides": subslides,
+            }
+        )
+    return {
+        "deckSlug": deck.slug,
+        "mode": slide_theme_mode,
+        "defaultTheme": default_slide_theme,
+        "availableThemes": tuple(available_slide_themes),
+        "slideCount": len(slides),
+        "slides": slides,
+    }
+
+
+def _initial_player_frames(
+    player_manifest: dict[str, Any],
+) -> dict[str, str]:
+    slides = player_manifest.get("slides")
+    if not isinstance(slides, list) or not slides:
+        return {}
+    first_slide = slides[0]
+    if not isinstance(first_slide, dict):
+        return {}
+    subslides = first_slide.get("subslides")
+    if not isinstance(subslides, list) or not subslides:
+        return {}
+    first_sub = subslides[0]
+    if not isinstance(first_sub, dict):
+        return {}
+    themes_by_variant = first_sub.get("themes")
+    if not isinstance(themes_by_variant, dict):
+        return {}
+    out: dict[str, str] = {}
+    for variant, raw_asset in themes_by_variant.items():
+        if not isinstance(variant, str) or not isinstance(raw_asset, dict):
+            continue
+        frame = (
+            raw_asset.get("firstFrame") or raw_asset.get("lastFrame") or raw_asset.get("thumbnail")
+        )
+        if isinstance(frame, str) and frame:
+            out[variant] = frame
+    return out
+
+
 def _deck_created_timestamp(deck: DeckConfig) -> float:
     """Sort key for "latest" decks: explicit creation date, then file mtime."""
     if deck.created_at is not None:
@@ -320,8 +467,6 @@ def _build_deck(
     slide_theme_mode = "true" if slide_theme_config.enabled else "filter"
     available_slide_themes: tuple[SlideThemeVariant, ...]
     default_slide_theme: SlideThemeVariant
-    slide_theme_iframes: dict[str, str] = {}
-    slide_theme_versions: dict[str, str] = {}
     preview_gif_href: str | None = None
 
     if slide_theme_config.enabled:
@@ -343,8 +488,6 @@ def _build_deck(
                 watch=watch,
             )
             built_by_variant[variant] = built
-            slide_theme_iframes[variant] = (Path("themes") / variant / "slides.html").as_posix()
-            slide_theme_versions[variant] = _file_version(built.slides_html)
 
         default_built = built_by_variant[default_slide_theme]
         _copy_default_slides_pdf(default_built.deck, default_built.output_dir, deck_out)
@@ -360,6 +503,15 @@ def _build_deck(
             default_built.manifest,
             default_variant=default_slide_theme,
             variant_thumbs={variant: built.thumbs for variant, built in built_by_variant.items()},
+        )
+        player_manifest = _build_player_manifest(
+            deck=deck,
+            default_manifest=default_built.manifest,
+            built_by_variant=built_by_variant,
+            variant_prefixes={variant: f"themes/{variant}" for variant in built_by_variant},
+            available_slide_themes=available_slide_themes,
+            default_slide_theme=default_slide_theme,
+            slide_theme_mode=slide_theme_mode,
         )
     else:
         available_slide_themes = ("dark", "light")
@@ -386,10 +538,16 @@ def _build_deck(
             default_variant=None,
             variant_thumbs={},
         )
-        slide_theme_iframes["dark"] = "slides.html"
-        slide_theme_iframes["light"] = "slides.html"
-        slide_theme_versions["dark"] = _file_version(built.slides_html)
-        slide_theme_versions["light"] = slide_theme_versions["dark"]
+        built_by_variant = {"dark": built, "light": built}
+        player_manifest = _build_player_manifest(
+            deck=deck,
+            default_manifest=built.manifest,
+            built_by_variant=built_by_variant,
+            variant_prefixes={"dark": "", "light": ""},
+            available_slide_themes=available_slide_themes,
+            default_slide_theme=default_slide_theme,
+            slide_theme_mode=slide_theme_mode,
+        )
 
     notes_md = deck.path / "notes.md"
     notes_html = ""
@@ -438,8 +596,8 @@ def _build_deck(
         slide_theme_mode=slide_theme_mode,
         available_slide_themes=available_slide_themes,
         default_slide_theme=default_slide_theme,
-        slide_theme_iframes=slide_theme_iframes,
-        slide_theme_versions=slide_theme_versions,
+        player_manifest=player_manifest,
+        initial_player_frames=_initial_player_frames(player_manifest),
     )
     (deck_out / "index.html").write_text(page, encoding="utf-8")
     cover = slides[0].thumbnail if slides else None

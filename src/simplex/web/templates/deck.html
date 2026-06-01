@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ deck.title }} -- {{ site.brand }}{% endblock %}
+{% block head_meta %}
+  {% for _variant, frame in initial_player_frames.items() %}
+  <link rel="preload" as="image" href="{{ frame }}" fetchpriority="high" />
+  {% endfor %}
+{% endblock %}
 {% block nav_actions %}
   {% if has_pdf or has_notes_pdf %}
   <div class="site-resource-menu" data-resource-menu>
@@ -42,26 +47,79 @@
   data-slide-theme-mode="{{ slide_theme_mode }}"
   data-default-slide-theme="{{ default_slide_theme }}"
   data-available-slide-themes="{{ available_slide_themes|join(',') }}"
-  {% for variant, href in slide_theme_iframes.items() %}
-  {% set version = slide_theme_versions.get(variant, '') %}
-  data-slide-theme-{{ variant }}-src="{{ href }}{% if version %}?v={{ version }}{% endif %}"
-  {% endfor %}
   data-default-slide-number="{% if deck.web.show_slide_number %}true{% else %}false{% endif %}"
   data-default-clock="{% if deck.web.show_clock %}true{% else %}false{% endif %}"
   data-default-stopwatch="{% if deck.web.show_stopwatch %}true{% else %}false{% endif %}"
 >
   <div class="deck-viewer">
-    <div class="deck-viewer-frame">
-      <iframe
-        {% set default_iframe = slide_theme_iframes.get(default_slide_theme, "slides.html") %}
-        {% set default_version = slide_theme_versions.get(default_slide_theme, "") %}
-        src="{{ default_iframe }}{% if default_version %}?v={{ default_version }}{% endif %}"
-        title="{{ deck.title }} presentation"
-        allowfullscreen
-        allow="autoplay; fullscreen"
-        loading="lazy"
-        class="deck-iframe"
-      ></iframe>
+    <div class="deck-viewer-frame" data-player-frame>
+      <div class="deck-player-stage" data-player-stage aria-label="{{ deck.title }} presentation">
+        <img
+          class="deck-player-preview"
+          data-player-preview
+          {% for variant, frame in initial_player_frames.items() %}
+          data-initial-{{ variant }}="{{ frame }}"
+          {% endfor %}
+          alt=""
+          decoding="async"
+          fetchpriority="high"
+          hidden
+        />
+        <script>
+          (function () {
+            var img = document.currentScript && document.currentScript.previousElementSibling;
+            if (!img) return;
+            var theme = "{{ default_slide_theme }}";
+            theme = document.documentElement.dataset.theme || theme;
+            theme = theme === "light" ? "light" : "dark";
+            var src = img.getAttribute("data-initial-" + theme) ||
+              img.getAttribute("data-initial-{{ default_slide_theme }}") ||
+              img.getAttribute("data-initial-dark") ||
+              img.getAttribute("data-initial-light");
+            if (src) {
+              img.setAttribute("src", src);
+              img.hidden = false;
+            }
+            var grid = img.closest("[data-deck-slug]");
+            if (grid) {
+              grid.classList.toggle("is-true-slide-theme-light", theme === "light");
+              grid.classList.toggle(
+                "is-slide-theme-light",
+                "{{ slide_theme_mode }}" === "filter" && theme === "light"
+              );
+            }
+          })();
+        </script>
+        <canvas class="deck-player-freeze" data-player-freeze hidden></canvas>
+        <video class="deck-player-video is-active" data-player-video="0" muted playsinline preload="auto"></video>
+        <div class="deck-player-empty" data-player-empty hidden>
+          <span>No video segment available</span>
+        </div>
+        <div class="simplex-chrome time-cluster" aria-hidden="true">
+          <span
+            class="simplex-chrome-item clock"
+            data-player-clock
+            {% if not deck.web.show_clock %}hidden{% endif %}
+          ></span>
+          <span
+            class="simplex-chrome-item simplex-stopwatch"
+            data-player-stopwatch
+            {% if not deck.web.show_stopwatch %}hidden{% endif %}
+          >00:00:00</span>
+        </div>
+        <div
+          class="simplex-chrome slide-number"
+          data-player-slide-number
+          aria-hidden="true"
+          {% if not deck.web.show_slide_number %}hidden{% endif %}
+        ></div>
+        <div class="deck-player-progress" data-player-progress aria-hidden="true">
+          <span data-player-progress-bar></span>
+        </div>
+        <button class="deck-tap-zone deck-tap-zone-prev" data-tap="prev" aria-hidden="true" tabindex="-1" type="button"></button>
+        <button class="deck-tap-zone deck-tap-zone-next" data-tap="next" aria-hidden="true" tabindex="-1" type="button"></button>
+      </div>
+      <script type="application/json" data-player-manifest>{{ player_manifest|tojson }}</script>
     </div>
     <div class="deck-controls" role="toolbar" aria-label="Slide controls">
       <div class="deck-control-group" aria-label="Playback">
@@ -185,10 +243,10 @@
           <div class="deck-slide-thumb">
             {% if slide.thumbnail %}
             <img
-              src="{{ slide.thumbnail }}"
               {% for variant, thumb in slide.theme_thumbnails.items() %}
               data-thumb-{{ variant }}="{{ thumb }}"
               {% endfor %}
+              data-thumb-default="{{ slide.thumbnail }}"
               alt=""
               loading="lazy"
               decoding="async"
@@ -210,6 +268,23 @@
       </li>
       {% endfor %}
     </ol>
+    <script>
+      (function () {
+        var root = document.currentScript && document.currentScript.closest("[data-deck-slug]");
+        if (!root) return;
+        var theme = (document.documentElement.dataset.theme || "{{ default_slide_theme }}") === "light"
+          ? "light"
+          : "dark";
+        root.querySelectorAll(".deck-slide-thumb img").forEach(function (img) {
+          var src = img.getAttribute("data-thumb-" + theme) ||
+            img.getAttribute("data-thumb-{{ default_slide_theme }}") ||
+            img.getAttribute("data-thumb-default") ||
+            img.getAttribute("data-thumb-dark") ||
+            img.getAttribute("data-thumb-light");
+          if (src) img.setAttribute("src", src);
+        });
+      })();
+    </script>
   </aside>
 
   {% if notes_html %}

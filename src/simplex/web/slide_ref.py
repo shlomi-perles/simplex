@@ -1,10 +1,10 @@
 """markdown-it-py plugin -- ``[slide:label]`` => clickable jump anchor.
 
 Renders as ``<a href="#" class="slide-ref" data-slide="{index}">label</a>``.
-The parent viewer.js (see ``web/static/viewer.js``) binds clicks and forwards
-``{type: 'simplex.goto', idx: index}`` to the iframe. Numeric ``[slide:2]``
-refs are still supported, but label refs such as ``[slide:key-idea]`` are
-preferred because they survive slide reordering.
+The parent viewer.js (see ``web/static/viewer.js``) binds clicks and jumps the
+media player to the requested main slide. Numeric ``[slide:2]`` refs are still
+supported, but label refs such as ``[slide:key-idea]`` are preferred because
+they survive slide reordering.
 """
 
 import re

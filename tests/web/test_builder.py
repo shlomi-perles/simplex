@@ -69,9 +69,16 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     assert alpha_html.index("Clock") < alpha_html.index("Stopwatch")
     assert alpha_html.index("Stopwatch") < alpha_html.index("Slide Theme")
     assert 'data-slide-theme-mode="true"' in alpha_html
-    assert 'data-slide-theme-dark-src="themes/dark/slides.html?v=' in alpha_html
-    assert 'data-slide-theme-light-src="themes/light/slides.html?v=' in alpha_html
-    assert 'src="themes/dark/slides.html?v=' in alpha_html
+    assert "data-slide-theme-dark-src" not in alpha_html
+    assert "data-slide-theme-light-src" not in alpha_html
+    assert "data-player-stage" in alpha_html
+    assert "data-player-manifest" in alpha_html
+    assert '"themes": {"dark":' in alpha_html
+    assert '"firstFrame": "themes/dark/' in alpha_html
+    assert '"firstFrame": "themes/light/' in alpha_html
+    assert "iframe" not in alpha_html
+    assert '"mainIndex": 1' in alpha_html
+    assert '"subIndex": 0' in alpha_html
     dark_slides_html = (site_dir / "decks" / "alpha" / "themes" / "dark" / "slides.html").read_text(
         encoding="utf-8"
     )
@@ -85,12 +92,12 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     assert "simplex.stopwatch-toggle" in dark_slides_html
     assert "--simplex-bg: #FFFFFF" in light_slides_html
     viewer_js = (site_dir / "static" / "viewer.js").read_text(encoding="utf-8")
-    assert "var currentSub = 0;" in viewer_js
-    assert "function currentIframeVideoState()" in viewer_js
-    assert "pendingThemeGoto = pendingGotoForCurrentSlide();" in viewer_js
-    assert "time: target.time" in viewer_js
-    assert "duration: target.duration" in viewer_js
-    assert "freeze: true" in viewer_js
+    assert "simplex-slide-theme:" not in viewer_js
+    assert "function renderCurrent(options)" in viewer_js
+    assert "function captureFreeze(onlyCurrent)" in viewer_js
+    assert "function decodePreview(src, seq, revealImmediately)" in viewer_js
+    assert "asset.lastFrame" in viewer_js
+    assert "data-thumb-default" in alpha_html
 
 
 def test_build_resolves_nav_links_against_base_url_and_moves_github_to_footer(
@@ -167,8 +174,39 @@ def test_build_can_emit_filter_mode_from_site_config(tmp_path: Path) -> None:
 
     alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
     assert 'data-slide-theme-mode="filter"' in alpha_html
-    assert 'src="slides.html?v=' in alpha_html
+    assert "data-player-stage" in alpha_html
     assert (site_dir / "decks" / "alpha" / "slides.html").exists()
+
+
+def test_build_player_manifest_includes_vertical_subslides(tmp_path: Path) -> None:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir, "alpha", "Alpha", scenes=("Intro",))
+    site_dir = tmp_path / "site"
+    for variant in ("dark", "light"):
+        media = site_dir / "decks" / "alpha" / "themes" / variant
+        slides_dir = media / "slides"
+        slides_dir.mkdir(parents=True)
+        media_dir = media / "media"
+        media_dir.mkdir()
+        (media_dir / "a.mp4").write_bytes(b"\x00\x00")
+        (media_dir / "b.mp4").write_bytes(b"\x00\x00")
+        (slides_dir / "Intro.json").write_text(
+            '{"slides":[{"file":"media/a.mp4"},{"file":"media/b.mp4"}]}',
+            encoding="utf-8",
+        )
+
+    build(
+        decks_dir=decks_dir,
+        site_dir=site_dir,
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+
+    html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
+    assert '"subIndex": 0' in html
+    assert '"subIndex": 1' in html
+    assert '"video": "themes/dark/segments/0001_01.mp4"' in html
 
 
 def test_build_emits_section_pages_and_orders(tmp_path: Path) -> None:

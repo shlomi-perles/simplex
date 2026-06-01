@@ -34,6 +34,7 @@ from simplex.manifest import DeckManifest, MainSlide, Subsection
 
 DEFAULT_WIDTH = 480
 DEFAULT_SECONDARY_WIDTH = 960
+DEFAULT_PLAYER_FRAME_WIDTH = 1920
 DEFAULT_GIF_WIDTH = 320
 DEFAULT_GIF_FPS = 6
 DEFAULT_GIF_MAX_FRAMES = 24
@@ -220,6 +221,91 @@ def generate(
     for main in manifest.main_slides:
         out[main.index] = _one(main, deck, thumbs_dir, cache_root)
     return out
+
+
+def generate_player_frames(
+    deck: DeckConfig,
+    manifest: DeckManifest,
+    *,
+    site_deck_dir: Path,
+    cache_dir: Path,
+    extract_missing: bool = True,
+) -> dict[tuple[int, int], dict[str, Path]]:
+    """Generate first/last frame previews for every playable subslide.
+
+    The deck player uses these frames as an instant static layer while the
+    matching video is loaded or swapped in the background. Returned paths are
+    relative to ``site_deck_dir`` and keyed by ``(main_index, sub_index)``.
+    """
+    frames_dir = site_deck_dir / "player-frames"
+    cache_root = cache_dir / "player-frames" / deck.slug
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    cache_root.mkdir(parents=True, exist_ok=True)
+    out: dict[tuple[int, int], dict[str, Path]] = {}
+    for main in manifest.main_slides:
+        for sub_idx, sub in enumerate(main.subsections):
+            if sub.video is None or not sub.video.exists():
+                placeholder = _placeholder(frames_dir).relative_to(site_deck_dir)
+                out[(main.index, sub_idx)] = {"first": placeholder, "last": placeholder}
+                continue
+            first = _player_frame(
+                sub.video,
+                deck,
+                frames_dir,
+                cache_root,
+                main_idx=main.index,
+                sub_idx=sub_idx,
+                edge="first",
+                extract_missing=extract_missing,
+            )
+            last = _player_frame(
+                sub.video,
+                deck,
+                frames_dir,
+                cache_root,
+                main_idx=main.index,
+                sub_idx=sub_idx,
+                edge="last",
+                extract_missing=extract_missing,
+            )
+            if first is not None and last is not None:
+                out[(main.index, sub_idx)] = {
+                    "first": first.relative_to(site_deck_dir),
+                    "last": last.relative_to(site_deck_dir),
+                }
+    return out
+
+
+def _player_frame(
+    video: Path,
+    deck: DeckConfig,
+    frames_dir: Path,
+    cache_root: Path,
+    *,
+    main_idx: int,
+    sub_idx: int,
+    edge: str,
+    extract_missing: bool,
+) -> Path | None:
+    slug = f"{deck.slug}:{main_idx}:{sub_idx}:{edge}:{DEFAULT_PLAYER_FRAME_WIDTH}"
+    key = _key(video, slug)
+    cached = cache_root / f"{key}_{edge}.jpg"
+    dest = frames_dir / f"{key}_{edge}.jpg"
+    if cached.exists():
+        if not dest.exists():
+            shutil.copy2(cached, dest)
+        return dest
+    if not extract_missing:
+        return None
+    if _extract_frame(
+        video,
+        dest,
+        width=DEFAULT_PLAYER_FRAME_WIDTH,
+        seek_from_end=(edge == "last"),
+    ):
+        shutil.copy2(dest, cached)
+        return dest
+    return None
 
 
 def generate_carousel_gif(

@@ -9,7 +9,7 @@ from PIL import Image, ImageSequence
 
 from simplex.deck.config import DeckConfig
 from simplex.manifest import DeckManifest, MainSlide, Subsection
-from simplex.render.thumbnail import generate, generate_carousel_gif
+from simplex.render.thumbnail import generate, generate_carousel_gif, generate_player_frames
 from simplex.section import SimplexSectionType
 
 
@@ -127,6 +127,102 @@ def test_generate_extracts_real_frame_without_ffmpeg_cli(
         assert r > 150
         assert g < 100
         assert b < 100
+
+
+def test_generate_player_frames_writes_first_and_last_per_subslide(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    deck = _deck(tmp_path)
+    first_video = tmp_path / "media" / "first.mp4"
+    second_video = tmp_path / "media" / "second.mp4"
+    _write_solid_mp4(first_video, color=(200, 50, 50))
+    _write_solid_mp4(second_video, color=(30, 120, 200))
+    manifest = DeckManifest(
+        deck_slug=deck.slug,
+        main_slides=(
+            MainSlide(
+                index=1,
+                scene="S1",
+                name="Intro",
+                section_type=SimplexSectionType.MAIN,
+                subsections=(
+                    Subsection(
+                        name="Intro",
+                        section_type=SimplexSectionType.MAIN,
+                        video=first_video,
+                    ),
+                    Subsection(
+                        name="Detail",
+                        section_type=SimplexSectionType.SUB,
+                        video=second_video,
+                    ),
+                ),
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        "simplex.render.thumbnail.shutil.which",
+        lambda _name: None,  # type: ignore[arg-type]
+    )
+    site_deck_dir = tmp_path / "site" / "decks" / "demo"
+    site_deck_dir.mkdir(parents=True)
+
+    frames = generate_player_frames(
+        deck,
+        manifest,
+        site_deck_dir=site_deck_dir,
+        cache_dir=tmp_path / "cache",
+    )
+
+    assert set(frames) == {(1, 0), (1, 1)}
+    for assets in frames.values():
+        assert assets["first"].parent.name == "player-frames"
+        assert assets["last"].parent.name == "player-frames"
+        assert (site_deck_dir / assets["first"]).exists()
+        assert (site_deck_dir / assets["last"]).exists()
+
+
+def test_generate_player_frames_can_reuse_cache_without_extracting_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    deck = _deck(tmp_path)
+    video = tmp_path / "media" / "first.mp4"
+    _write_solid_mp4(video, color=(200, 50, 50))
+    manifest = DeckManifest(
+        deck_slug=deck.slug,
+        main_slides=(
+            MainSlide(
+                index=1,
+                scene="S1",
+                name="Intro",
+                section_type=SimplexSectionType.MAIN,
+                subsections=(
+                    Subsection(
+                        name="Intro",
+                        section_type=SimplexSectionType.MAIN,
+                        video=video,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    def fail_extract_frame(*_args: object, **_kwargs: object) -> bool:
+        pytest.fail("no-render builds must not extract frames")
+
+    monkeypatch.setattr("simplex.render.thumbnail._extract_frame", fail_extract_frame)
+    site_deck_dir = tmp_path / "site" / "decks" / "demo"
+    site_deck_dir.mkdir(parents=True)
+
+    frames = generate_player_frames(
+        deck,
+        manifest,
+        site_deck_dir=site_deck_dir,
+        cache_dir=tmp_path / "cache",
+        extract_missing=False,
+    )
+
+    assert frames == {}
 
 
 def test_generate_uses_thumbnail_path_override(tmp_path: Path) -> None:

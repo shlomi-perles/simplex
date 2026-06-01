@@ -9,9 +9,9 @@ end-to-end with `render=False` so it emits HTML without shelling out to Manim.
 - `test_notes.py` -- dollar-math wraps content in `class="math inline"` /
   `class="math block"`; fenced code blocks survive.
 - `test_builder.py` -- `build(render=False)` writes `index.html` and one page per deck.
-- `test_player_browser.py` -- Playwright smoke checks for parent controls,
-  iframe postMessage navigation, notes slide refs, settings, and true slide
-  theme iframe swaps.
+- `test_player_browser.py` -- Playwright smoke checks for parent-owned media
+  player controls, notes slide refs, settings, tap zones, progress, and true
+  slide theme swaps.
 
 ## Don't
 
@@ -20,4 +20,5 @@ end-to-end with `render=False` so it emits HTML without shelling out to Manim.
 - Don't depend on the order of decks in the index page -- assertions check for
   presence, not position.
 - Don't use Playwright where static HTML assertions are enough. Browser tests
-  should cover behavior that needs a real DOM, iframe, event loop, or storage.
+  should cover behavior that needs a real DOM, media state, event loop, or
+  storage.
