@@ -22,7 +22,7 @@ Theme selection priority:
 1. ``simplex.theme.context.get_active_theme()`` -- the in-process active
    theme (set by parent code that ``import simplex.plugin`` from the
    same interpreter).
-2. ``SIMPLEX_THEME`` environment variable -- the deck.toml ``theme`` name
+2. ``SIMPLEX_THEME`` environment variable -- the resolved Simplex theme name
    propagated across the ``manim-slides render`` subprocess by
    ``simplex.render.runner``.
 3. ``SIMPLEX_DARK`` -- the package default.
@@ -31,20 +31,24 @@ Theme selection priority:
 from __future__ import annotations
 
 import os
+from contextlib import suppress
+from typing import Any
 
 
 def _resolve_theme():  # type: ignore[no-untyped-def]
     """Pick the theme that should drive Manim defaults for this process."""
     from simplex.theme.context import _active
-    from simplex.theme.presets import PRESETS, SIMPLEX_DARK
+    from simplex.theme.presets import SIMPLEX_DARK
+    from simplex.theme.presets import get as get_theme
 
     # In-process context (a parent that did ``with active_theme(t): ...``)
     # wins; env-var fallback handles cross-process propagation.
     if (active := _active.get()) is not None:
         return active
     env_name = os.environ.get("SIMPLEX_THEME")
-    if env_name and env_name in PRESETS:
-        return PRESETS[env_name]
+    if env_name:
+        with suppress(KeyError):
+            return get_theme(env_name)
     return SIMPLEX_DARK
 
 
@@ -63,11 +67,32 @@ def activate() -> None:
 
     theme = _resolve_theme()
     set_default_theme(theme)
+    _apply_manim_palette(manim, theme)
     apply_theme_defaults(theme)
     manim.config.tex_template = theme.latex.as_tex_template()
     manim.config.background_color = theme.palette.background
     manim.config.save_sections = True
     register_all_builtin_styles()
+
+
+def _apply_manim_palette(manim_module: Any, theme: Any) -> None:
+    """Patch Manim's public color constants from the active Simplex palette."""
+    palette_name = getattr(theme, "manim_palette", None)
+    if not palette_name:
+        return
+
+    from manim.utils import color as color_module
+    from manim.utils.color import manim_colors
+    from manim.utils.color.core import ManimColor
+
+    from simplex.theme.palettes import resolve_palette
+
+    palette = resolve_palette(str(palette_name))
+    for name, value in palette.colors.items():
+        color = ManimColor(value)
+        setattr(manim_colors, name, color)
+        setattr(color_module, name, color)
+        setattr(manim_module, name, color)
 
 
 # Manim's plugin loader imports this module via ``entry_point.load()`` but

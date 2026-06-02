@@ -120,7 +120,7 @@ uv run simplex serve
 | `simplex.slides` | `Slide`, `ThreeDSlide`, `OutlineScene`, `OutlinePart`, `Chrome`, `make_chrome`. |
 | `simplex.engine` | `Region`, `ExitAnim`, `clear_scene`, `exit_for`, `register_exit`, `set_exit_animation`, `HighlightResult`, `apply_theme_defaults`. |
 | `simplex.mobjects` | `Node`, `Edge`, `ArrayMob`, `ArrayEntry`, `ArrayPointer`, `OutlineProgressBar`, `Paper`, `ShowPaper`, `DismissPaper`, `PickPage`. |
-| `simplex.theme` | `Theme`, `Palette`, `Typography`, `Spacing`, `Motion`, `LatexProfile`, `WebPalette`, `active_theme`, `get_active_theme`, `presets`, `render_web_css`. |
+| `simplex.theme` | `Theme`, `Palette`, `Typography`, `Spacing`, `Motion`, `LatexProfile`, `WebPalette`, `active_theme`, `get_active_theme`, `presets`, `resolve_palette`, `available_palette_names`, `render_web_css`. |
 | `simplex.manifest` | `DeckManifest`, `MainSlide`, `Subsection`, the manifest schema written by the render pipeline. |
 | `simplex.deck` | `DeckConfig`, `discover`, `scaffold`, section metadata, bundled deck template. |
 | `simplex.render` | Manim runner, manifest reconciliation, thumbnails, HTML, PDF, PPTX, notes PDF, filenames. |
@@ -142,6 +142,7 @@ uv run simplex serve
 | `simplex build --slide-theme dark` | Build only one true slide theme (`dark` or `light`) for faster tests. |
 | `simplex serve [--watch]` | Serve `site/` locally, optionally with live reload. |
 | `simplex test --slide-theme dark` | Smoke-render decks by rendering only the first animation. |
+| `simplex theme-studio` | Generate and open the palette/code-style editor. |
 | `simplex clean` | Remove generated `site/` and `media/` output. |
 | `simplex doctor` | Check required binaries on `PATH`. |
 
@@ -167,7 +168,6 @@ The important fields in `deck.toml` are:
 slug = "hash-tables"
 title = "Hash Tables"
 summary = "A one-line deck summary."
-theme = "simplex_dark"
 quality = "high_quality"
 entrypoints = ["slides.intro:Intro", "slides.intro:KeyIdea"]
 
@@ -190,6 +190,11 @@ filter over dark pixels. The package defaults are `simplex_dark` and
 deck's `deck.toml` to keep the legacy single render plus filter toggle. Deck
 settings override site settings.
 
+The top-level `theme = "..."` field is intentionally omitted from new decks.
+It is only a single-render fallback for projects that disable true slide
+themes. With `[slide_themes] enabled = true`, rendered slide pixels come from
+the `dark` and `light` theme names below.
+
 During local iteration or CI smoke tests, render one true variant:
 
 ```bash
@@ -197,6 +202,78 @@ uv run simplex build --slide-theme dark
 uv run simplex render hash-tables --slide-theme light
 uv run simplex test --slide-theme dark
 ```
+
+## Themes And Palettes
+
+Theme names come from built-ins (`simplex_dark`, `simplex_light`) or JSON files
+in `simplex_themes/themes/`. Configure them globally in `site.toml`:
+
+```toml
+[slide_themes]
+enabled = true
+dark = "simplex_dark"
+light = "my_light"
+default = "dark"
+```
+
+Deck `deck.toml` files may include their own `[slide_themes]` block when one
+deck needs different themes. Deck settings override `site.toml`.
+
+Theme JSON files can declare `manim_palette = "..."`. Simplex resolves that
+palette before scene imports, patches Manim color constants such as `BLUE`,
+`BLUE_A`, `WHITE`, and `GRAY`, then derives any missing Simplex semantic colors
+from it. Explicit theme `palette` fields still win. `simplex_dark` keeps
+Manim's default palette, while `simplex_light` uses the built-in
+`simplex_light` palette.
+
+Example `simplex_themes/themes/my_light.json`:
+
+```json
+{
+  "manim_palette": "simplex_light",
+  "code_style": "simplex_solarized_light",
+  "palette": {
+    "background": "#EEEAD8",
+    "font": "#3C313F",
+    "vertex": "#355561",
+    "vertex_stroke": "#426A79"
+  },
+  "web_palette": {
+    "surface": "#F8F2DD",
+    "text_muted": "#756E63"
+  }
+}
+```
+
+`palette` controls rendered Manim slide pixels: `background`, `font`,
+`accent`, `vertex`, `vertex_stroke`, `edge`, `weight`, `visited`, `label`, and
+`distance`. Missing fields are derived from `manim_palette`; if
+`manim_palette` is omitted, missing fields derive from Manim defaults.
+
+`code_style` controls Manim slide `Code` objects for that theme. It accepts a
+Simplex style, a Pygments style name, or a custom style exported into
+`simplex_themes/code_styles/`.
+
+`web_palette` controls generated HTML/RevealJS shell colors. Decks can still
+override those shell colors with `[web] background`, `[web] text_primary`,
+`[web] accent`, etc. Markdown notes code blocks are separate and default to
+`SimplexSolarizedLight`; override them per deck with:
+
+```toml
+[web]
+notes_code_style = "simplex_pycharm"
+```
+
+Create or compare palettes and code styles with:
+
+```bash
+uv run simplex theme-studio
+```
+
+In lecture repos, put Theme Studio code-style exports in
+`simplex_themes/code_styles/`, palette `.json` or `.itermcolors` exports in
+`simplex_themes/palette_styles/`, and complete theme JSON files in
+`simplex_themes/themes/`.
 
 Append `@opengl` to one entrypoint when a scene should render with ManimCE's
 OpenGL renderer:

@@ -16,6 +16,9 @@ Three nested override types tune per-deck or per-main-slide behaviour:
 - ``WebOverride`` -- per-deck portal + RevealJS palette overrides
   (``deck.web``). Every field is optional; ``resolved_web_palette()``
   merges with the active theme's defaults field-by-field.
+
+The top-level ``theme`` field remains the single-render fallback. Normal
+dark/light decks should use ``[slide_themes]`` instead.
 """
 
 import ast

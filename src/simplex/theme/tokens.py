@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pygments.style import Style
 
 
@@ -97,6 +97,7 @@ class WebPalette(BaseModel):
 class Theme(BaseModel):
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
     name: str
+    manim_palette: str | None = None
     palette: Palette
     typography: Typography = Field(default_factory=Typography)
     spacing: Spacing = Field(default_factory=Spacing)
@@ -105,9 +106,63 @@ class Theme(BaseModel):
     web_palette: WebPalette = Field(default_factory=WebPalette)
     code_style: type[Style] = Field(default=None)  # type: ignore[assignment]
 
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_palette_defaults(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+
+        values = dict(data)
+        if isinstance(values.get("code_style"), str):
+            from simplex.theme.pygments_style import resolve_style
+            from simplex.theme.styles.simplex_pycharm import SimplexPycharm
+
+            values["code_style"] = resolve_style(values["code_style"], default=SimplexPycharm)
+        palette_name = values.get("manim_palette")
+        raw_palette = values.get("palette")
+        explicit_palette = _model_or_mapping(raw_palette)
+        missing_palette = raw_palette is None or not set(Palette.model_fields).issubset(
+            explicit_palette
+        )
+        if missing_palette:
+            from simplex.theme.palettes import MANIM_DEFAULT, semantic_palette_for
+
+            derived = semantic_palette_for(str(palette_name or MANIM_DEFAULT))
+            values["palette"] = derived | {
+                key: value for key, value in explicit_palette.items() if value is not None
+            }
+
+        raw_web = values.get("web_palette")
+        explicit_web = _model_or_mapping(raw_web)
+        if raw_web is None or isinstance(raw_web, dict | WebPalette):
+            from simplex.theme.palettes import MANIM_DEFAULT, web_palette_for
+
+            derived_web = web_palette_for(str(palette_name or MANIM_DEFAULT))
+            resolved_palette = _model_or_mapping(values.get("palette"))
+            if isinstance(background := resolved_palette.get("background"), str):
+                derived_web["background"] = background
+            if isinstance(font := resolved_palette.get("font"), str):
+                derived_web["text_primary"] = font
+            if isinstance(accent := resolved_palette.get("accent"), str):
+                derived_web["accent"] = accent
+                derived_web["link"] = accent
+            values["web_palette"] = derived_web | {
+                key: value for key, value in explicit_web.items() if value is not None
+            }
+
+        return values
+
     def __init__(self, **data: Any) -> None:
         if data.get("code_style") is None:
             from simplex.theme.styles.simplex_pycharm import SimplexPycharm
 
             data["code_style"] = SimplexPycharm
         super().__init__(**data)
+
+
+def _model_or_mapping(value: object) -> dict[str, object]:
+    if isinstance(value, BaseModel):
+        return value.model_dump()
+    if isinstance(value, Mapping):
+        return dict(value)
+    return {}

@@ -53,7 +53,7 @@ repos:
   - id: codespell
     additional_dependencies:
     - tomli
-    args: [--ignore-words-list=manim, mobjects, mobject, pres]
+    args: ['--ignore-words-list=manim,mobjects,mobject,pres,iterm,rouge']
     exclude: ^(uv\.lock|.*\.svg|.*\.bib)$
 
 - repo: local

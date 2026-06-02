@@ -20,7 +20,6 @@ quality = "medium_quality"
 slug = "showcase"
 summary = "Demonstrates every helper Simplex adds on top of vanilla Manim."
 tags = ["reference", "showcase"]
-theme = "simplex_dark"
 title = "Simplex showcase"
 voiceover = false
 

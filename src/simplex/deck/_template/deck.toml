@@ -5,7 +5,6 @@ quality = "high_quality"
 slug = "__SLUG__"
 summary = "Replace with a one-line description."
 tags = []
-theme = "simplex_dark"
 title = "__TITLE__"
 voiceover = false
 

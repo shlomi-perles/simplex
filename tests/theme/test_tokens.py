@@ -12,6 +12,10 @@ from simplex.theme.styles.simplex_solarized_light import SimplexSolarizedLight
 
 def test_simplex_palette_background() -> None:
     assert presets.SIMPLEX_DARK.palette.background == "#242424"
+    assert presets.SIMPLEX_DARK.manim_palette == "manim_default"
+    assert presets.SIMPLEX_LIGHT.manim_palette == "simplex_light"
+    assert presets.SIMPLEX_LIGHT.palette.background == "#EEEAD8"
+    assert presets.SIMPLEX_LIGHT.palette.font == "#3C313F"
 
 
 def test_simplex_latex_has_no_legacy_environments() -> None:
@@ -103,3 +107,19 @@ def test_code_style_defaults_to_simplex_pycharm() -> None:
         ),
     )
     assert theme.code_style is SimplexPycharm
+
+
+def test_theme_derives_missing_palette_fields_from_manim_palette() -> None:
+    from simplex.theme.tokens import Theme
+
+    theme = Theme(
+        name="derived",
+        manim_palette="simplex_light",
+        palette={"background": "#ABCDEF"},
+    )
+
+    assert theme.palette.background == "#ABCDEF"
+    assert theme.palette.font == "#3C313F"
+    assert theme.palette.vertex == "#355561"
+    assert theme.web_palette.background == "#ABCDEF"
+    assert theme.web_palette.text_primary == "#3C313F"
