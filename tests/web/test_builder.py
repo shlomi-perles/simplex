@@ -90,7 +90,7 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     assert "simplex.next-main" in dark_slides_html
     assert "simplex.prev-main-or-reset" in dark_slides_html
     assert "simplex.stopwatch-toggle" in dark_slides_html
-    assert "--simplex-bg: #FFFFFF" in light_slides_html
+    assert "--simplex-bg: #EEEAD8" in light_slides_html
     viewer_js = (site_dir / "static" / "viewer.js").read_text(encoding="utf-8")
     assert "simplex-slide-theme:" not in viewer_js
     assert "function renderCurrent(options)" in viewer_js

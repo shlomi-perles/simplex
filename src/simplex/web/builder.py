@@ -490,6 +490,7 @@ def _build_deck(
             built_by_variant[variant] = built
 
         default_built = built_by_variant[default_slide_theme]
+        page_theme_name = default_built.deck.theme
         _copy_default_slides_pdf(default_built.deck, default_built.output_dir, deck_out)
         preview_gif = thumbnail.generate_carousel_gif(
             default_built.deck,
@@ -526,6 +527,7 @@ def _build_deck(
             scenes=scenes,
             watch=watch,
         )
+        page_theme_name = built.deck.theme
         preview_gif = thumbnail.generate_carousel_gif(
             deck,
             built.manifest,
@@ -591,7 +593,7 @@ def _build_deck(
         notes_pdf_name=filenames.pdf_name(deck, "note"),
         notes_html=notes_html,
         palette_css=render_web_css(
-            deck.resolved_web_palette(), code_style=deck.resolved_notes_code_style()
+            deck.resolved_web_palette(page_theme_name), code_style=deck.resolved_notes_code_style()
         ),
         slide_theme_mode=slide_theme_mode,
         available_slide_themes=available_slide_themes,

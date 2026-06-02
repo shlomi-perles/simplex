@@ -5,8 +5,10 @@ Individual styles live under ``simplex.theme.styles``. This module provides
 the registration helper and re-exports the built-in styles for convenience.
 """
 
+import importlib.util
 import sys
 import types
+from pathlib import Path
 
 from pygments.style import Style
 from pygments.styles import get_style_by_name
@@ -19,6 +21,7 @@ __all__ = [
     "SimplexPycharm",
     "SimplexSolarizedLight",
     "background_color_for_style",
+    "load_custom_styles",
     "register_style",
     "resolve_style",
     "style_name_for_class",
@@ -72,17 +75,56 @@ def register_all_builtin_styles() -> None:
         register_style(cls, name)
 
 
+def load_custom_styles(directory: Path) -> dict[str, type[Style]]:
+    """Import project-local Pygments ``Style`` subclasses from ``directory``."""
+    out: dict[str, type[Style]] = {}
+    if not directory.is_dir():
+        return out
+
+    for path in sorted(directory.glob("*.py")):
+        if path.name.startswith("_"):
+            continue
+        module_name = f"_simplex_custom_style_{path.stem}"
+        module = None
+        try:
+            spec = importlib.util.spec_from_file_location(module_name, path)
+            if spec is None or spec.loader is None:
+                continue
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)
+        except Exception:
+            module = None
+        if module is None:
+            continue
+        for obj in vars(module).values():
+            if (
+                isinstance(obj, type)
+                and issubclass(obj, Style)
+                and obj is not Style
+                and obj.__module__ == module_name
+            ):
+                out[_class_name_to_style_name(obj.__name__)] = obj
+                out[obj.__name__] = obj
+                out.setdefault(path.stem, obj)
+    return out
+
+
 def resolve_style(name: str | None, *, default: type[Style]) -> type[Style]:
     """Resolve a configured Pygments style name.
 
     Built-in Simplex styles accept either their registry name
     (``simplex_solarized_light``) or class name (``SimplexSolarizedLight``).
-    Any Pygments-installed style name is accepted too.
+    Project-local custom styles in ``simplex_themes/code_styles`` and any
+    Pygments-installed style name are accepted too.
     """
     if name is None or not name.strip():
         return default
 
     register_all_builtin_styles()
+    from simplex.theme.palettes import code_styles_dir
+
+    custom_styles = load_custom_styles(code_styles_dir())
     raw = name.strip()
     candidates = [raw]
     class_like = _class_name_to_style_name(raw)
@@ -92,6 +134,8 @@ def resolve_style(name: str | None, *, default: type[Style]) -> type[Style]:
     for candidate in candidates:
         if candidate in BUILTIN_STYLES:
             return BUILTIN_STYLES[candidate]
+        if candidate in custom_styles:
+            return custom_styles[candidate]
         try:
             return get_style_by_name(candidate)
         except ClassNotFound:
@@ -99,7 +143,8 @@ def resolve_style(name: str | None, *, default: type[Style]) -> type[Style]:
 
     builtins = ", ".join(sorted(BUILTIN_STYLES))
     raise ValueError(
-        f"unknown Pygments style {name!r}; use a Pygments style name or one of: {builtins}"
+        f"unknown Pygments style {name!r}; use a Pygments style name, a custom "
+        f"style in simplex_themes/code_styles, or one of: {builtins}"
     )
 
 

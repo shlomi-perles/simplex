@@ -48,6 +48,8 @@ _EXPORTS: dict[str, str] = {
     "TransformByGlyphMap": "simplex.engine.glyph_map",
     "VT": "simplex.engine.dynamics",
     "active_theme": "simplex.theme",
+    "available_palette_names": "simplex.theme",
+    "available_theme_names": "simplex.theme",
     "apply_theme_defaults": "simplex.engine",
     "colorize_surface": "simplex.mobjects",
     "bounding_box": "simplex.engine.debug",
@@ -70,11 +72,13 @@ _EXPORTS: dict[str, str] = {
     "make_chrome": "simplex.slides",
     "presets": "simplex.theme",
     "register_exit": "simplex.engine",
+    "resolve_palette": "simplex.theme",
     "scale_to_fit": "simplex.engine.scaling",
     "scale_to_fit_mobject": "simplex.engine.scaling",
     "scaffold": "simplex.deck",
     "search_shape_in_text": "simplex.engine.text",
     "set_exit_animation": "simplex.engine",
+    "theme_styles_dir": "simplex.theme",
 }
 
 __all__ = sorted(_EXPORTS)
@@ -144,5 +148,13 @@ if TYPE_CHECKING:
         ThreeDSlide,
         make_chrome,
     )
-    from simplex.theme import active_theme, get_active_theme, presets
+    from simplex.theme import (
+        active_theme,
+        available_palette_names,
+        available_theme_names,
+        get_active_theme,
+        presets,
+        resolve_palette,
+        theme_styles_dir,
+    )
     from simplex.theme.presets import SIMPLEX_DARK, SIMPLEX_LIGHT

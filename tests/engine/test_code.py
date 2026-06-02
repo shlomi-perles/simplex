@@ -194,7 +194,7 @@ def test_code_block_passes_theme_font_and_background(monkeypatch: pytest.MonkeyP
     assert calls[0]["paragraph_config"] == {"font": "JetBrains Mono"}
     assert calls[0]["background_config"] == {
         "fill_color": "#fffce4",
-        "stroke_color": "#1A1A1A",
+        "stroke_color": "#3C313F",
         "fill_opacity": 1,
     }
     assert calls[1]["formatter_style"] == "simplex_pycharm"

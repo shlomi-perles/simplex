@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theme Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+  :root { --bar-w: 58px; --bar-h: 19px; --vgap: 13px; --hgap: 5px; --aew: 16px; --lblh: 16px; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font-family: "Courier New", ui-monospace, monospace;
+    background: #5b5b5b; color: #eee;
+    display: flex; flex-direction: column; align-items: center; gap: 18px; overflow-x: auto;
+  }
+  .controls { display: flex; align-items: center; gap: 14px; font-size: 14px; flex-wrap: wrap; justify-content: center; }
+  .controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .controls button {
+    font-family: inherit; font-size: 14px; cursor: pointer; padding: 6px 12px;
+    background: #444; color: #eee; border: 1px solid #666; border-radius: 5px;
+  }
+  .controls button:hover { background: #555; }
+
+  .mode-switch { display: inline-flex; border: 1px solid #666; border-radius: 6px; overflow: hidden; }
+  .mode-btn { font-family: inherit; font-size: 14px; cursor: pointer; padding: 6px 16px; background: #444; color: #ddd; border: none; }
+  .mode-btn:hover { background: #555; }
+  .mode-btn.active { background: #1c6bbb; color: #fff; }
+
+  /* Per-side theme shutter (search + preview list + show more) */
+  .shutter { position: relative; }
+  .shutter-btn {
+    font-family: inherit; font-size: 13px; cursor: pointer; padding: 5px 10px;
+    background: #444; color: #eee; border: 1px solid #666; border-radius: 5px;
+    width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .shutter-btn:hover { background: #555; }
+  .shutter-pop {
+    position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; width: 268px;
+    background: #2b2b2b; border: 1px solid #555; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5); padding: 8px;
+  }
+  .shutter-pop.hidden { display: none; }
+  .shutter-search {
+    width: 100%; font-family: inherit; font-size: 13px; padding: 6px; margin-bottom: 6px;
+    background: #1d1d1d; color: #eee; border: 1px solid #555; border-radius: 5px;
+  }
+  .shutter-list { max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .shutter-item {
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    font-family: inherit; font-size: 12px; padding: 5px 6px; background: transparent;
+    color: #eee; border: none; border-radius: 5px; cursor: pointer;
+  }
+  .shutter-item:hover { background: #3a3a3a; }
+  .shutter-item.active { background: #2e7d32; }
+  .shutter-sw { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.3); flex: 0 0 auto; }
+  .shutter-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shutter-tag { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; background: #1c6bbb; color: #fff; padding: 1px 5px; border-radius: 999px; }
+  .shutter-more {
+    font-family: inherit; font-size: 12px; cursor: pointer; margin-top: 4px; padding: 6px;
+    background: #3a3a3a; color: #cbd5e1; border: 1px dashed #666; border-radius: 5px;
+  }
+  .shutter-more:hover { background: #454545; }
+  .shutter-empty { font-size: 12px; color: #888; padding: 6px; text-align: center; }
+
+  /* Up/down theme stepper next to the shutter */
+  .shutter-nav { display: inline-flex; flex-direction: column; gap: 2px; }
+  .nav-btn { font-family: inherit; font-size: 9px; line-height: 1; cursor: pointer; padding: 2px 7px; background: #444; color: #eee; border: 1px solid #666; border-radius: 4px; }
+  .nav-btn:hover { background: #555; }
+
+  /* "From theme" shutter inside the popup editor */
+  .ed-shutter { flex: 1; }
+  .ed-shutter .shutter-btn { width: 100%; text-align: left; max-width: none; }
+  .ed-shutter .shutter-pop { width: 222px; }
+
+  .stage { display: flex; align-items: flex-start; justify-content: center; gap: 18px; }
+  .inst { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .inst-head { display: flex; align-items: center; gap: 10px; }
+  .inst-title { font-size: 16px; font-weight: bold; text-transform: capitalize; }
+  .lock-btn {
+    font-family: inherit; font-size: 13px; cursor: pointer; padding: 5px 10px;
+    background: #444; color: #eee; border: 1px solid #666; border-radius: 5px;
+    display: inline-flex; align-items: center; gap: 5px; transition: background .15s;
+  }
+  .lock-btn:hover { background: #555; }
+  .lock-btn.locked { background: #2e7d32; border-color: #43a047; color: #fff; }
+
+  .card {
+    position: relative; width: fit-content; padding: 26px 40px 34px; border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45); display: flex; flex-direction: column;
+    align-items: center; user-select: none;
+  }
+  .header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 18px; height: 30px; }
+  .header .name { font-size: 22px; font-weight: bold; white-space: nowrap; }
+  .header .circle { width: 22px; height: 22px; border-radius: 50%; }
+  .header .square { width: 22px; height: 22px; }
+
+  /* Palette layout */
+  .grid { display: flex; gap: var(--hgap); align-items: flex-start; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: var(--vgap); }
+  .col .cname { height: var(--lblh); line-height: var(--lblh); font-size: 12px; white-space: nowrap; }
+  .aecol { width: var(--aew); }
+  .aecol .cname { visibility: hidden; }
+  .aecol .ae { height: var(--bar-h); line-height: var(--bar-h); font-size: 11px; text-align: center; }
+  .bar { width: var(--bar-w); height: var(--bar-h); border-radius: 2px; cursor: pointer; }
+  .bar:hover { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 1px; }
+  .bottom { display: flex; gap: var(--hgap); margin-top: 24px; margin-left: calc(var(--aew) + var(--hgap)); }
+  .wide { display: flex; flex-direction: column; gap: var(--vgap); }
+  .wbar {
+    width: calc(var(--bar-w) * 4 + var(--hgap) * 3); height: var(--bar-h); border-radius: 2px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; white-space: nowrap;
+  }
+  .wbar:hover { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 1px; }
+
+  /* Code layout */
+  .code-wrap { display: inline-block; }
+  .code-block {
+    background-color: var(--bg) !important; color: var(--fg);
+    font-weight: var(--weight-fg, var(--weight-global, 400));
+    padding: 20px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.45);
+    box-shadow: 0 8px 18px rgba(15,23,42,0.25);
+    width: max-content; max-width: 520px; overflow-x: auto;
+    font-family: "JetBrains Mono", monospace; font-size: 14px; line-height: 1.65;
+  }
+  .code-block pre { margin: 0; font-family: inherit; }
+  .code-block .c, .code-block .ch, .code-block .cm, .code-block .cp, .code-block .cpf, .code-block .c1, .code-block .cs {
+    color: var(--comment) !important; font-weight: var(--weight-comment, var(--weight-global, 400)); }
+  .code-block .k, .code-block .kc, .code-block .kd, .code-block .kn, .code-block .kp, .code-block .kr, .code-block .kt {
+    color: var(--keyword) !important; font-weight: var(--weight-keyword, var(--weight-global, 400)); }
+  .code-block .s, .code-block .sa, .code-block .sb, .code-block .sc, .code-block .dl, .code-block .sd, .code-block .s2,
+  .code-block .se, .code-block .sh, .code-block .si, .code-block .sx, .code-block .sr, .code-block .s1, .code-block .ss {
+    color: var(--string) !important; font-weight: var(--weight-string, var(--weight-global, 400)); }
+  .code-block .m, .code-block .mb, .code-block .mf, .code-block .mh, .code-block .mi, .code-block .mo, .code-block .il {
+    color: var(--number) !important; font-weight: var(--weight-number, var(--weight-global, 400)); }
+  .code-block .n, .code-block .na, .code-block .nl, .code-block .nn, .code-block .nx, .code-block .nv,
+  .code-block .vc, .code-block .vg, .code-block .vi, .code-block .vm {
+    color: var(--name) !important; font-weight: var(--weight-name, var(--weight-global, 400)); }
+  .code-block .nf, .code-block .fm { color: var(--function) !important; font-weight: var(--weight-function, var(--weight-global, 400)); }
+  .code-block .nc { color: var(--class) !important; font-weight: var(--weight-class, var(--weight-global, 400)); }
+  .code-block .nb, .code-block .bp { color: var(--builtin) !important; font-weight: var(--weight-builtin, var(--weight-global, 400)); }
+  .code-block .o, .code-block .ow { color: var(--operator) !important; font-weight: var(--weight-operator, var(--weight-global, 400)); }
+
+  .code-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; max-width: 520px; justify-content: center; }
+  .code-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.25); background: rgba(255,255,255,0.92); color: #1f2937;
+    font-family: inherit; font-size: 11px; cursor: pointer;
+  }
+  .code-chip:hover { outline: 2px solid rgba(255,255,255,0.85); outline-offset: 1px; }
+  .chip-sw { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.3); }
+
+  /* Partition transfer panel (split mode) */
+  .middle { align-self: center; display: flex; flex-direction: column; gap: 4px; background: #3a3a3a; padding: 12px; border-radius: 8px; }
+  .middle .mtitle { font-size: 12px; color: #bbb; text-align: center; margin-bottom: 6px; white-space: nowrap; }
+  .mrow { display: flex; align-items: center; gap: 6px; }
+  .mreset { width: 24px; height: 22px; cursor: pointer; background: #444; color: #eee; border: 1px solid #666; border-radius: 5px; font-size: 13px; line-height: 1; padding: 0; }
+  .mreset:hover { background: #555; }
+  .mcopy { width: 36px; height: 22px; cursor: pointer; border: 1px solid rgba(0,0,0,0.35); border-radius: 5px; font-size: 14px; font-weight: bold; padding: 0; }
+  .mcopy:hover { outline: 2px solid rgba(255,255,255,0.7); outline-offset: 1px; }
+  .mlabel { font-size: 11px; width: 84px; }
+
+  /* Popup colour editor */
+  .editor { position: fixed; z-index: 80; width: 248px; background: #2b2b2b; color: #eee; border: 1px solid #555; border-radius: 8px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); font-size: 13px; }
+  .editor.hidden { display: none; }
+  .editor .ed-title { font-weight: bold; margin-bottom: 8px; font-size: 14px; }
+  .editor label { display: flex; align-items: center; gap: 6px; margin: 8px 0; }
+  .editor input[type=color] { width: 36px; height: 28px; padding: 0; border: none; background: none; cursor: pointer; }
+  .editor input[type=text] { flex: 1; font-family: inherit; font-size: 13px; padding: 4px; background: #1d1d1d; color: #eee; border: 1px solid #555; border-radius: 4px; }
+  .editor select { flex: 1; font-family: inherit; font-size: 13px; padding: 4px; }
+  .editor .ed-note { font-size: 11px; color: #aaa; margin: 6px 0 10px; min-height: 0; }
+  .editor button { width: 100%; padding: 6px; font-family: inherit; font-size: 13px; cursor: pointer; background: #444; color: #eee; border: 1px solid #666; border-radius: 5px; }
+  .editor button:hover { background: #555; }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <div class="mode-switch">
+    <button id="mode-code" class="mode-btn" type="button">Code</button>
+    <button id="mode-palette" class="mode-btn active" type="button">Palette</button>
+  </div>
+  <label><input type="checkbox" id="split-toggle"> Split view (main / secondary)</label>
+  <button id="export-btn" type="button">Export</button>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<div class="editor hidden" id="editor">
+  <div class="ed-title" id="ed-title">Color</div>
+  <label>Hex
+    <input type="color" id="ed-color">
+    <input type="text" id="ed-hex" maxlength="7" spellcheck="false">
+  </label>
+  <label>From theme
+    <div class="shutter ed-shutter" id="ed-theme-shutter">
+      <button class="shutter-btn" id="ed-theme-btn" type="button"></button>
+      <div class="shutter-pop hidden" id="ed-theme-pop">
+        <input class="shutter-search" id="ed-theme-search" type="text" placeholder="Search themes…">
+        <div class="shutter-list" id="ed-theme-list"></div>
+      </div>
+    </div>
+  </label>
+  <label class="ed-bold-row" id="ed-bold-row"><input type="checkbox" id="ed-bold"> Bold</label>
+  <div class="ed-note" id="ed-note"></div>
+  <button id="ed-done">Done</button>
+</div>
+
+<script>
+// ---- Data injected from Python -------------------------------------------
+const PALETTE_COLORS = __PALETTE_COLORS__;
+const PALETTE_DIRECT = __PALETTE_DIRECT__;
+const PALETTE_LIST = __PALETTE_LIST__;
+const PALETTE_PREVIEW = __PALETTE_PREVIEW__;
+const PALETTE_CUSTOM = __PALETTE_CUSTOM__;
+const DEFAULT_PALETTE_THEME = __DEFAULT_PALETTE_THEME__;
+
+const CODE_PALETTES = __CODE_PALETTES__;
+const CODE_LIST = __CODE_LIST__;
+const CODE_PREVIEW = __CODE_PREVIEW__;
+const CODE_CUSTOM = __CODE_CUSTOM__;
+const DEFAULT_CODE_THEME = __DEFAULT_CODE_THEME__;
+const CODE_HTML = __CODE_HTML__;
+const CODE_DEFAULTS = __CODE_DEFAULTS__;
+
+let MODE = 'palette';   // 'palette' | 'code'
+
+// ---- Colour math (mirrors ManimColor.lighter/darker/interpolate) ----------
+function clamp(x){ return Math.max(0, Math.min(255, x)); }
+function hexToRgb(h){ h = h.replace('#',''); return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)]; }
+function rgbToHex(r,g,b){ return '#' + [r,g,b].map(x => clamp(Math.round(x)).toString(16).padStart(2,'0')).join('').toUpperCase(); }
+function mix(a,b,t){ const A = hexToRgb(a), B = hexToRgb(b); return rgbToHex(A[0]*(1-t)+B[0]*t, A[1]*(1-t)+B[1]*t, A[2]*(1-t)+B[2]*t); }
+const lighter = (h,a) => mix(h, '#FFFFFF', a);
+const darker  = (h,a) => mix(h, '#000000', a);
+const avg     = (a,b) => mix(a, b, 0.5);
+// Inverse of lighter(): the base whose .lighter(a) equals h (so A can stay exact).
+const unLighten = (h,a) => { const [r,g,b] = hexToRgb(h); const inv = c => (c - 255*a) / (1-a); return rgbToHex(inv(r), inv(g), inv(b)); };
+function rgbaHalf(hex){ const [r,g,b] = hexToRgb(hex); return 'rgba(' + r + ',' + g + ',' + b + ',0.5)'; }
+function readable(hex){ const [r,g,b] = hexToRgb(hex); return (0.299*r + 0.587*g + 0.114*b) > 140 ? '#000' : '#fff'; }
+
+function ansi(T, n){ const c = PALETTE_COLORS[T] || {}; return c['Ansi ' + n + ' Color'] || '#000000'; }
+
+const TRANSFORM = { l2: h => lighter(h,0.2), l1: h => lighter(h,0.1), n: h => h, d1: h => darker(h,0.1), d2: h => darker(h,0.2) };
+
+function recipe(spec, T){
+  if (spec.special === 'background') return (PALETTE_COLORS[T] || {})['Background Color'] || '#FFFFFF';
+  if (spec.special === 'orange')     return avg(ansi(T,1), ansi(T,3));
+  if (spec.special === 'lightBrown') return lighter(avg(ansi(T,1), ansi(T,3)), 0.1);
+  if (spec.special === 'darkBrown')  return darker(avg(ansi(T,1), ansi(T,3)), 0.1);
+  if (spec.special === 'grayBrown'){ const orange = avg(ansi(T,1), ansi(T,3)); return avg(lighter(orange,0.1), ansi(T,8)); }
+  return TRANSFORM[spec.transform || 'n'](ansi(T, spec.ansi));
+}
+
+// ---- Palette swatch registry ----------------------------------------------
+const ROLES = ['a','b','c','d','e'];
+const ROLE_T = { a:'l2', b:'l1', c:'n', d:'d1', e:'d2' };
+const MAIN_GROUPS = [
+  { id:'blue',   label:'Blue',   ansi:4 }, { id:'teal',   label:'Teal',   ansi:6 },
+  { id:'green',  label:'Green',  ansi:2 }, { id:'yellow', label:'Yellow', ansi:3 },
+  { id:'gold',   label:'Gold',   ansi:11 },{ id:'red',    label:'Red',    ansi:1 },
+  { id:'maroon', label:'Maroon', ansi:9 }, { id:'purple', label:'Purple', ansi:5 },
+];
+const LEFT_COL = [
+  { id:'pink',        label:'Pink',        spec:{ansi:5, transform:'n'} },
+  { id:'light_pink',  label:'Light Pink',  spec:{ansi:13, transform:'n'} },
+  { id:'orange',      label:'Orange',      spec:{special:'orange'} },
+  { id:'light_brown', label:'Light Brown', spec:{special:'lightBrown'} },
+  { id:'dark_brown',  label:'Dark Brown',  spec:{special:'darkBrown'} },
+  { id:'gray_brown',  label:'Gray Brown',  spec:{special:'grayBrown'} },
+];
+const RIGHT_COL = [
+  { id:'white',  label:'White',  spec:{ansi:7, transform:'n'},  ink:'black' },
+  { id:'gray_a', label:'Gray A', spec:{ansi:8, transform:'l2'}, ink:'black', group:'gray', role:'a' },
+  { id:'gray_b', label:'Gray B', spec:{ansi:8, transform:'l1'}, ink:'black', group:'gray', role:'b' },
+  { id:'gray_c', label:'Gray C', spec:{ansi:8, transform:'n'},  ink:'black', group:'gray', role:'c' },
+  { id:'gray_d', label:'Gray D', spec:{ansi:8, transform:'d1'}, ink:'black', group:'gray', role:'d' },
+  { id:'gray_e', label:'Gray E', spec:{ansi:8, transform:'d2'}, ink:'black', group:'gray', role:'e' },
+  { id:'black',  label:'Black',  spec:{ansi:0, transform:'n'},  ink:'white' },
+];
+const SWATCHES = {};
+const GROUPS = {};
+MAIN_GROUPS.forEach(g => {
+  GROUPS[g.id] = [];
+  ROLES.forEach(r => { const id = g.id + '_' + r; SWATCHES[id] = { spec:{ansi:g.ansi, transform:ROLE_T[r]}, group:g.id, role:r, label:g.label+' '+r.toUpperCase() }; GROUPS[g.id].push(id); });
+});
+LEFT_COL.forEach(o => { SWATCHES[o.id] = { spec:o.spec, group:null, role:null, label:o.label }; });
+GROUPS['gray'] = [];
+RIGHT_COL.forEach(o => { SWATCHES[o.id] = { spec:o.spec, group:o.group||null, role:o.role||null, label:o.label }; if (o.group) GROUPS[o.group].push(o.id); });
+SWATCHES['background'] = { spec:{special:'background'}, group:null, role:null, label:'Background' };
+
+const MIDDLE_COLORS = [
+  { label:'Blue', ids:GROUPS['blue'], rep:'blue_c' }, { label:'Teal', ids:GROUPS['teal'], rep:'teal_c' },
+  { label:'Green', ids:GROUPS['green'], rep:'green_c' }, { label:'Yellow', ids:GROUPS['yellow'], rep:'yellow_c' },
+  { label:'Gold', ids:GROUPS['gold'], rep:'gold_c' }, { label:'Red', ids:GROUPS['red'], rep:'red_c' },
+  { label:'Maroon', ids:GROUPS['maroon'], rep:'maroon_c' }, { label:'Purple', ids:GROUPS['purple'], rep:'purple_c' },
+  { label:'Pink', ids:['pink'], rep:'pink' }, { label:'Light Pink', ids:['light_pink'], rep:'light_pink' },
+  { label:'Orange', ids:['orange'], rep:'orange' }, { label:'Light Brown', ids:['light_brown'], rep:'light_brown' },
+  { label:'Dark Brown', ids:['dark_brown'], rep:'dark_brown' }, { label:'Gray Brown', ids:['gray_brown'], rep:'gray_brown' },
+  { label:'White', ids:['white'], rep:'white' }, { label:'Gray', ids:GROUPS['gray'], rep:'gray_c' },
+  { label:'Black', ids:['black'], rep:'black' }, { label:'Background', ids:['background'], rep:'background' },
+];
+
+// ---- Code role registry ---------------------------------------------------
+const CODE_ROLES = [
+  { id:'--bg', label:'Background' }, { id:'--fg', label:'Foreground' },
+  { id:'--comment', label:'Comment' }, { id:'--keyword', label:'Keyword' },
+  { id:'--string', label:'String' }, { id:'--number', label:'Number' },
+  { id:'--name', label:'Name' }, { id:'--function', label:'Function' },
+  { id:'--class', label:'Class' }, { id:'--builtin', label:'Builtin' },
+  { id:'--operator', label:'Operator' },
+];
+const CODE_ROLE_LABEL = {}; CODE_ROLES.forEach(r => CODE_ROLE_LABEL[r.id] = r.label);
+const CODE_MIDDLE = CODE_ROLES.map(r => ({ label:r.label, role:r.id }));
+
+// ---- Theme helpers --------------------------------------------------------
+function paletteThemeBg(t){
+  if (PALETTE_DIRECT[t] && PALETTE_DIRECT[t]['background']) return PALETTE_DIRECT[t]['background'];
+  const c = PALETTE_COLORS[t] || {}; return c['Background Color'] || '#FFFFFF';
+}
+function codeThemeBg(t){ const p = CODE_PALETTES[t] || {}; return p['--bg'] || CODE_DEFAULTS['--bg']; }
+function domain(){
+  if (MODE === 'code') return { all:CODE_LIST, preview:CODE_PREVIEW, custom:CODE_CUSTOM, bgOf:codeThemeBg };
+  return { all:PALETTE_LIST, preview:PALETTE_PREVIEW, custom:PALETTE_CUSTOM, bgOf:paletteThemeBg };
+}
+function themeOf(inst){ return MODE === 'code' ? inst.cPreviewTheme : inst.pPreviewTheme; }
+
+// ---- Editor instance ------------------------------------------------------
+function createEditor(side, opts){
+  opts = opts || {};
+  const inst = {
+    side, title: side,
+    pPreviewTheme: DEFAULT_PALETTE_THEME, pSources: {}, bgLocked: false,
+    cPreviewTheme: DEFAULT_CODE_THEME, cSources: {}, cWeights: {},
+    barEls: {}, nameLabelEls: {}, aeLabelEls: [], wideLabelEls: [], roleEls: {},
+  };
+
+  inst.resetPaletteSources = function(){ Object.keys(SWATCHES).forEach(id => { inst.pSources[id] = {type:'preview'}; }); };
+  inst.resetCodeSources = function(){ CODE_ROLES.forEach(r => { inst.cSources[r.id] = {type:'preview'}; inst.cWeights[r.id] = false; }); };
+
+  inst.paletteColorOf = function(id){
+    const s = inst.pSources[id] || {type:'preview'};
+    if (s.type === 'hex') return s.hex;
+    const T = (s.type === 'theme') ? s.theme : inst.pPreviewTheme;
+    if (PALETTE_DIRECT[T] && PALETTE_DIRECT[T][id]) return PALETTE_DIRECT[T][id];
+    return recipe(SWATCHES[id].spec, T);
+  };
+  inst.codeColorOf = function(role){
+    const s = inst.cSources[role] || {type:'preview'};
+    if (s.type === 'hex') return s.hex;
+    const T = (s.type === 'theme') ? s.theme : inst.cPreviewTheme;
+    const pal = CODE_PALETTES[T] || {};
+    return pal[role] || CODE_DEFAULTS[role];
+  };
+  inst.colorOf = function(id){ return MODE === 'code' ? inst.codeColorOf(id) : inst.paletteColorOf(id); };
+
+  const wrap = document.createElement('div'); wrap.className = 'inst';
+  const head = document.createElement('div'); head.className = 'inst-head';
+  const ttl = document.createElement('div'); ttl.className = 'inst-title'; ttl.textContent = side;
+  head.appendChild(ttl);
+  head.appendChild(makeShutter(inst));
+
+  const nav = document.createElement('div'); nav.className = 'shutter-nav';
+  const upBtn = document.createElement('button'); upBtn.type = 'button'; upBtn.className = 'nav-btn'; upBtn.textContent = '▲'; upBtn.title = 'Previous theme';
+  const downBtn = document.createElement('button'); downBtn.type = 'button'; downBtn.className = 'nav-btn'; downBtn.textContent = '▼'; downBtn.title = 'Next theme';
+  upBtn.addEventListener('click', (e) => { e.stopPropagation(); stepTheme(inst, -1); });
+  downBtn.addEventListener('click', (e) => { e.stopPropagation(); stepTheme(inst, +1); });
+  nav.appendChild(upBtn); nav.appendChild(downBtn);
+  head.appendChild(nav);
+
+  if (opts.bgLock) {
+    const lock = document.createElement('button'); lock.className = 'lock-btn'; lock.type = 'button';
+    const renderLock = () => {
+      lock.classList.toggle('locked', inst.bgLocked);
+      lock.innerHTML = (inst.bgLocked ? '\u{1F512}' : '\u{1F513}') + ' Background';
+      lock.title = inst.bgLocked
+        ? 'Background stays fixed when you change the palette theme. Click to unlock.'
+        : 'Lock the background so it stays fixed when you change the palette theme.';
+    };
+    lock.addEventListener('click', (e) => { e.stopPropagation(); inst.bgLocked = !inst.bgLocked; renderLock(); });
+    renderLock(); head.appendChild(lock); inst.lockBtn = lock; inst.renderLock = renderLock;
+  }
+  wrap.appendChild(head);
+
+  const card = document.createElement('div'); card.className = 'card';
+  card.addEventListener('click', (e) => { if (MODE === 'palette') { e.stopPropagation(); openEditor(inst, 'background', e.clientX, e.clientY); } });
+  wrap.appendChild(card);
+  inst.card = card; inst.el = wrap;
+
+  // Whichever side you last touched is the target for the arrow-key stepper.
+  wrap.addEventListener('mousedown', () => { activeInst = inst; });
+
+  inst.renderColors = function(){
+    inst.card.style.background = inst.paletteColorOf('background');
+    if (MODE === 'palette') renderPaletteColors(inst); else renderCodeColors(inst);
+  };
+
+  inst.resetPaletteSources(); inst.resetCodeSources();
+  buildCard(inst); refreshShutter(inst); toggleLockVisibility(inst);
+  return inst;
+}
+
+// ---- Card builders --------------------------------------------------------
+function buildCard(inst){ if (MODE === 'palette') buildPaletteCard(inst); else buildCodeCard(inst); }
+
+function makeBar(inst, id){
+  const el = document.createElement('div'); el.className = 'bar';
+  el.addEventListener('click', (e) => { e.stopPropagation(); openEditor(inst, id, e.clientX, e.clientY); });
+  inst.barEls[id] = el; return el;
+}
+function makeWide(inst, o, ink){
+  const el = document.createElement('div'); el.className = 'wbar'; el.textContent = o.label;
+  el.addEventListener('click', (e) => { e.stopPropagation(); openEditor(inst, o.id, e.clientX, e.clientY); });
+  inst.barEls[o.id] = el; inst.wideLabelEls.push({ el, ink }); return el;
+}
+
+function buildPaletteCard(inst){
+  const card = inst.card; card.innerHTML = '';
+  inst.barEls = {}; inst.nameLabelEls = {}; inst.aeLabelEls = []; inst.wideLabelEls = []; inst.roleEls = {};
+
+  const header = document.createElement('div'); header.className = 'header';
+  inst.headerName = document.createElement('span'); inst.headerName.className = 'name';
+  inst.circleEl = document.createElement('div'); inst.circleEl.className = 'circle';
+  inst.squareEl = document.createElement('div'); inst.squareEl.className = 'square';
+  header.appendChild(inst.headerName); header.appendChild(inst.circleEl); header.appendChild(inst.squareEl);
+  card.appendChild(header);
+
+  const grid = document.createElement('div'); grid.className = 'grid';
+  const aecol = document.createElement('div'); aecol.className = 'col aecol';
+  const aeSpacer = document.createElement('div'); aeSpacer.className = 'cname'; aeSpacer.textContent = 'X'; aecol.appendChild(aeSpacer);
+  ROLES.forEach(r => { const lab = document.createElement('div'); lab.className = 'ae'; lab.textContent = r.toUpperCase(); inst.aeLabelEls.push(lab); aecol.appendChild(lab); });
+  grid.appendChild(aecol);
+  MAIN_GROUPS.forEach(g => {
+    const col = document.createElement('div'); col.className = 'col';
+    const name = document.createElement('div'); name.className = 'cname'; name.textContent = g.label;
+    inst.nameLabelEls[g.id] = name; col.appendChild(name);
+    ROLES.forEach(r => col.appendChild(makeBar(inst, g.id + '_' + r)));
+    grid.appendChild(col);
+  });
+  card.appendChild(grid);
+
+  const bottom = document.createElement('div'); bottom.className = 'bottom';
+  const left = document.createElement('div'); left.className = 'wide';
+  LEFT_COL.forEach(o => left.appendChild(makeWide(inst, o, 'black'))); bottom.appendChild(left);
+  const right = document.createElement('div'); right.className = 'wide';
+  RIGHT_COL.forEach(o => right.appendChild(makeWide(inst, o, o.ink))); bottom.appendChild(right);
+  card.appendChild(bottom);
+}
+
+function buildCodeCard(inst){
+  const card = inst.card; card.innerHTML = '';
+  inst.barEls = {}; inst.roleEls = {};
+
+  const header = document.createElement('div'); header.className = 'header';
+  inst.headerName = document.createElement('span'); inst.headerName.className = 'name';
+  header.appendChild(inst.headerName); card.appendChild(header);
+
+  const wrap = document.createElement('div'); wrap.className = 'code-wrap';
+  wrap.innerHTML = CODE_HTML; card.appendChild(wrap);
+
+  const ctrls = document.createElement('div'); ctrls.className = 'code-controls';
+  CODE_ROLES.forEach(r => {
+    const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'code-chip';
+    const sw = document.createElement('span'); sw.className = 'chip-sw';
+    const lab = document.createElement('span'); lab.className = 'chip-lab'; lab.textContent = r.label;
+    chip.appendChild(sw); chip.appendChild(lab);
+    chip.addEventListener('click', (e) => { e.stopPropagation(); openEditor(inst, r.id, e.clientX, e.clientY); });
+    inst.roleEls[r.id] = { chip, sw };
+    ctrls.appendChild(chip);
+  });
+  card.appendChild(ctrls);
+}
+
+// ---- Render ---------------------------------------------------------------
+function renderPaletteColors(inst){
+  const inkBlack = inst.paletteColorOf('black');
+  const inkWhite = inst.paletteColorOf('white');
+  inst.headerName.textContent = inst.pPreviewTheme;
+  inst.headerName.style.color = inst.paletteColorOf('white');
+  inst.circleEl.style.backgroundColor = rgbaHalf(inst.paletteColorOf('blue_c'));
+  inst.squareEl.style.backgroundColor = rgbaHalf(inst.paletteColorOf('red_c'));
+  for (const id in inst.barEls) inst.barEls[id].style.background = inst.paletteColorOf(id);
+  MAIN_GROUPS.forEach(g => { inst.nameLabelEls[g.id].style.color = inst.paletteColorOf(g.id + '_c'); });
+  inst.aeLabelEls.forEach(el => { el.style.color = inst.paletteColorOf('blue_c'); });
+  inst.wideLabelEls.forEach(({el, ink}) => { el.style.color = (ink === 'white') ? inkWhite : inkBlack; });
+}
+
+function renderCodeColors(inst){
+  CODE_ROLES.forEach(r => {
+    const col = inst.codeColorOf(r.id);
+    inst.card.style.setProperty(r.id, col);
+    inst.card.style.setProperty('--weight-' + r.id.slice(2), inst.cWeights[r.id] ? '700' : '400');
+    if (inst.roleEls[r.id]) inst.roleEls[r.id].sw.style.background = col;
+  });
+  inst.headerName.textContent = inst.cPreviewTheme;
+  inst.headerName.style.color = readable(inst.paletteColorOf('background'));
+}
+
+// ---- Popup colour editor (shared) -----------------------------------------
+const editor = document.getElementById('editor');
+const edTitle = document.getElementById('ed-title');
+const edColor = document.getElementById('ed-color');
+const edHex = document.getElementById('ed-hex');
+const edThemeShutter = document.getElementById('ed-theme-shutter');
+const edThemeBtn = document.getElementById('ed-theme-btn');
+const edThemePop = document.getElementById('ed-theme-pop');
+const edThemeSearch = document.getElementById('ed-theme-search');
+const edThemeList = document.getElementById('ed-theme-list');
+let edThemeValue = '__preview__';
+let edThemeExpanded = false;
+const edBoldRow = document.getElementById('ed-bold-row');
+const edBold = document.getElementById('ed-bold');
+const edNote = document.getElementById('ed-note');
+const edDone = document.getElementById('ed-done');
+let currentInst = null;
+let currentId = null;
+
+// "From theme" searchable selector (same search/preview/show-more as the main shutter).
+const ED_SPECIAL_LABELS = { '__preview__': 'Current preview', '__hex__': 'Custom (hex)' };
+function edThemeLabel(val){ return ED_SPECIAL_LABELS[val] || val; }
+function setEdThemeValue(val){ edThemeValue = val; edThemeBtn.textContent = edThemeLabel(val) + '  ▾'; }
+function makeEdThemeItem(val, bg){
+  const it = document.createElement('button'); it.type = 'button'; it.className = 'shutter-item';
+  if (val === edThemeValue) it.classList.add('active');
+  if (bg !== null && bg !== undefined) { const sw = document.createElement('span'); sw.className = 'shutter-sw'; sw.style.background = bg; it.appendChild(sw); }
+  const lab = document.createElement('span'); lab.className = 'shutter-name'; lab.textContent = edThemeLabel(val); it.appendChild(lab);
+  it.addEventListener('click', (e) => { e.stopPropagation(); edThemePop.classList.add('hidden'); chooseEdTheme(val); });
+  return it;
+}
+function renderEdThemeList(){
+  const d = domain(); const q = edThemeSearch.value.trim().toLowerCase();
+  edThemeList.innerHTML = '';
+  ['__preview__', '__hex__'].forEach(v => { if (!q || edThemeLabel(v).toLowerCase().includes(q)) edThemeList.appendChild(makeEdThemeItem(v, null)); });
+  let names; let showMore = false;
+  if (q) names = d.all.filter(n => n.toLowerCase().includes(q));
+  else if (edThemeExpanded) names = d.all.slice();
+  else { names = d.preview.slice(); showMore = d.all.length > d.preview.length; }
+  names.forEach(n => edThemeList.appendChild(makeEdThemeItem(n, d.bgOf(n))));
+  if (showMore) {
+    const more = document.createElement('button'); more.type = 'button'; more.className = 'shutter-more';
+    more.textContent = 'Show more (' + (d.all.length - d.preview.length) + ')';
+    more.addEventListener('click', (e) => { e.stopPropagation(); edThemeExpanded = true; renderEdThemeList(); });
+    edThemeList.appendChild(more);
+  }
+}
+function chooseEdTheme(val){
+  setEdThemeValue(val);
+  if (val === '__hex__') { applyHex(edColor.value); return; }
+  if (MODE === 'code') {
+    currentInst.cSources[currentId] = (val === '__preview__') ? {type:'preview'} : {type:'theme', theme:val};
+  } else {
+    const sw = SWATCHES[currentId];
+    const mk = (val === '__preview__') ? () => ({type:'preview'}) : () => ({type:'theme', theme:val});
+    if (sw.group && sw.role === 'a') GROUPS[sw.group].forEach(mid => currentInst.pSources[mid] = mk());
+    else currentInst.pSources[currentId] = mk();
+  }
+  afterEdit();
+  const cur = currentInst.colorOf(currentId); edColor.value = cur; edHex.value = cur;
+}
+edThemeBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (edThemePop.classList.contains('hidden')) { edThemeExpanded = false; edThemeSearch.value = ''; renderEdThemeList(); edThemePop.classList.remove('hidden'); edThemeSearch.focus(); }
+  else edThemePop.classList.add('hidden');
+});
+edThemeSearch.addEventListener('input', renderEdThemeList);
+edThemeSearch.addEventListener('click', (e) => e.stopPropagation());
+edThemePop.addEventListener('click', (e) => e.stopPropagation());
+
+function afterEdit(){ currentInst.renderColors(); if (secondary) renderMiddle(); }
+
+function openEditor(inst, id, x, y){
+  currentInst = inst; currentId = id;
+  closeAllShutters();
+  const isCode = (MODE === 'code');
+  const label = isCode ? CODE_ROLE_LABEL[id] : SWATCHES[id].label;
+  edTitle.textContent = (inst.title ? inst.title + ' • ' : '') + label;
+
+  const cur = inst.colorOf(id);
+  edColor.value = cur; edHex.value = cur;
+
+  const s = (isCode ? inst.cSources[id] : inst.pSources[id]) || {type:'preview'};
+  if (s.type === 'hex') setEdThemeValue('__hex__');
+  else if (s.type === 'theme') setEdThemeValue(s.theme);
+  else setEdThemeValue('__preview__');
+  edThemePop.classList.add('hidden'); edThemeExpanded = false; edThemeSearch.value = '';
+
+  edBoldRow.style.display = isCode ? 'flex' : 'none';
+  if (isCode) edBold.checked = !!inst.cWeights[id];
+
+  const isPrimary = !isCode && SWATCHES[id].group && SWATCHES[id].role === 'a';
+  edNote.textContent = isPrimary
+    ? 'First shade of the "' + SWATCHES[id].group + '" family — a theme or custom hex here cascades to the whole family (B–E derived lighter/darker).'
+    : '';
+
+  editor.classList.remove('hidden');
+  const w = editor.offsetWidth, h = editor.offsetHeight;
+  let left = x + 12, top = y + 12;
+  if (left + w > window.innerWidth - 8) left = window.innerWidth - w - 8;
+  if (top + h > window.innerHeight - 8) top = y - h - 12;
+  if (top < 8) top = 8;
+  editor.style.left = left + 'px'; editor.style.top = top + 'px';
+}
+
+function hideEditor(){ editor.classList.add('hidden'); edThemePop.classList.add('hidden'); currentInst = null; currentId = null; }
+
+function applyHex(hex){
+  hex = hex.toUpperCase();
+  if (MODE === 'code') {
+    currentInst.cSources[currentId] = { type:'hex', hex };
+  } else {
+    const sw = SWATCHES[currentId];
+    if (sw.group && sw.role === 'a') {
+      // First shade keeps the exact hex; derive the rest of the family per the manim
+      // convention from the inferred base (A = base.lighter(0.2), B = base.lighter(0.1),
+      // C = base, D = base.darker(0.1), E = base.darker(0.2)).
+      const base = unLighten(hex, 0.2);
+      GROUPS[sw.group].forEach(mid => {
+        const role = SWATCHES[mid].role;
+        const col = (role === 'a') ? hex : TRANSFORM[ROLE_T[role]](base);
+        currentInst.pSources[mid] = { type:'hex', hex: col };
+      });
+    } else {
+      currentInst.pSources[currentId] = { type:'hex', hex };
+    }
+  }
+  setEdThemeValue('__hex__');
+  afterEdit();
+}
+
+edColor.addEventListener('input', () => { edHex.value = edColor.value.toUpperCase(); applyHex(edColor.value); });
+edHex.addEventListener('change', () => {
+  let v = edHex.value.trim(); if (!v.startsWith('#')) v = '#' + v;
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) { edColor.value = v; applyHex(v); }
+});
+edBold.addEventListener('change', () => { if (MODE !== 'code' || !currentInst) return; currentInst.cWeights[currentId] = edBold.checked; afterEdit(); });
+
+edDone.addEventListener('click', (e) => { e.stopPropagation(); hideEditor(); });
+editor.addEventListener('click', (e) => { e.stopPropagation(); if (!e.target.closest('#ed-theme-shutter')) edThemePop.classList.add('hidden'); });
+
+// ---- Theme shutter --------------------------------------------------------
+function makeShutter(inst){
+  const wrap = document.createElement('div'); wrap.className = 'shutter';
+  const btn = document.createElement('button'); btn.className = 'shutter-btn'; btn.type = 'button';
+  const pop = document.createElement('div'); pop.className = 'shutter-pop hidden';
+  const search = document.createElement('input'); search.type = 'text'; search.className = 'shutter-search'; search.placeholder = 'Search themes…';
+  const list = document.createElement('div'); list.className = 'shutter-list';
+  pop.appendChild(search); pop.appendChild(list);
+  wrap.appendChild(btn); wrap.appendChild(pop);
+  inst._shutter = { wrap, btn, pop, search, list, expanded:false };
+  btn.addEventListener('click', (e) => { e.stopPropagation(); toggleShutter(inst); });
+  search.addEventListener('input', () => renderShutterList(inst));
+  search.addEventListener('click', (e) => e.stopPropagation());
+  pop.addEventListener('click', (e) => e.stopPropagation());
+  return wrap;
+}
+function updateShutterLabel(inst){ inst._shutter.btn.textContent = themeOf(inst) + '  ▾'; }
+function refreshShutter(inst){ const sh = inst._shutter; if (!sh) return; sh.expanded = false; sh.search.value = ''; updateShutterLabel(inst); renderShutterList(inst); }
+function closeAllShutters(except){ instances.forEach(i => { if (i !== except && i._shutter) i._shutter.pop.classList.add('hidden'); }); }
+function toggleShutter(inst){
+  const sh = inst._shutter; const willOpen = sh.pop.classList.contains('hidden');
+  closeAllShutters(inst); hideEditor();
+  if (willOpen) { sh.pop.classList.remove('hidden'); sh.expanded = false; sh.search.value = ''; renderShutterList(inst); sh.search.focus(); }
+  else sh.pop.classList.add('hidden');
+}
+function makeShutterItem(inst, name, d){
+  const it = document.createElement('button'); it.type = 'button'; it.className = 'shutter-item';
+  if (name === themeOf(inst)) it.classList.add('active');
+  const sw = document.createElement('span'); sw.className = 'shutter-sw'; sw.style.background = d.bgOf(name);
+  const lab = document.createElement('span'); lab.className = 'shutter-name'; lab.textContent = name;
+  it.appendChild(sw); it.appendChild(lab);
+  if (d.custom.includes(name)) { const tag = document.createElement('span'); tag.className = 'shutter-tag'; tag.textContent = 'custom'; it.appendChild(tag); }
+  it.addEventListener('click', (e) => { e.stopPropagation(); selectTheme(inst, name); });
+  return it;
+}
+function renderShutterList(inst){
+  const sh = inst._shutter; const d = domain();
+  const q = sh.search.value.trim().toLowerCase();
+  sh.list.innerHTML = '';
+  let names; let showMore = false;
+  if (q) { names = d.all.filter(n => n.toLowerCase().includes(q)); }
+  else if (sh.expanded) { names = d.all.slice(); }
+  else { names = d.preview.slice(); showMore = d.all.length > d.preview.length; }
+  names.forEach(n => sh.list.appendChild(makeShutterItem(inst, n, d)));
+  if (names.length === 0) { const e = document.createElement('div'); e.className = 'shutter-empty'; e.textContent = 'No matches'; sh.list.appendChild(e); }
+  if (showMore) {
+    const more = document.createElement('button'); more.type = 'button'; more.className = 'shutter-more';
+    more.textContent = 'Show more (' + (d.all.length - d.preview.length) + ')';
+    more.addEventListener('click', (e) => { e.stopPropagation(); sh.expanded = true; renderShutterList(inst); });
+    sh.list.appendChild(more);
+  }
+}
+function selectTheme(inst, name){
+  if (MODE === 'code') { inst.cPreviewTheme = name; inst.resetCodeSources(); }
+  else {
+    const keepBg = inst.bgLocked; const bg = keepBg ? inst.paletteColorOf('background') : null;
+    inst.pPreviewTheme = name; inst.resetPaletteSources();
+    if (keepBg) inst.pSources['background'] = { type:'hex', hex:bg };
+  }
+  inst._shutter.pop.classList.add('hidden'); hideEditor();
+  updateShutterLabel(inst); inst.renderColors(); if (secondary) renderMiddle();
+}
+function toggleLockVisibility(inst){ if (inst.lockBtn) inst.lockBtn.style.display = (MODE === 'palette') ? 'inline-flex' : 'none'; }
+
+// Navigation order for the up/down stepper: preview list (customs + selected) then the rest A→Z.
+function navOrder(){ const d = domain(); return d.preview.concat(d.all.filter(n => !d.preview.includes(n))); }
+function stepTheme(inst, dir){
+  const order = navOrder(); if (!order.length) return;
+  let i = order.indexOf(themeOf(inst)); if (i < 0) i = 0;
+  i = (i + dir + order.length) % order.length;
+  const wasOpen = inst._shutter && !inst._shutter.pop.classList.contains('hidden');
+  selectTheme(inst, order[i]);
+  if (wasOpen) { inst._shutter.pop.classList.remove('hidden'); renderShutterList(inst); }
+}
+
+// With a colour editor open, arrows step that one swatch's "From theme" source
+// (auditioning the specific colour across themes) instead of re-theming the whole side.
+function stepEdTheme(dir){
+  if (!currentInst || currentId == null) return;
+  const order = navOrder(); if (!order.length) return;
+  let i = order.indexOf(edThemeValue);
+  if (i < 0) i = (dir > 0) ? 0 : order.length - 1;
+  else i = (i + dir + order.length) % order.length;
+  chooseEdTheme(order[i]);
+  if (!edThemePop.classList.contains('hidden')) renderEdThemeList();
+}
+
+// ---- Partition transfer panel ---------------------------------------------
+const middlePanel = document.createElement('div'); middlePanel.className = 'middle';
+function buildMiddle(){
+  middlePanel.innerHTML = '';
+  const t = document.createElement('div'); t.className = 'mtitle';
+  t.textContent = '↻ reset  |  copy ←';
+  middlePanel.appendChild(t);
+  const rows = (MODE === 'code') ? CODE_MIDDLE : MIDDLE_COLORS;
+  rows.forEach(c => {
+    const row = document.createElement('div'); row.className = 'mrow';
+    const reset = document.createElement('button'); reset.className = 'mreset'; reset.innerHTML = '&#x21bb;';
+    reset.title = 'Reset ' + c.label + ' in main to main’s theme';
+    reset.addEventListener('click', () => {
+      if (MODE === 'code') { main.cSources[c.role] = {type:'preview'}; main.cWeights[c.role] = false; }
+      else c.ids.forEach(id => main.pSources[id] = {type:'preview'});
+      main.renderColors();
+    });
+    const copy = document.createElement('button'); copy.className = 'mcopy'; copy.innerHTML = '&#x2190;';
+    copy.title = 'Copy ' + c.label + ' from secondary into main';
+    copy.addEventListener('click', () => {
+      if (MODE === 'code') { main.cSources[c.role] = {type:'hex', hex:secondary.codeColorOf(c.role)}; main.cWeights[c.role] = secondary.cWeights[c.role]; }
+      else c.ids.forEach(id => main.pSources[id] = {type:'hex', hex:secondary.paletteColorOf(id)});
+      main.renderColors();
+    });
+    const lab = document.createElement('span'); lab.className = 'mlabel'; lab.textContent = c.label;
+    row.appendChild(reset); row.appendChild(copy); row.appendChild(lab);
+    middlePanel.appendChild(row); c._copyBtn = copy;
+  });
+}
+function renderMiddle(){
+  if (!secondary) return;
+  const rows = (MODE === 'code') ? CODE_MIDDLE : MIDDLE_COLORS;
+  rows.forEach(c => {
+    const col = (MODE === 'code') ? secondary.codeColorOf(c.role) : secondary.paletteColorOf(c.rep);
+    c._copyBtn.style.background = col; c._copyBtn.style.color = readable(col);
+  });
+}
+
+// ---- Stage / split / mode -------------------------------------------------
+const stage = document.getElementById('stage');
+let main = null; let secondary = null; let instances = []; let activeInst = null;
+
+function buildStage(){
+  stage.innerHTML = '';
+  stage.appendChild(main.el);
+  if (secondary) { stage.appendChild(middlePanel); stage.appendChild(secondary.el); }
+}
+
+const splitToggle = document.getElementById('split-toggle');
+splitToggle.addEventListener('change', () => {
+  if (splitToggle.checked) {
+    secondary = createEditor('secondary', { bgLock: true });
+    secondary.pPreviewTheme = main.pPreviewTheme; secondary.cPreviewTheme = main.cPreviewTheme;
+    secondary.pSources = JSON.parse(JSON.stringify(main.pSources));
+    secondary.cSources = JSON.parse(JSON.stringify(main.cSources));
+    secondary.cWeights = JSON.parse(JSON.stringify(main.cWeights));
+    secondary.bgLocked = main.bgLocked; if (secondary.renderLock) secondary.renderLock();
+    instances = [main, secondary];
+    refreshShutter(secondary); toggleLockVisibility(secondary);
+    buildMiddle(); buildStage();
+    main.renderColors(); secondary.renderColors(); renderMiddle();
+  } else {
+    secondary = null; instances = [main]; activeInst = main; buildStage();
+  }
+});
+
+const modeCodeBtn = document.getElementById('mode-code');
+const modePaletteBtn = document.getElementById('mode-palette');
+const exportBtn = document.getElementById('export-btn');
+
+function setMode(mode){
+  if (MODE === mode) return;
+  MODE = mode;
+  modeCodeBtn.classList.toggle('active', mode === 'code');
+  modePaletteBtn.classList.toggle('active', mode === 'palette');
+  hideEditor(); closeAllShutters();
+  instances.forEach(inst => { buildCard(inst); refreshShutter(inst); toggleLockVisibility(inst); });
+  if (secondary) buildMiddle();
+  instances.forEach(inst => inst.renderColors());
+  if (secondary) renderMiddle();
+  updateExportLabel();
+}
+modeCodeBtn.addEventListener('click', () => setMode('code'));
+modePaletteBtn.addEventListener('click', () => setMode('palette'));
+
+function updateExportLabel(){ exportBtn.textContent = (MODE === 'code') ? 'Export code (.py)' : 'Export palette (.json)'; }
+
+// ---- Export ---------------------------------------------------------------
+function downloadFile(name, text, type){
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+function manimColorMap(inst){
+  const map = {};
+  const FAM = { blue:'BLUE', teal:'TEAL', green:'GREEN', yellow:'YELLOW', gold:'GOLD', red:'RED', maroon:'MAROON', purple:'PURPLE' };
+  Object.keys(FAM).forEach(g => {
+    const base = FAM[g];
+    map[base + '_A'] = inst.paletteColorOf(g + '_a'); map[base + '_B'] = inst.paletteColorOf(g + '_b');
+    map[base + '_C'] = inst.paletteColorOf(g + '_c'); map[base + '_D'] = inst.paletteColorOf(g + '_d');
+    map[base + '_E'] = inst.paletteColorOf(g + '_e'); map[base] = inst.paletteColorOf(g + '_c');
+  });
+  ['a','b','c','d','e'].forEach(r => { map['GRAY_' + r.toUpperCase()] = inst.paletteColorOf('gray_' + r); map['GREY_' + r.toUpperCase()] = inst.paletteColorOf('gray_' + r); });
+  map['GRAY'] = map['GREY'] = inst.paletteColorOf('gray_c');
+  map['WHITE'] = inst.paletteColorOf('white'); map['BLACK'] = inst.paletteColorOf('black');
+  map['PINK'] = inst.paletteColorOf('pink'); map['LIGHT_PINK'] = inst.paletteColorOf('light_pink');
+  map['ORANGE'] = inst.paletteColorOf('orange'); map['LIGHT_BROWN'] = inst.paletteColorOf('light_brown');
+  map['DARK_BROWN'] = inst.paletteColorOf('dark_brown'); map['GRAY_BROWN'] = map['GREY_BROWN'] = inst.paletteColorOf('gray_brown');
+  return map;
+}
+function exportPaletteJson(inst){
+  const data = { based_on_theme: inst.pPreviewTheme, background_color: inst.paletteColorOf('background'), manim_colors: manimColorMap(inst) };
+  const safe = inst.pPreviewTheme.replace(/[^A-Za-z0-9]+/g, '_');
+  downloadFile(safe + '_edited.json', JSON.stringify(data, null, 2), 'application/json');
+}
+
+function pyStyleValue(hex, bold){ return bold ? (hex + ' bold') : hex; }
+function buildPyText(name, c, w){
+  const S = (role) => pyStyleValue(c[role], w[role]);
+  const rows = [
+    ['Text', S('--fg')], ['Error', S('--fg')],
+    ['Comment', S('--comment')], ['Comment.Multiline', S('--comment')], ['Comment.Preproc', S('--comment')],
+    ['Comment.Single', S('--comment')], ['Comment.Special', S('--comment')],
+    ['Keyword', S('--keyword')], ['Keyword.Constant', S('--keyword')], ['Keyword.Declaration', S('--keyword')],
+    ['Keyword.Namespace', S('--keyword')], ['Keyword.Pseudo', S('--keyword')], ['Keyword.Reserved', S('--keyword')], ['Keyword.Type', S('--keyword')],
+    ['Operator', S('--operator')], ['Operator.Word', S('--operator')], ['Punctuation', S('--fg')],
+    ['Name', S('--name')], ['Name.Attribute', S('--name')], ['Name.Builtin', S('--builtin')], ['Name.Builtin.Pseudo', S('--builtin')],
+    ['Name.Class', S('--class')], ['Name.Decorator', S('--name')], ['Name.Exception', S('--class')],
+    ['Name.Function', S('--function')], ['Name.Function.Magic', S('--function')], ['Name.Variable', S('--name')],
+    ['Number', S('--number')], ['Number.Float', S('--number')], ['Number.Integer', S('--number')], ['Number.Hex', S('--number')],
+    ['String', S('--string')], ['String.Doc', S('--string')], ['String.Escape', S('--number')], ['String.Interpol', S('--string')],
+    ['Generic.Heading', S('--fg')], ['Generic.Emph', 'italic ' + c['--fg']], ['Generic.Strong', 'bold ' + c['--fg']],
+  ];
+  const lines = [];
+  lines.push('# Exported from Theme Studio. Drop this file into theme_studio/code_styles/.');
+  lines.push('');
+  lines.push('from pygments.style import Style');
+  lines.push('from pygments.token import (Comment, Error, Generic, Keyword, Name, Number,');
+  lines.push('                            Operator, Punctuation, String, Text)');
+  lines.push('');
+  lines.push('');
+  lines.push('class ' + name + '(Style):');
+  lines.push('    background_color = "' + c['--bg'] + '"');
+  lines.push('    highlight_color = "' + c['--bg'] + '"');
+  lines.push('');
+  lines.push('    styles = {');
+  rows.forEach(([tok, val]) => lines.push('        ' + tok + ': "' + val + '",'));
+  lines.push('    }');
+  lines.push('');
+  return lines.join('\n');
+}
+function exportCodePy(inst){
+  const c = {}; const w = {};
+  CODE_ROLES.forEach(r => { c[r.id] = inst.codeColorOf(r.id); w[r.id] = !!inst.cWeights[r.id]; });
+  let base = (inst.cPreviewTheme || 'Custom').replace(/[^A-Za-z0-9]+/g, ' ').trim().split(' ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+  if (!base) base = 'Custom';
+  const name = base + 'Edited';
+  downloadFile(name + '.py', buildPyText(name, c, w), 'text/x-python');
+}
+exportBtn.addEventListener('click', (e) => { e.stopPropagation(); if (MODE === 'code') exportCodePy(main); else exportPaletteJson(main); });
+
+// ---- Global click closes popovers -----------------------------------------
+document.addEventListener('click', () => { hideEditor(); closeAllShutters(); });
+
+// ---- Keyboard theme stepper (arrow keys apply prev/next on the active side) -
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target, tag = t && t.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+  let dir = 0;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') dir = 1;
+  else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') dir = -1;
+  if (!dir) return;
+  e.preventDefault();
+  if (!editor.classList.contains('hidden') && currentInst && currentId != null) {
+    stepEdTheme(dir);                       // a specific colour is open → step its "From theme"
+  } else {
+    const inst = activeInst || main;        // nothing open → step the active side's theme
+    if (inst) stepTheme(inst, dir);
+  }
+});
+
+// ---- Init -----------------------------------------------------------------
+main = createEditor('main'); instances = [main]; activeInst = main;
+buildStage(); main.renderColors(); updateExportLabel();
+</script>
+</body>
+</html>

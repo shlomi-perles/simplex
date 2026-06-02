@@ -117,6 +117,8 @@ typeCheckingMode = "strict"
 
 [tool.hatch.build.targets.sdist]
 artifacts = [
+  "src/simplex/theme/palette_data/**/*",
+  "src/simplex/theme/studio_template.html",
   "src/simplex/web/static/fonts/**/*",
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",
@@ -136,6 +138,8 @@ exclude = [
 artifacts = [
   "src/simplex/deck/_template/**/*",
   "src/simplex/deck/_template/**/.gitkeep",
+  "src/simplex/theme/palette_data/**/*",
+  "src/simplex/theme/studio_template.html",
   "src/simplex/web/static/fonts/**/*",
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",

@@ -96,6 +96,7 @@ def test_render_forces_utf8_subprocess_env(tmp_path: Path, captured: list[dict[s
     runner.render(deck, output_dir=tmp_path / "out")
     env = captured[0]["env"]
     assert env["SIMPLEX_THEME"] == "simplex_light"
+    assert env["SIMPLEX_PROJECT_ROOT"] == str(Path.cwd().resolve())
     assert env["PYTHONIOENCODING"] == "utf-8"
     assert env["PYTHONUTF8"] == "1"
 

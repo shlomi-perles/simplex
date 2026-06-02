@@ -268,6 +268,30 @@ def build(
     console.print(f"[green]Built[/green] {_SITE}")
 
 
+@app.command("theme-studio")
+def theme_studio(
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="HTML file or directory to write. Default: .simplex/theme-studio/theme_studio.html.",
+        ),
+    ] = Path(".simplex") / "theme-studio" / "theme_studio.html",
+    open_browser: Annotated[
+        bool,
+        typer.Option(
+            "--open/--no-open",
+            help="Open the generated Theme Studio in the default browser.",
+        ),
+    ] = True,
+) -> None:
+    """Generate and open the Simplex Theme Studio."""
+    from simplex.theme.studio import write_studio
+
+    path = write_studio(output, repo_root=Path.cwd(), open_browser=open_browser)
+    console.print(f"[green]Theme Studio[/green] {path}")
+
+
 @app.command()
 def test(
     only: Annotated[

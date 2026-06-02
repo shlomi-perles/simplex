@@ -150,6 +150,7 @@ def render(
         "PYTHONIOENCODING": "utf-8",
         "PYTHONUTF8": "1",
         "PYTHONWARNINGS": append_pythonwarnings_filter(os.environ.get("PYTHONWARNINGS")),
+        "SIMPLEX_PROJECT_ROOT": str(Path.cwd().resolve()),
         "SIMPLEX_THEME": deck.theme,
     }
 
