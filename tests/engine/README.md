@@ -16,7 +16,5 @@ ghost_fade animations, dynamics, geometry, text, scaling, debug.
 
 ## Don't
 
-- Don't call `apply_theme_defaults` in tests -- it mutates global Manim
-  state.
-- Don't depend on the manim-slides canvas in `test_animations.py`;
-  `clear_scene`'s canvas path is exercised in `tests/slides/`.
+- Don't call `apply_theme_defaults` without restoring `SIMPLEX_DARK` in a
+  `finally` block -- it mutates global Manim state.

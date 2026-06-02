@@ -11,6 +11,7 @@ from simplex.engine.geometry import (  # noqa: E402
     Arc3d,
     SurroundingRectangleUnion,
     get_frame_center,
+    get_surrounding_rectangle,
 )
 
 
@@ -41,6 +42,26 @@ def test_arc3d_produces_segments_points() -> None:
     )
     # add_smooth_curve_to runs `segments` times, each adds 4 cubic-bezier control points.
     assert len(arc.points) > 0
+
+
+def test_surrounding_rectangle_contains_diagonal_mobjects() -> None:
+    a = Square(side_length=1.0).move_to((-2.0, -1.0, 0.0))
+    b = Square(side_length=1.0).move_to((2.0, 1.0, 0.0))
+
+    rect = get_surrounding_rectangle(a, b, buff=0.2)
+
+    direction = b.get_center() - a.get_center()
+    direction[2] = 0.0
+    direction = direction / np.linalg.norm(direction)
+    normal = np.array([-direction[1], direction[0], 0.0])
+    mob_points = np.vstack((a.get_all_points(), b.get_all_points()))
+    rect_points = rect.get_all_points()
+
+    for axis in (direction, normal):
+        mob_projection = mob_points @ axis
+        rect_projection = rect_points @ axis
+        assert rect_projection.min() <= mob_projection.min() - 0.19
+        assert rect_projection.max() >= mob_projection.max() + 0.19
 
 
 def test_surrounding_rectangle_union_overlap_yields_one_polygon() -> None:

@@ -1,8 +1,9 @@
 """``make_chrome`` -- header / footer factory for ``Slide``.
 
 Authors register ``chrome.mobjects`` on the manim-slides canvas and add them
-to the scene. The canvas registration keeps chrome out of ``clear_scene`` /
-``Wipe``-style transitions; adding them makes the mobjects actually render.
+to the scene. The canvas registration keeps manim-slides metadata in sync;
+adding them makes the mobjects actually render and lets ``clear_scene``
+animate them like any other scene content.
 
 ``make_chrome`` is a *pure* factory: it doesn't mutate its ``region``
 argument. It returns a :class:`Chrome` ``NamedTuple`` carrying both the

@@ -5,7 +5,18 @@ import pytest
 
 pytest.importorskip("manim")
 
-from manim import DEFAULT_MOBJECT_TO_EDGE_BUFFER, DOWN, DR, LEFT, ORIGIN, RIGHT, UL, UP, UR
+from manim import (
+    DEFAULT_MOBJECT_TO_EDGE_BUFFER,
+    DOWN,
+    DR,
+    LEFT,
+    MED_LARGE_BUFF,
+    ORIGIN,
+    RIGHT,
+    UL,
+    UP,
+    UR,
+)
 from manim.mobject.opengl.opengl_mobject import OpenGLMobject
 
 from simplex.engine.region import Region
@@ -204,6 +215,31 @@ def test_place_opengl_mobject_with_buff_pulls_inward() -> None:
 
     assert mob.get_right()[0] == pytest.approx(r.right - 0.25)
     assert mob.get_top()[1] == pytest.approx(r.top - 0.25)
+
+
+def test_scale_and_place_fits_region_with_default_buff() -> None:
+    from manim import Square
+
+    r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
+    sq = Square(side_length=10.0)
+
+    out = r.scale_and_place(sq, ORIGIN)
+
+    assert out is sq
+    assert sq.width <= r.width - 2 * MED_LARGE_BUFF + 1e-6
+    assert sq.height <= r.height - 2 * MED_LARGE_BUFF + 1e-6
+    assert np.allclose(sq.get_center(), r.get_center())
+
+
+def test_scale_and_place_forwards_place_kwargs() -> None:
+    from manim import Square
+
+    r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
+    sq = Square(side_length=1.0)
+
+    r.scale_and_place(sq, UP, buff=0.0, place_kwargs={"buff": 0.25})
+
+    assert sq.get_top()[1] == pytest.approx(r.top - 0.25)
 
 
 def test_always_place_attaches_updater_to_placed_mobject() -> None:

@@ -11,7 +11,7 @@ from numbers import Real
 from typing import Any, Self, cast
 
 import numpy as np
-from manim import DEFAULT_MOBJECT_TO_EDGE_BUFFER, Rectangle
+from manim import DEFAULT_MOBJECT_TO_EDGE_BUFFER, MED_LARGE_BUFF, Rectangle
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 
 from simplex.engine.opengl_compat import MobjectLike, critical_point, is_mobject
@@ -186,6 +186,28 @@ class Region(Rectangle, metaclass=ConvertToOpenGL):
         if buff:
             mob.shift(-direction * buff)
         return mob
+
+    def scale_and_place(
+        self,
+        mob: MobjectLike,
+        anchor: np.ndarray | Iterable[float] | None = None,
+        *,
+        buff: float = MED_LARGE_BUFF,
+        scale_kwargs: dict[str, Any] | None = None,
+        place_kwargs: dict[str, Any] | None = None,
+    ) -> MobjectLike:
+        """Scale ``mob`` to fit this region, then place it with ``place``.
+
+        ``buff`` is the scaling buffer. Use ``scale_kwargs`` for additional
+        ``scale_to_fit_mobject`` options and ``place_kwargs`` for ``place``
+        options such as an edge-placement buffer.
+        """
+        from simplex.engine.scaling import scale_to_fit_mobject
+
+        scale_options = dict(scale_kwargs or {})
+        scale_options.setdefault("buff", buff)
+        scale_to_fit_mobject(cast(Any, mob), self, **scale_options)
+        return self.place(mob, anchor, **dict(place_kwargs or {}))
 
     def update(
         self,

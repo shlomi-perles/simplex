@@ -4,9 +4,8 @@ Demonstrates ``simplex.mobjects.Paper`` with the "Attention Is All You Need"
 paper from ArXiv. Shows the full lifecycle: intro -> pick -> dismiss.
 """
 
-from manim import DL, DOWN, MED_LARGE_BUFF, RIGHT, UP, Tex, Write
+from manim import DL, MED_LARGE_BUFF, UP, Tex, Write
 
-from simplex.engine.scaling import scale_to_fit_mobject
 from simplex.mobjects.paper import DismissPaper, Paper, PickPage, ShowPaper
 from simplex.slides import Slide
 
@@ -39,8 +38,7 @@ class PaperShowcase(Slide):
             shadow_direction=DL,
             stack_direction=DL,
         )
-        scale_to_fit_mobject(paper, self.region, buff=MED_LARGE_BUFF)
-        self.region.place(paper)
+        self.region.scale_and_place(paper, buff=MED_LARGE_BUFF)
 
         self.play(ShowPaper(paper))
         self.next_slide()

@@ -26,7 +26,22 @@ def code_theme_defaults(theme: Theme) -> tuple[str, dict[str, object], dict[str,
 
 def apply_theme_defaults(theme: Theme) -> None:
     """Set `Mobject.set_default(...)` for every Mobject Simplex cares about."""
-    from manim import Arrow, Code, Dot, Line, MathTex, Rectangle, Square, Tex, Text
+    from manim import (
+        Arrow,
+        Code,
+        DecimalNumber,
+        Dot,
+        Integer,
+        Line,
+        MarkupText,
+        MathTex,
+        Paragraph,
+        Rectangle,
+        Square,
+        Tex,
+        Text,
+        Variable,
+    )
 
     tmpl = theme.latex.as_tex_template()
     formatter_style, paragraph_config, background_config = code_theme_defaults(theme)
@@ -45,6 +60,25 @@ def apply_theme_defaults(theme: Theme) -> None:
         font=theme.typography.font_family,
         font_size=theme.typography.body,
     )
+    MarkupText.set_default(
+        color=theme.palette.font,
+        font=theme.typography.font_family,
+        font_size=theme.typography.body,
+    )
+    Paragraph.set_default(
+        color=theme.palette.font,
+        font=theme.typography.font_family,
+        font_size=theme.typography.body,
+    )
+    DecimalNumber.set_default(
+        color=theme.palette.font,
+        font_size=theme.typography.body,
+    )
+    Integer.set_default(
+        color=theme.palette.font,
+        font_size=theme.typography.body,
+    )
+    Variable.set_default(color=theme.palette.font)
     Line.set_default(
         stroke_color=theme.palette.edge,
         stroke_width=theme.spacing.edge_stroke_width,

@@ -3,7 +3,7 @@
 import gc
 import weakref
 
-from simplex.engine.animations import ExitAnim, exit_for, set_exit_animation
+from simplex.engine.animations import ExitAnim, clear_scene, exit_for, set_exit_animation
 
 
 class _FakeMob:
@@ -54,3 +54,24 @@ def test_override_is_garbage_collected_with_mob() -> None:
     del mob
     gc.collect()
     assert ref() is None
+
+
+def test_clear_scene_uses_all_scene_mobjects_even_with_canvas_pool() -> None:
+    content = _FakeMob()
+    canvas = _FakeMob()
+    set_exit_animation(content, _FakeAnim)
+    set_exit_animation(canvas, _FakeAnim)
+
+    class _Scene:
+        def __init__(self) -> None:
+            self.mobjects = [content, canvas]
+            self.mobjects_without_canvas = [content]
+            self.played: tuple[_FakeAnim, ...] = ()
+
+        def play(self, *animations: _FakeAnim) -> None:
+            self.played = animations
+
+    scene = _Scene()
+    clear_scene(scene)
+
+    assert [anim.mob for anim in scene.played] == [content, canvas]

@@ -7,7 +7,7 @@ import pytest
 pytest.importorskip("manim")
 
 import numpy as np
-from manim import DOWN, RIGHT, UP, ImageMobject, config
+from manim import DL, DOWN, RIGHT, UP, ImageMobject, config
 
 from simplex.mobjects.paper import (
     DismissPaper,
@@ -75,6 +75,16 @@ def test_paper_constructs_with_local_pdf(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=3, dpi=72, page_height=4.0)
     assert paper.page_count == 3
     assert len(paper.submobjects) == 3
+
+
+def test_paper_default_has_shadow_without_border(sample_pdf: Path) -> None:
+    paper = Paper(sample_pdf, pages=1, dpi=72, page_height=4.0)
+    assert len(paper.get_top_page().submobjects) == 2
+
+
+def test_paper_default_stack_offset_is_small(sample_pdf: Path) -> None:
+    paper = Paper(sample_pdf, pages=2, dpi=72, page_height=4.0, shadow=False)
+    assert np.allclose(paper.get_page(1).get_center(), DL * 0.2, atol=0.01)
 
 
 def test_paper_top_page_at_origin(sample_pdf: Path) -> None:

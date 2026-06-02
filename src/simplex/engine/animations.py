@@ -163,13 +163,12 @@ def ExitAnim(mob: Any, **kwargs: Any) -> Any:  # noqa: N802 -- mirrors Manim's P
 def clear_scene(scene: Any, *, exclude: Iterable[Any] = ()) -> None:
     """Play exit animations for every Mobject not in ``exclude``.
 
-    Uses ``scene.mobjects_without_canvas`` when available (so the
-    manim-slides canvas survives) and dispatches through ``exit_for`` so
-    per-instance and per-type overrides apply.
+    Uses ``scene.mobjects`` so canvas/chrome mobjects exit together with
+    ordinary scene content, and dispatches through ``exit_for`` so per-instance
+    and per-type overrides apply.
     """
     skip = set(exclude)
-    pool = getattr(scene, "mobjects_without_canvas", None) or scene.mobjects
-    targets = [m for m in pool if m not in skip]
+    targets = [m for m in scene.mobjects if m not in skip]
     if not targets:
         return
     scene.play(*(exit_for(m) for m in targets))

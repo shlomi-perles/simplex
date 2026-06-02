@@ -272,8 +272,7 @@ class GraphAndArray(Slide):
         # Edges before nodes so the nodes render on top of the connecting lines.
         graph = VGroup(*edges, n1, n2, n3)
         split_regions = self.region.split_regions(DOWN, 2)
-        scale_to_fit_mobject(graph, split_regions[0], buff=MED_LARGE_BUFF)
-        split_regions[0].place(graph, ORIGIN)
+        split_regions[0].scale_and_place(graph, ORIGIN, buff=MED_LARGE_BUFF)
         arr = Array(
             ["-", "8", "1", "3", "9"],
             label="A:",
@@ -284,9 +283,8 @@ class GraphAndArray(Slide):
         arr_cp.animate_append("5").begin()
         cp_pointer = ArrayPointer(arr_cp, 2, label="here")
         arr_cp_group = VGroup(arr_cp, cp_pointer)
-        scale_to_fit_mobject(arr_cp_group, split_regions[1], buff=0.5)
+        split_regions[1].scale_and_place(arr_cp_group, ORIGIN, buff=0.5)
         scale_to_fit_mobject(arr, arr_cp)
-        split_regions[1].place(arr_cp_group, ORIGIN)
         arr.move_to(arr_cp).align_to(arr_cp, LEFT)
         self.play(Write(self.canvas["showcase_title"]), Write(arr), Write(graph))
         self.next_slide()
@@ -465,160 +463,179 @@ class GlyphMapTransform(Slide):
         setup_showcase_chrome(self, "engine/glyph_map.py -- TransformByGlyphMap")
 
     def construct(self) -> None:
-        specs = self._glyph_specs()
-        cells = self._grid_regions(rows=2, cols=4)
+        specs = [getattr(self, f"_glyph_specs_{idx}")() for idx in range(1, 9)]
+        cells = self._grid_regions(row_counts=(3, 3, 2), cols=3)
+        entries = []
         starts = VGroup()
+        labels = VGroup()
         animations = []
 
-        for cell, (src, dst, glyph_map, kwargs) in zip(cells, specs, strict=True):
+        for idx, (cell, (src, dst, glyph_map, kwargs)) in enumerate(
+            zip(cells, specs, strict=True),
+            start=1,
+        ):
             pair = VGroup(src, dst)
-            scale_to_fit_mobject(pair, cell, buff=MED_SMALL_BUFF)
-            cell.place(pair, ORIGIN)
-            if np.allclose(src.get_center(), dst.get_center()):
-                dst.move_to(src)
+            cell.scale_and_place(pair, ORIGIN, buff=MED_SMALL_BUFF)
+            self._realign_if_overlaid(src, dst)
+            label = Caption(str(idx))
+            cell.place(label, UL, buff=SMALL_BUFF)
+            entries.append((cell, src, dst, glyph_map, kwargs))
             starts.add(src)
+            labels.add(label)
+
+        self._apply_min_font_size(entries)
+        for cell, src, dst, glyph_map, kwargs in entries:
+            cell.place(VGroup(src, dst), ORIGIN)
+            self._realign_if_overlaid(src, dst)
             animations.append(TransformByGlyphMap(src, dst, *glyph_map, **kwargs))
 
-        self.play(Write(self.canvas["showcase_title"]), *(FadeIn(src) for src in starts))
+        self.play(
+            Write(self.canvas["showcase_title"]),
+            *(FadeIn(src) for src in starts),
+            *(FadeIn(label) for label in labels),
+        )
         self.play(*animations)
         self.next_slide()
         self.clear_scene()
 
-    def _grid_regions(self, *, rows: int, cols: int):
-        return [
-            cell
-            for row in self.region.split_regions(DOWN, rows)
-            for cell in row.split_regions(RIGHT, cols)
+    def _grid_regions(self, *, row_counts: tuple[int, ...], cols: int):
+        rows = self.region.split_regions(DOWN, len(row_counts))
+        cells = []
+        for row, count in zip(rows, row_counts, strict=True):
+            cells.extend(row.split_regions(RIGHT, cols)[:count])
+        return cells
+
+    @staticmethod
+    def _realign_if_overlaid(src, dst) -> None:
+        if np.allclose(src.get_center(), dst.get_center()):
+            dst.move_to(src)
+
+    @staticmethod
+    def _apply_min_font_size(entries) -> None:
+        font_mobjects = [
+            mob for _, src, dst, _, _ in entries for mob in (src, dst) if hasattr(mob, "font_size")
         ]
+        if not font_mobjects:
+            return
+        font_size = min(float(mob.font_size) for mob in font_mobjects)
+        for mob in font_mobjects:
+            mob.font_size = font_size
 
-    def _glyph_specs(self):
-        specs = []
-
+    def _glyph_specs_1(self):
         exp1 = MathTex("f(x) = 4x^2 + 5x + 6")
         exp2 = MathTex("f(-3) = 4(-3)^2 + 5(-3) + 6").move_to(exp1)
-        specs.append(
+        return (
+            exp1,
+            exp2,
             (
-                exp1,
-                exp2,
-                (
-                    ([2], [2, 3]),
-                    ([6], [7, 8, 9, 10]),
-                    ([10], [14, 15, 16, 17]),
-                ),
-                {},
-            )
+                ([2], [2, 3]),
+                ([6], [7, 8, 9, 10]),
+                ([10], [14, 15, 16, 17]),
+            ),
+            {},
         )
 
+    def _glyph_specs_2(self):
         exp1 = MathTex("ax^2 + bx + c = 0")
         exp2 = MathTex("x^2 + \\frac{b}{a}x + \\frac{c}{a} = 0").move_to(exp1)
-        specs.append(
+        return (
+            exp1,
+            exp2,
             (
-                exp1,
-                exp2,
-                (
-                    ([0], [5], {"path_arc": 2 / 3 * PI}),
-                    ([0], [10], {"path_arc": 1 / 2 * PI}),
-                    ([], [4, 9]),
-                ),
-                {},
-            )
+                ([0], [5], {"path_arc": 2 / 3 * PI}),
+                ([0], [10], {"path_arc": 1 / 2 * PI}),
+                ([], [4, 9]),
+            ),
+            {},
         )
 
+    def _glyph_specs_3(self):
         exp1 = MathTex("\\frac{x^2y^3}{w^4z^{-8}}")
         exp2 = MathTex("\\frac{x^2y^3z^8}{w^4}").move_to(exp1)
-        specs.append(
+        return (
+            exp1,
+            exp2,
             (
-                exp1,
-                exp2,
-                (
-                    ([7, 9], [4, 5]),
-                    ([8], [], {"shift": UP}),
-                ),
-                {},
-            )
+                ([7, 9], [4, 5]),
+                ([8], [], {"shift": UP}),
+            ),
+            {},
         )
 
+    def _glyph_specs_4(self):
         exp1 = MathTex("{ { 3x+2y \\over 2x+y } + 12z")
         exp2 = MathTex("\\left( { 2x+y \\over 3x+2y } \\right) ^ {-1} + 12z").move_to(exp1)
-        specs.append(
+        return (
+            exp1,
+            exp2,
             (
-                exp1,
-                exp2,
-                (
-                    ([0, 1, 2, 3, 4], [6, 7, 8, 9, 10], {"path_arc": PI}),
-                    ([6, 7, 8, 9], [1, 2, 3, 4], {"path_arc": PI}),
-                    ([], [0], {"delay": 0.5}),
-                    ([], [11], {"delay": 0.5}),
-                    ([], [12, 13], {"delay": 0.5}),
-                ),
-                {"default_introducer": Write},
-            )
+                ([0, 1, 2, 3, 4], [6, 7, 8, 9, 10], {"path_arc": PI}),
+                ([6, 7, 8, 9], [1, 2, 3, 4], {"path_arc": PI}),
+                ([], [0], {"delay": 0.5}),
+                ([], [11], {"delay": 0.5}),
+                ([], [12, 13], {"delay": 0.5}),
+            ),
+            {"default_introducer": Write},
         )
 
+    def _glyph_specs_5(self):
         exp1 = MathTex("1 \\over 3r+\\theta")
         exp2 = MathTex("\\left( 3r+\\theta \\right) ^ {-1}").move_to(exp1)
-        specs.append(
+        return (
+            exp1,
+            exp2,
             (
-                exp1,
-                exp2,
-                (
-                    ([2, 3, 4, 5], [1, 2, 3, 4], {"path_arc": -2 / 3 * PI}),
-                    ([0, 1], FadeOut, {"run_time": 0.5}),
-                    (GrowFromCenter, [0, 5, 6, 7], {"delay": 0.25}),
-                ),
-                {"introduce_individually": True},
-            )
+                ([2, 3, 4, 5], [1, 2, 3, 4], {"path_arc": -2 / 3 * PI}),
+                ([0, 1], FadeOut, {"run_time": 0.5}),
+                (GrowFromCenter, [0, 5, 6, 7], {"delay": 0.25}),
+            ),
+            {"introduce_individually": True},
         )
 
+    def _glyph_specs_6(self):
         exp1 = MathTex("4x^2 - x^2 + 5x + 3x - 7")
         exp2 = MathTex("3x^2 + 8x - 7")
         VGroup(exp1, exp2).arrange(DOWN, buff=0.35)
-        specs.append(
+        return (
+            exp1,
+            exp2,
             (
-                exp1,
-                exp2,
-                (
-                    ([0, 3], [0]),
-                    ([1, 2], [1, 2]),
-                    ([4, 5], [1, 2]),
-                    ([7, 8, 9, 10, 11], [4, 5]),
-                ),
-                {"from_copy": True},
-            )
+                ([0, 3], [0]),
+                ([1, 2], [1, 2]),
+                ([4, 5], [1, 2]),
+                ([7, 8, 9, 10, 11], [4, 5]),
+            ),
+            {"from_copy": True},
         )
 
+    def _glyph_specs_7(self):
         exp1 = MathTex("1 \\over x")
         exp2 = MathTex("{ { 1 \\over x } - { 1 \\over x } } + 10").move_to(exp1)
-        specs.append(
+        return (
+            exp1,
+            exp2,
             (
-                exp1,
-                exp2,
-                (
-                    ([0, 1, 2], [0, 1, 2]),
-                    ([0, 1, 2], [4, 5, 6]),
-                ),
-                {"default_introducer": Write, "auto_fade": True},
-            )
+                ([0, 1, 2], [0, 1, 2]),
+                ([0, 1, 2], [4, 5, 6]),
+            ),
+            {"default_introducer": Write, "auto_fade": True},
         )
 
+    def _glyph_specs_8(self):
         exp1 = MathTex("\\sin(\\arctan(x))")
         exp2 = MathTex("{ {x} \\over {\\sqrt{1+x^2}} }").move_to(exp1)
-        specs.append(
+        return (
+            exp1,
+            exp2,
             (
-                exp1,
-                exp2,
-                (
-                    ([11], [0]),
-                    ([11], [6]),
-                ),
-                {
-                    "auto_morph": True,
-                    "auto_resolve_kwargs": {"path_arc": PI / 3, "lag_ratio": 0.03, "delay": 0.25},
-                },
-            )
+                ([11], [0]),
+                ([11], [6]),
+            ),
+            {
+                "auto_morph": True,
+                "auto_resolve_kwargs": {"path_arc": PI / 3, "lag_ratio": 0.03, "delay": 0.25},
+            },
         )
-
-        return specs
 
 
 class TrackingHelpers(Slide):
@@ -695,8 +712,7 @@ class ShapeAndDebug(Slide):
         grid = VGroup(Dot(radius=0.15, color=GOLD) for _ in range(rows * cols))
         grid.arrange_in_grid(rows=rows, cols=cols, buff=0.8)
         region_a, region_b, region_c = self.region.split_regions(RIGHT, 3)
-        scale_to_fit_mobject(grid, region_b, buff=MED_LARGE_BUFF)
-        region_b.place(grid, ORIGIN)
+        region_b.scale_and_place(grid, ORIGIN, buff=MED_LARGE_BUFF)
 
         groups = (
             ([0, 1, 6, 7], RED),
@@ -721,16 +737,14 @@ class ShapeAndDebug(Slide):
 
         # Multi-color index labels for a multi-string MathTex.
         eq = MathTex(r"\sin\!\left(", r"{a^2 + b^2}", r"\over", r"{3n + 1}", r"\right)")
-        scale_to_fit_mobject(eq, region_a, buff=MED_LARGE_BUFF)
-        region_a.place(eq, ORIGIN)
+        region_a.scale_and_place(eq, ORIGIN, buff=MED_LARGE_BUFF)
         labels = indexx_labels(eq)
         self.play(Write(eq), FadeIn(labels))
         self.next_slide()
 
         # bounding_box(always=True) tracks an animated mob.
         bounding_rect = Rectangle()
-        scale_to_fit_mobject(bounding_rect, region_c, buff=LARGE_BUFF)
-        region_c.place(bounding_rect, UP)
+        region_c.scale_and_place(bounding_rect, UP, buff=LARGE_BUFF)
         bounding_rect_targ = bounding_rect.copy().rotate(PI / 6)
         region_c.place(bounding_rect_targ, DOWN)
         bb = bounding_box(bounding_rect, always=True, include_center=True)
@@ -757,7 +771,7 @@ class ScalingHelpers(Slide):
         super().setup()
         setup_showcase_chrome(
             self,
-            "engine/scaling.py -- scale_to_fit + scale_to_fit_mobject",
+            "engine/scaling.py -- scale_to_fit + scale_to_fit_mobject + Region.scale_and_place",
         )
 
     def construct(self) -> None:
@@ -765,9 +779,8 @@ class ScalingHelpers(Slide):
         left, right = self.region.split_regions(RIGHT, 2)
 
         eq = MathTex(r"\int_{-\infty}^{\infty} e^{-x^{2}}\,dx = \sqrt{\pi}")
-        scale_to_fit_mobject(eq, left, buff=MED_LARGE_BUFF).scale(0.5)
-        left.place(eq, ORIGIN)
-        original_caption = Caption("original")
+        left.scale_and_place(eq, ORIGIN, buff=MED_LARGE_BUFF).scale(0.5)
+        original_caption = Caption(r"Region.scale\_and\_place(...).scale(0.5)")
         original_caption.next_to(eq, DOWN, buff=0.4)
         self.play(Write(self.canvas["showcase_title"]), Write(eq), Write(original_caption))
 

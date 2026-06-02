@@ -254,7 +254,7 @@ class OutlineScene(Slide):
         self._set_font_size(part.title, get_active_theme().typography.h1)
         scale_to_fit(part.title, len_x=self.region.width * 0.9, max_scale=1.0)
         if part.visual is not None:
-            part.title.to_edge(UP)
+            self.region.place(part.title, UP)
             return
         title_region = Region(
             top=self.region.top,

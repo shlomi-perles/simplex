@@ -20,6 +20,7 @@ from manim import (
     LEFT,
     RIGHT,
     UP,
+    YELLOW,
     Polygon,
     Rectangle,
     SurroundingRectangle,
@@ -37,17 +38,67 @@ from simplex.engine.opengl_compat import MobjectLike, VMobjectLike, is_mobject
 def get_surrounding_rectangle(
     a: VMobjectLike,
     b: VMobjectLike,
+    *,
+    buff: float | tuple[float, float] = 0.1,
     **kwargs: Any,
 ) -> Rectangle:
-    """A rotated `SurroundingRectangle` whose long edge spans the segment a -> b."""
-    rect_height = float(np.linalg.norm(a.get_center() - b.get_center()))
-    b_aligned = cast(Any, b.copy()).match_x(cast(Any, a))
-    rect = SurroundingRectangle(VGroup(cast(Any, a), b_aligned), **kwargs).scale_to_fit_height(
-        rect_height
-    )
-    angle = angle_of_vector(a.get_center() - b.get_center())
-    rect.rotate(angle, about_point=a.get_center())
+    """A rotated rectangle around ``a`` and ``b`` in the a-center -> b-center frame."""
+    direction = np.asarray(b.get_center() - a.get_center(), dtype=float)
+    direction[2] = 0.0
+    direction = RIGHT.copy() if np.linalg.norm(direction) <= 1e-8 else normalize(direction)
+    normal = normalize(np.array([-direction[1], direction[0], 0.0]))
+
+    points = np.vstack((_mobject_points(a), _mobject_points(b)))
+    along = points @ direction
+    across = points @ normal
+    buff_x, buff_y = _buff_pair(buff)
+
+    along_min = float(np.min(along) - buff_x)
+    along_max = float(np.max(along) + buff_x)
+    across_min = float(np.min(across) - buff_y)
+    across_max = float(np.max(across) + buff_y)
+
+    width = max(along_max - along_min, 1e-6)
+    height = max(across_max - across_min, 1e-6)
+    center = direction * ((along_min + along_max) / 2) + normal * ((across_min + across_max) / 2)
+    center[2] = (a.get_center()[2] + b.get_center()[2]) / 2
+
+    corner_radius = float(kwargs.pop("corner_radius", 0.0))
+    kwargs.setdefault("color", YELLOW)
+    rect = Rectangle(width=width, height=height, **kwargs)
+    rect.rotate(angle_of_vector(direction), about_point=rect.get_center())
+    rect.move_to(center)
+    if corner_radius > 0:
+        rect.round_corners(corner_radius)
     return rect
+
+
+def _buff_pair(buff: float | tuple[float, float]) -> tuple[float, float]:
+    if isinstance(buff, tuple):
+        if len(buff) != 2:
+            raise ValueError("buff tuple must have exactly two values")
+        return float(buff[0]), float(buff[1])
+    return float(buff), float(buff)
+
+
+def _mobject_points(mobject: MobjectLike) -> np.ndarray:
+    points = np.asarray(cast(Any, mobject).get_all_points(), dtype=float)
+    if points.size:
+        return points.reshape((-1, 3))
+
+    left = float(mobject.get_left()[0])
+    right = float(mobject.get_right()[0])
+    bottom = float(mobject.get_bottom()[1])
+    top = float(mobject.get_top()[1])
+    z = float(mobject.get_center()[2])
+    return np.array(
+        [
+            [left, bottom, z],
+            [right, bottom, z],
+            [right, top, z],
+            [left, top, z],
+        ]
+    )
 
 
 def _edge_point(

@@ -15,7 +15,6 @@ from manim import (
     Rectangle,
     Square,
     Tex,
-    config,
 )
 
 from simplex.slides.outline import OutlinePart, OutlineScene
@@ -72,14 +71,15 @@ def test_outline_scene_constructs_focused_flow_without_renderer_writes() -> None
     assert scene.focus_index == 1
 
 
-def test_visual_title_uses_frame_top_edge() -> None:
+def test_visual_title_uses_scene_region_top_edge() -> None:
     title = Tex("Large outline title", font_size=24)
     scene = OutlineScene([OutlinePart(title=title, label=Square(), visual=Square())])
     _prepare_geometry(scene)
+    scene.region.shrink(top=1.0)
 
     scene._place_title(scene.parts[0])
 
-    expected_top = config.frame_y_radius - DEFAULT_MOBJECT_TO_EDGE_BUFFER
+    expected_top = scene.region.top - DEFAULT_MOBJECT_TO_EDGE_BUFFER
     assert title.get_top()[1] == pytest.approx(expected_top)
     assert title.font_size == pytest.approx(get_active_theme().typography.h1)
 
