@@ -195,6 +195,37 @@ def test_place_opengl_mobject_with_buff_pulls_inward() -> None:
     assert mob.get_top()[1] == pytest.approx(r.top - 0.25)
 
 
+def test_always_place_attaches_updater_to_placed_mobject() -> None:
+    from manim import Square
+
+    r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
+    sq = Square(side_length=1.0)
+
+    r.always.place(sq, UR, buff=0.25)
+
+    assert len(r.get_updaters()) == 0
+    assert len(sq.get_updaters()) == 1
+    assert sq.get_right()[0] == pytest.approx(r.right - 0.25)
+    assert sq.get_top()[1] == pytest.approx(r.top - 0.25)
+
+
+def test_always_place_updates_while_region_updating_is_suspended() -> None:
+    from manim import Square
+
+    r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
+    sq = Square(side_length=1.0)
+    r.always.place(sq, UR, buff=0.25)
+    initial_right = sq.get_right()[0]
+
+    r.suspend_updating()
+    r.shrink(left=1.0, right=1.0)
+    sq.update(0)
+
+    assert initial_right != pytest.approx(sq.get_right()[0])
+    assert sq.get_right()[0] == pytest.approx(r.right - 0.25)
+    assert sq.get_top()[1] == pytest.approx(r.top - 0.25)
+
+
 def test_place_rejects_string_anchor() -> None:
     """Region directions are vectors now; strings raise instead of silently
     routing to the legacy match-case path."""

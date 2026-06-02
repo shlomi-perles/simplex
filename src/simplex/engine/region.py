@@ -6,12 +6,12 @@ The region API speaks in Manim's direction vectors (``UP``, ``DR``, ``ORIGIN``,
 mobjects.
 """
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from numbers import Real
-from typing import Any, Self
+from typing import Any, Self, cast
 
 import numpy as np
-from manim import Mobject, Rectangle
+from manim import Rectangle
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 
 from simplex.engine.opengl_compat import MobjectLike, critical_point, is_mobject
@@ -158,12 +158,22 @@ class Region(Rectangle, metaclass=ConvertToOpenGL):
         """Map a normalized direction vector to the matching point of this region."""
         return critical_point(self, direction)
 
+    @property
+    def always(self) -> "_RegionUpdaterBuilder":
+        """Call region helpers every frame.
+
+        ``place`` is special: the updater belongs to the placed mobject so it
+        can keep following an animated region while Manim suspends the region's
+        own updaters during ``region.animate``.
+        """
+        return _RegionUpdaterBuilder(self)
+
     def place(
         self,
-        mob: Mobject,
+        mob: MobjectLike,
         anchor: np.ndarray | Iterable[float] | None = None,
         buff: float = 0.0,
-    ) -> Mobject:
+    ) -> MobjectLike:
         """Move ``mob`` so its anchor sits at the matching point of this region.
 
         ``anchor`` is a Manim direction vector (``UP``, ``DR``, ``ORIGIN``, ...).
@@ -351,3 +361,32 @@ class Region(Rectangle, metaclass=ConvertToOpenGL):
         if direction[0] < 0 or direction[1] < 0:
             points.reverse()
         return points
+
+
+class _RegionUpdaterBuilder:
+    """Region-specific ``always`` sugar."""
+
+    def __init__(self, region: Region) -> None:
+        self._region = region
+
+    def place(
+        self,
+        mob: MobjectLike,
+        anchor: np.ndarray | Iterable[float] | None = None,
+        buff: float = 0.0,
+    ) -> Self:
+        def updater(placed_mob: MobjectLike) -> None:
+            self._region.place(placed_mob, anchor, buff=buff)
+
+        cast(Any, mob).add_updater(updater, call_updater=True)
+        return self
+
+    def __getattr__(self, name: str) -> Callable[..., "_RegionUpdaterBuilder"]:
+        def add_updater(*method_args: Any, **method_kwargs: Any) -> _RegionUpdaterBuilder:
+            self._region.add_updater(
+                lambda region: getattr(region, name)(*method_args, **method_kwargs),
+                call_updater=True,
+            )
+            return self
+
+        return add_updater
