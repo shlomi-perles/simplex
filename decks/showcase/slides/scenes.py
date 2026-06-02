@@ -78,7 +78,7 @@ except ModuleNotFoundError:  # direct ``manim slides/scenes.py ...`` execution
 class TextHelpers(Slide):
     def setup(self) -> None:
         super().setup()
-        setup_showcase_chrome(self, r"engine/text.py -- Tex, Caption, TexPage, color\_tex")
+        setup_showcase_chrome(self, "engine/text.py -- Tex, Caption, TexPage, color_tex")
 
     def construct(self) -> None:
         body = Tex(r"Body paragraphs default to \textit{theme.typography.body}: $E = mc^2$.")
@@ -133,7 +133,7 @@ class CodeHelpers(Slide):
         super().setup()
         setup_showcase_chrome(
             self,
-            r"engine/code.py -- code\_block + highlight + explain + transform",
+            "engine/code.py -- code_block + highlight + explain + transform",
         )
 
     def construct(self) -> None:
@@ -188,7 +188,7 @@ class CodeWithMath(Slide):
         super().setup()
         setup_showcase_chrome(
             self,
-            r"engine/code.py -- code\_with\_math (inline LaTeX in code)",
+            "engine/code.py -- code_with_math (inline LaTeX in code)",
         )
 
     def construct(self) -> None:
@@ -396,7 +396,7 @@ class ExitAnimations(Slide):
         super().setup()
         setup_showcase_chrome(
             self,
-            r"Remove + set\_exit\_animation + register\_exit + clear\_scene",
+            "Remove + set_exit_animation + register_exit + clear_scene",
         )
 
     def construct(self) -> None:
@@ -450,7 +450,7 @@ class GeometryHelpers(Slide):
 class GlyphMapTransform(Slide):
     def setup(self) -> None:
         super().setup()
-        setup_showcase_chrome(self, r"engine/glyph\_map.py -- TransformByGlyphMap")
+        setup_showcase_chrome(self, "engine/glyph_map.py -- TransformByGlyphMap")
 
     def construct(self) -> None:
         specs = self._glyph_specs()
@@ -614,7 +614,7 @@ class TrackingHelpers(Slide):
         super().setup()
         setup_showcase_chrome(
             self,
-            r"engine/dynamics.py -- VT, DN (vectors come from vanilla manim rotate\_vector)",
+            "engine/dynamics.py -- VT, DN (vectors come from vanilla manim rotate_vector)",
         )
 
     def construct(self) -> None:
@@ -737,7 +737,7 @@ class ScalingHelpers(Slide):
         super().setup()
         setup_showcase_chrome(
             self,
-            r"engine/scaling.py -- scale\_to\_fit + scale\_to\_fit\_mobject",
+            "engine/scaling.py -- scale_to_fit + scale_to_fit_mobject",
         )
 
     def construct(self) -> None:

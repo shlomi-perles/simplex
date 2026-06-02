@@ -34,6 +34,8 @@ from manim import (
 )
 from manim.utils.color import ParsableManimColor
 
+from simplex.engine.opengl_compat import set_mobject_z_index
+
 
 def _is_animation_class(value: Any) -> bool:
     return isinstance(value, type) and issubclass(value, Animation)
@@ -296,14 +298,16 @@ class TransformByGlyphMap(AnimationGroup):
             color=a_color,
             background_stroke_width=3,
             background_stroke_color=BLACK,
-        ).set_z_index(10)
+        )
+        set_mobject_z_index(labels_a, 10)
         labels_b = index_labels(
             b,
             label_height=label_height,
             color=b_color,
             background_stroke_width=3,
             background_stroke_color=BLACK,
-        ).set_z_index(10)
+        )
+        set_mobject_z_index(labels_b, 10)
         super().__init__(
             Create(labels_a),
             FadeIn(b, shift=DOWN),

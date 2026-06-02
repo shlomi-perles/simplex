@@ -10,10 +10,6 @@ from simplex.cli import commands
 from simplex.cli.commands import app
 
 
-def _noop_export(deck: Any, *, output_dir: Path) -> None:
-    pass
-
-
 def _make_deck(decks_dir: Path) -> None:
     deck_dir = decks_dir / "demo"
     deck_dir.mkdir(parents=True)
@@ -28,7 +24,22 @@ def _make_deck(decks_dir: Path) -> None:
 
 
 @pytest.fixture
-def stub_render(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+def stub_pdf_export(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    calls: list[dict[str, Any]] = []
+
+    def fake_export(deck: Any, *, output_dir: Path) -> Path:
+        calls.append({"deck": deck.slug, "theme": deck.theme, "output_dir": output_dir})
+        return output_dir / f"{deck.slug}.pdf"
+
+    monkeypatch.setattr(commands.pdf, "export", fake_export)
+    return calls
+
+
+@pytest.fixture
+def stub_render(
+    monkeypatch: pytest.MonkeyPatch,
+    stub_pdf_export: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     calls: list[dict[str, Any]] = []
 
     def fake_render(
@@ -49,7 +60,6 @@ def stub_render(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
         )
 
     monkeypatch.setattr(commands.runner, "render", fake_render)
-    monkeypatch.setattr(commands.pdf, "export", _noop_export)
     return calls
 
 
@@ -60,36 +70,53 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
-def test_render_calls_runner(project: Path, stub_render: list[dict[str, Any]]) -> None:
+def test_render_calls_runner(
+    project: Path,
+    stub_render: list[dict[str, Any]],
+    stub_pdf_export: list[dict[str, Any]],
+) -> None:
     result = CliRunner().invoke(app, ["render", "demo"])
     assert result.exit_code == 0, result.stdout
     assert len(stub_render) == 2
     assert {call["theme"] for call in stub_render} == {"simplex_dark", "simplex_light"}
     assert {call["scenes"] for call in stub_render} == {()}
     assert stub_render[0]["output_dir"].parts[-2:] == ("themes", "dark")
+    assert len(stub_pdf_export) == 2
 
 
-def test_render_scene_filter(project: Path, stub_render: list[dict[str, Any]]) -> None:
+def test_render_scene_filter(
+    project: Path,
+    stub_render: list[dict[str, Any]],
+    stub_pdf_export: list[dict[str, Any]],
+) -> None:
     result = CliRunner().invoke(app, ["render", "demo", "--scene", "Foo"])
     assert result.exit_code == 0, result.stdout
     assert {call["scenes"] for call in stub_render} == {("Foo",)}
+    assert stub_pdf_export == []
 
 
-def test_render_triple_syntax_scene(project: Path, stub_render: list[dict[str, Any]]) -> None:
+def test_render_triple_syntax_scene(
+    project: Path,
+    stub_render: list[dict[str, Any]],
+    stub_pdf_export: list[dict[str, Any]],
+) -> None:
     result = CliRunner().invoke(app, ["render", "demo::Foo"])
     assert result.exit_code == 0, result.stdout
     assert {call["scenes"] for call in stub_render} == {("Foo",)}
+    assert stub_pdf_export == []
 
 
 def test_render_can_limit_true_theme_variant(
     project: Path,
     stub_render: list[dict[str, Any]],
+    stub_pdf_export: list[dict[str, Any]],
 ) -> None:
     result = CliRunner().invoke(app, ["render", "demo", "--slide-theme", "light"])
     assert result.exit_code == 0, result.stdout
     assert len(stub_render) == 1
     assert stub_render[0]["theme"] == "simplex_light"
     assert stub_render[0]["output_dir"].parts[-2:] == ("themes", "light")
+    assert len(stub_pdf_export) == 1
 
 
 def test_render_unknown_scene_fails(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -99,7 +126,7 @@ def test_render_unknown_scene_fails(project: Path, monkeypatch: pytest.MonkeyPat
         raise ValueError("unknown scene name(s): ['Ghost']")
 
     monkeypatch.setattr(commands.runner, "render", boom)
-    monkeypatch.setattr(commands.pdf, "export", _noop_export)
+    monkeypatch.setattr(commands.pdf, "export", lambda deck, *, output_dir: output_dir / "noop.pdf")
     result = CliRunner().invoke(app, ["render", "demo", "--scene", "Ghost"])
     assert result.exit_code != 0
 

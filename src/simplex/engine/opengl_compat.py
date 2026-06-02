@@ -11,6 +11,7 @@ from manim.mobject.opengl.opengl_vectorized_mobject import OpenGLVMobject
 
 type MobjectLike = Mobject | OpenGLMobject
 type VMobjectLike = VMobject | OpenGLVMobject
+type ZIndex = int | float
 
 
 def is_mobject(value: object) -> TypeGuard[MobjectLike]:
@@ -36,4 +37,43 @@ def critical_point(mobject: MobjectLike, direction: np.ndarray) -> np.ndarray:
     raise TypeError(f"{type(mobject).__name__} has no critical-point API")
 
 
-__all__ = ["MobjectLike", "VMobjectLike", "critical_point", "is_mobject", "is_vmobject"]
+def set_mobject_z_index(
+    mobject: MobjectLike,
+    z_index: ZIndex,
+    *,
+    family: bool = False,
+) -> MobjectLike:
+    """Set z-index on Cairo or OpenGL mobjects.
+
+    Cairo mobjects expose ``set_z_index``. Some OpenGL mobjects only expose the
+    ``z_index`` attribute, so this helper mirrors Manim's ``family=True`` shape
+    by walking the mobject family when the method is unavailable.
+    """
+    set_z_index = getattr(mobject, "set_z_index", None)
+    if callable(set_z_index):
+        cast(Any, set_z_index)(z_index, family=family)
+        return mobject
+
+    targets = _mobject_family(mobject) if family else (mobject,)
+    for target in targets:
+        cast(Any, target).z_index = z_index
+    return mobject
+
+
+def _mobject_family(mobject: MobjectLike) -> tuple[MobjectLike, ...]:
+    get_family = getattr(mobject, "get_family", None)
+    if callable(get_family):
+        return tuple(cast(Any, get_family)())
+
+    children = tuple(child for child in getattr(mobject, "submobjects", ()) if is_mobject(child))
+    return (mobject, *(descendant for child in children for descendant in _mobject_family(child)))
+
+
+__all__ = [
+    "MobjectLike",
+    "VMobjectLike",
+    "critical_point",
+    "is_mobject",
+    "is_vmobject",
+    "set_mobject_z_index",
+]

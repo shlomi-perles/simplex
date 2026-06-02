@@ -18,7 +18,7 @@ from typing import Any, NamedTuple
 
 from manim import DL, UP, Tex
 
-from simplex.engine.opengl_compat import MobjectLike, is_mobject
+from simplex.engine.opengl_compat import MobjectLike, is_mobject, set_mobject_z_index
 from simplex.engine.region import Region
 from simplex.theme.tokens import Theme
 
@@ -58,12 +58,12 @@ def make_chrome(
     if header is not None:
         head = _as_chrome_mobject(header, font_size=theme.typography.h2)
         region.place(head, UP, buff=theme.spacing.header_buff)
-        head.set_z_index(_CHROME_Z_INDEX, family=True)
+        set_mobject_z_index(head, _CHROME_Z_INDEX, family=True)
         mobs["header"] = head
     if footer is not None:
         foot = _as_chrome_mobject(footer, font_size=theme.typography.caption)
         region.place(foot, DL, buff=theme.spacing.footer_buff)
-        foot.set_z_index(_CHROME_Z_INDEX, family=True)
+        set_mobject_z_index(foot, _CHROME_Z_INDEX, family=True)
         mobs["footer"] = foot
 
     body = Region(

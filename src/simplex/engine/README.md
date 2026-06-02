@@ -34,5 +34,5 @@ Cross-package types live one level up:
 - Don't call `Mobject.set_default(...)` outside `apply_theme_defaults`.
 - Don't subclass Manim Mobjects to inject defaults; use `set_default` via `apply_theme_defaults`.
 - Don't reimplement what Manim ships: `ValueTracker` arithmetic ops, `index_labels`, `ConvexHull` (with QuickHull) and `Polygon.round_corners`, `Union`, `manim.utils.space_ops.normalize` / `angle_of_vector` / `rotate_vector`, `manim.constants.QUALITIES` (`flag` field), `scale_to_fit_height/_width/_depth`, `BraceLabel`/`BraceText`, `Mobject.always` -- all already in 0.20.x.
-- Don't reimplement Manim geometry in layout helpers. Use `simplex.engine.opengl_compat.critical_point` when a helper must work on both Cairo and OpenGL mobjects.
+- Don't reimplement Manim geometry in layout helpers. Use `simplex.engine.opengl_compat.critical_point` when a helper must work on both Cairo and OpenGL mobjects. Use `set_mobject_z_index` for library-level z-order changes that must survive both renderers.
 - Don't monkey-patch Mobjects (no `_simplex_*` attributes). Use the `WeakKeyDictionary` registry in `animations.py` instead.

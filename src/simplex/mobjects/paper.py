@@ -41,7 +41,7 @@ from manim.utils.color import ParsableManimColor
 from manim.utils.tex_file_writing import tex_hash
 from PIL import ImageFilter
 
-from simplex.engine.opengl_compat import MobjectLike
+from simplex.engine.opengl_compat import MobjectLike, set_mobject_z_index
 
 logger = logging.getLogger("simplex.paper")
 
@@ -329,7 +329,7 @@ class Paper(Group, metaclass=ConvertToOpenGL):
         base_z = self.z_index
         count = len(self._page_groups)
         for front_index, pg in enumerate(self._page_groups):
-            pg.set_z_index(base_z + count - front_index, family=True)
+            set_mobject_z_index(pg, base_z + count - front_index, family=True)
 
     def _set_page_order(self, page_groups: list[Group], *, arrange: bool) -> None:
         self._page_groups = list(page_groups)

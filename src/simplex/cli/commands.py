@@ -143,6 +143,7 @@ def _render_deck_outputs(
     export_pdf: bool = False,
 ) -> None:
     deck_out.mkdir(parents=True, exist_ok=True)
+    export_full_pdf = export_pdf and not scenes
     slide_theme_config = themes.resolve_slide_themes(deck, site_cfg.slide_themes)
     if slide_theme_config.enabled:
         variants = themes.selected_variants(slide_theme_config, slide_theme)
@@ -158,7 +159,7 @@ def _render_deck_outputs(
                 skip_renderers=skip_renderers,
                 write_last_frame=write_last_frame,
             )
-            if export_pdf:
+            if export_full_pdf:
                 with contextlib.suppress(
                     subprocess.SubprocessError,
                     FileNotFoundError,
@@ -176,7 +177,7 @@ def _render_deck_outputs(
         skip_renderers=skip_renderers,
         write_last_frame=write_last_frame,
     )
-    if export_pdf:
+    if export_full_pdf:
         with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError, ImportError):
             pdf.export(deck, output_dir=deck_out)
 
