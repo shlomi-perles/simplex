@@ -29,7 +29,7 @@ class PaperShowcase(Slide):
         title = Tex(r"\textbf{Attention Is All You Need} \\ Vaswani et al., 2017")
         title.scale(0.8)
         self.region.place(title, UP, buff=0.2)
-        self.play(Write(self.showcase_title), Write(title))
+        self.play(Write(self.canvas["showcase_title"]), Write(title))
 
         # Directions are vanilla Manim vectors (DL, RIGHT, DOWN, ...).
         paper = Paper(
@@ -41,15 +41,15 @@ class PaperShowcase(Slide):
             shadow_direction=DL,
             stack_direction=DL,
         )
-        self.region.place(paper, buff=0.3)
+        self.region.place(paper)
 
         self.play(ShowPaper(paper, direction=DOWN))
         self.next_slide()
 
-        self.play(PickPage(paper, page_index=2, slide_direction=RIGHT, overshoot=4.0))
+        self.play(PickPage(paper, page_index=2, slide_direction=RIGHT))
         self.next_slide()
 
-        self.play(PickPage(paper, page_index=1, slide_direction=RIGHT, overshoot=4.0))
+        self.play(PickPage(paper, page_index=1, slide_direction=RIGHT))
         self.next_slide()
 
         self.play(DismissPaper(paper, direction=DOWN))

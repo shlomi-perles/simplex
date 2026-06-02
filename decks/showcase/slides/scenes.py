@@ -82,12 +82,12 @@ class TextHelpers(Slide):
 
     def construct(self) -> None:
         body = Tex(r"Body paragraphs default to \textit{theme.typography.body}: $E = mc^2$.")
-        self.region.place(body, UP, buff=0.15)
-        self.play(Write(self.showcase_title), Write(body))
+        self.region.place(body, UP)
+        self.play(Write(self.canvas["showcase_title"]), Write(body))
         self.next_slide(name="Custom Slide's name")
 
         cap = Caption("Captions use the smaller theme.typography.caption font size.")
-        cap.next_to(body, DOWN, buff=0.3)
+        cap.next_to(body, DOWN)
         self.play(Write(cap))
         self.next_slide()
 
@@ -105,27 +105,25 @@ class TextHelpers(Slide):
             r"Display equations are isolated, so \texttt{page.equation(0)} can be "
             r"animated directly.",
             page_width=self.region,
-            buff=MED_LARGE_BUFF,
             math_spacing=2,
         )
-        page.next_to(cap, DOWN, buff=0.25)
+        page.next_to(cap, DOWN)
         self.play(Write(page))
         self.play(page.equation(0).animate.set_color(GOLD))
         self.next_slide()
 
         narrow = TexPage(
             r"\textbf{Same helper, narrower page.} Here \texttt{page\_width} is a "
-            r"number of Manim units instead of a Region, with a smaller \texttt{buff}.",
+            r"number of Manim units instead of a Region.",
             page_width=self.region.width * 0.62,
-            buff=0.25,
         )
-        narrow.next_to(page, DOWN, buff=0.25)
+        narrow.next_to(page, DOWN)
         self.play(Write(narrow))
         self.next_slide()
 
         formula = MathTex(r"a^2 + b^2 = c^2")
         color_tex(formula, {"a": "#FF6B6B", "b": "#4ECDC4", "c": "#FFD93D"}, tex_class=MathTex)
-        formula.next_to(narrow, DOWN, buff=0.35)
+        formula.next_to(narrow, DOWN)
         self.play(Write(formula))
         self.clear_scene()
 
@@ -154,7 +152,7 @@ class CodeHelpers(Slide):
         code = code_block(snippet)
         scale_to_fit(code, len_x=self.region.width * 0.55, len_y=self.region.height * 0.55)
         self.region.place(code)
-        self.play(Write(self.showcase_title), FadeIn(code))
+        self.play(Write(self.canvas["showcase_title"]), FadeIn(code))
 
         result = highlight_code_lines(code, lines=[5, 6, 7, 8, 9])
         self.play(result.fade)
@@ -214,7 +212,7 @@ class CodeWithMath(Slide):
         )
         scale_to_fit(pseudo, len_x=self.region.width * 0.7, len_y=self.region.height * 0.7)
         self.region.place(pseudo)
-        self.play(Write(self.showcase_title), FadeIn(pseudo))
+        self.play(Write(self.canvas["showcase_title"]), FadeIn(pseudo))
 
         # All the engine/code helpers still work over math-laden blocks
         # -- highlight, explain, and transform all operate on
@@ -283,7 +281,7 @@ class GraphAndArray(Slide):
         scale_to_fit_mobject(arr, arr_cp)
         split_regions[1].place(arr_cp, ORIGIN)
         arr.move_to(arr_cp).align_to(arr_cp, LEFT)
-        self.play(Write(self.showcase_title), Write(arr), Write(graph))
+        self.play(Write(self.canvas["showcase_title"]), Write(arr), Write(graph))
         self.next_slide()
 
         self.play(arr.animate_set_value(1, "b"))
@@ -327,7 +325,7 @@ class RegionAnchors(Slide):
             mob = Caption(label)
             self.region.always.place(mob, direction)
             markers.append(mob)
-        self.play(Write(self.showcase_title), *(Write(m) for m in markers))
+        self.play(Write(self.canvas["showcase_title"]), *(Write(m) for m in markers))
 
         self.play(self.region.animate.shrink(left=2.5, right=2.5), Write(sidebar))
         self.next_slide()
@@ -388,7 +386,7 @@ class OutlineHelpers(OutlineScene):
 
     def reveal_outline(self) -> None:
         self.outline_started = True
-        intro = [Write(self.showcase_title), self.progress_bar.appear()]
+        intro = [Write(self.canvas["showcase_title"]), self.progress_bar.appear()]
         intro.extend(FadeIn(mob) for mob in self.initial_mobjects.submobjects[1:])
         self.play(AnimationGroup(*intro, lag_ratio=0.04))
 
@@ -417,7 +415,7 @@ class ExitAnimations(Slide):
         shrink.shift(DOWN * 1.8)
         registered.next_to(shrink, DOWN, buff=0.6)
         self.play(
-            Write(self.showcase_title),
+            Write(self.canvas["showcase_title"]),
             Write(keep),
             Write(fade),
             Write(shrink),
@@ -444,7 +442,7 @@ class GeometryHelpers(Slide):
         a = Dot(LEFT * 3 + DOWN)
         b = Dot(RIGHT * 3 + UP)
         rect = get_surrounding_rectangle(a, b, buff=0.3)
-        self.play(Write(self.showcase_title), FadeIn(a, b), Write(rect))
+        self.play(Write(self.canvas["showcase_title"]), FadeIn(a, b), Write(rect))
         self.next_slide()
         self.clear_scene()
 
@@ -462,14 +460,14 @@ class GlyphMapTransform(Slide):
 
         for cell, (src, dst, glyph_map, kwargs) in zip(cells, specs, strict=True):
             pair = VGroup(src, dst)
-            scale_to_fit_mobject(pair, cell, buff=0.22)
+            scale_to_fit_mobject(pair, cell)
             cell.place(pair, ORIGIN)
             if np.allclose(src.get_center(), dst.get_center()):
                 dst.move_to(src)
             starts.add(src)
             animations.append(TransformByGlyphMap(src, dst, *glyph_map, **kwargs))
 
-        self.play(Write(self.showcase_title), *(FadeIn(src) for src in starts))
+        self.play(Write(self.canvas["showcase_title"]), *(FadeIn(src) for src in starts))
         self.play(*animations)
         self.next_slide()
         self.clear_scene()
@@ -495,7 +493,7 @@ class GlyphMapTransform(Slide):
                     ([6], [7, 8, 9, 10]),
                     ([10], [14, 15, 16, 17]),
                 ),
-                {"run_time": 2.0},
+                {},
             )
         )
 
@@ -510,7 +508,7 @@ class GlyphMapTransform(Slide):
                     ([0], [10], {"path_arc": 1 / 2 * PI}),
                     ([], [4, 9]),
                 ),
-                {"run_time": 2.0},
+                {},
             )
         )
 
@@ -524,7 +522,7 @@ class GlyphMapTransform(Slide):
                     ([7, 9], [4, 5]),
                     ([8], [], {"shift": UP}),
                 ),
-                {"run_time": 2.0},
+                {},
             )
         )
 
@@ -541,7 +539,7 @@ class GlyphMapTransform(Slide):
                     ([], [11], {"delay": 0.5}),
                     ([], [12, 13], {"delay": 0.5}),
                 ),
-                {"default_introducer": Write, "run_time": 2.0},
+                {"default_introducer": Write},
             )
         )
 
@@ -556,7 +554,7 @@ class GlyphMapTransform(Slide):
                     ([0, 1], FadeOut, {"run_time": 0.5}),
                     (GrowFromCenter, [0, 5, 6, 7], {"delay": 0.25}),
                 ),
-                {"introduce_individually": True, "run_time": 2.0},
+                {"introduce_individually": True},
             )
         )
 
@@ -573,7 +571,7 @@ class GlyphMapTransform(Slide):
                     ([4, 5], [1, 2]),
                     ([7, 8, 9, 10, 11], [4, 5]),
                 ),
-                {"from_copy": True, "run_time": 2.0},
+                {"from_copy": True},
             )
         )
 
@@ -587,7 +585,7 @@ class GlyphMapTransform(Slide):
                     ([0, 1, 2], [0, 1, 2]),
                     ([0, 1, 2], [4, 5, 6]),
                 ),
-                {"default_introducer": Write, "auto_fade": True, "run_time": 2.0},
+                {"default_introducer": Write, "auto_fade": True},
             )
         )
 
@@ -604,7 +602,6 @@ class GlyphMapTransform(Slide):
                 {
                     "auto_morph": True,
                     "auto_resolve_kwargs": {"path_arc": PI / 3, "lag_ratio": 0.03, "delay": 0.25},
-                    "run_time": 2.0,
                 },
             )
         )
@@ -658,7 +655,7 @@ class TrackingHelpers(Slide):
         self.add(face, ticks, hand, readout)
 
         # `~vt` reads it; `vt @ x` returns an animate.set_value builder for play().
-        self.play(Write(self.showcase_title), angle @ (PI / 2), run_time=1.5)
+        self.play(Write(self.canvas["showcase_title"]), angle @ (PI / 2), run_time=1.5)
         self.next_slide()
         self.play(angle @ (5 * PI / 6), run_time=1.5)
         self.next_slide()
@@ -704,7 +701,7 @@ class ShapeAndDebug(Slide):
                 for indices, color in groups
             )
         )
-        self.play(Write(self.showcase_title), FadeIn(grid))
+        self.play(Write(self.canvas["showcase_title"]), FadeIn(grid))
         self.play(*(Write(u) for u in unions))
 
         # Multi-color index labels for a multi-string MathTex.
@@ -751,7 +748,7 @@ class ScalingHelpers(Slide):
         left.place(eq, ORIGIN)
         original_caption = Caption("original")
         original_caption.next_to(eq, DOWN, buff=0.4)
-        self.play(Write(self.showcase_title), Write(eq), Write(original_caption))
+        self.play(Write(self.canvas["showcase_title"]), Write(eq), Write(original_caption))
 
         # ``scale_to_fit`` keeps aspect, picks the smallest required factor
         # to fit inside *all* supplied lengths, and subtracts a buff.

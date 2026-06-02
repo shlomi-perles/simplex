@@ -61,7 +61,7 @@ class SurfaceColoring(ThreeDSlide):
         ).to_edge(RIGHT, buff=0.4)
         self.add_fixed_in_frame_mobjects(bar)
 
-        self.play(Write(self.showcase_title), Create(surface), Write(bar))
+        self.play(Write(self.canvas["showcase_title"]), Create(surface), Write(bar))
         self.next_slide()
 
         # ── Sub-slide 2: live colormap switch ─────────────────────
