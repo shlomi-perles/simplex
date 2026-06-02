@@ -13,7 +13,9 @@
 <ol class="section-deck-grid" role="list">
   {% for deck in section.decks %}
   {% set thumb = thumbs.get(deck.slug) %}
+  {% set themed_thumbs = theme_thumbs.get(deck.slug, {}) %}
   {% set gif = preview_gifs.get(deck.slug) %}
+  {% set themed_gifs = theme_preview_gifs.get(deck.slug, {}) %}
   {% set created = deck_dates.get(deck.slug) %}
   <li>
     <a
@@ -25,7 +27,17 @@
         {% if thumb %}
         <img
           src="{{ site.url('decks/' + deck.slug + '/' + thumb) }}"
-          {% if gif %}data-preview-gif="{{ site.url('decks/' + deck.slug + '/' + gif) }}"{% endif %}
+          data-card-thumb-default="{{ site.url('decks/' + deck.slug + '/' + thumb) }}"
+          {% for variant, themed_thumb in themed_thumbs.items() %}
+          data-card-thumb-{{ variant }}="{{ site.url('decks/' + deck.slug + '/' + themed_thumb) }}"
+          {% endfor %}
+          {% if gif %}
+          data-preview-gif="{{ site.url('decks/' + deck.slug + '/' + gif) }}"
+          data-preview-gif-default="{{ site.url('decks/' + deck.slug + '/' + gif) }}"
+          {% endif %}
+          {% for variant, themed_gif in themed_gifs.items() %}
+          data-preview-gif-{{ variant }}="{{ site.url('decks/' + deck.slug + '/' + themed_gif) }}"
+          {% endfor %}
           alt=""
           loading="lazy"
           decoding="async"

@@ -60,6 +60,14 @@ class _BuiltVariant:
     slides_html: Path
 
 
+@dataclass(frozen=True, slots=True)
+class _DeckCardAssets:
+    thumbnail: str | None
+    theme_thumbnails: dict[str, str]
+    preview_gif: str | None
+    theme_preview_gifs: dict[str, str]
+
+
 def _static_source_dir() -> Path:
     return Path(__file__).parent / "static"
 
@@ -183,10 +191,6 @@ def _build_variant_output(
     )
 
 
-def _has_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
-    return (deck_dir / filenames.pdf_name(deck, "slides")).exists()
-
-
 def _has_notes_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
     return (deck_dir / filenames.pdf_name(deck, "note")).exists()
 
@@ -243,6 +247,25 @@ def _copy_default_slides_pdf(deck: DeckConfig, source_dir: Path, deck_out: Path)
     target = deck_out / source.name
     if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
         shutil.copy2(source, target)
+
+
+def _slides_pdf_hrefs(
+    deck: DeckConfig,
+    deck_out: Path,
+    *,
+    built_by_variant: dict[SlideThemeVariant, _BuiltVariant] | None = None,
+) -> dict[str, str]:
+    """Return downloadable slides-PDF hrefs relative to the deck page."""
+    root_name = filenames.pdf_name(deck, "slides")
+    hrefs: dict[str, str] = {}
+    if (deck_out / root_name).exists():
+        hrefs["default"] = root_name
+    if built_by_variant:
+        for variant, built in built_by_variant.items():
+            name = filenames.pdf_name(built.deck, "slides")
+            if (built.output_dir / name).exists():
+                hrefs[variant] = (Path("themes") / variant / name).as_posix()
+    return hrefs
 
 
 def _build_slide_views(
@@ -458,8 +481,8 @@ def _build_deck(
     scenes: tuple[str, ...] = (),
     theme_selection: SlideThemeSelection = "all",
     watch: bool = False,
-) -> tuple[str | None, str | None]:
-    """Render one deck. Returns ``(cover thumbnail, carousel gif)`` hrefs."""
+) -> _DeckCardAssets:
+    """Render one deck and return its homepage/section-card assets."""
     deck_out = site_dir / "decks" / deck.slug
     deck_out.mkdir(parents=True, exist_ok=True)
 
@@ -492,14 +515,17 @@ def _build_deck(
         default_built = built_by_variant[default_slide_theme]
         page_theme_name = default_built.deck.theme
         _copy_default_slides_pdf(default_built.deck, default_built.output_dir, deck_out)
-        preview_gif = thumbnail.generate_carousel_gif(
-            default_built.deck,
-            default_built.manifest,
-            site_deck_dir=default_built.output_dir,
-            cache_dir=deck_out,
-        )
-        if preview_gif is not None:
-            preview_gif_href = (Path("themes") / default_slide_theme / preview_gif).as_posix()
+        theme_preview_gifs: dict[str, str] = {}
+        for variant, built in built_by_variant.items():
+            preview_gif = thumbnail.generate_carousel_gif(
+                built.deck,
+                built.manifest,
+                site_deck_dir=built.output_dir,
+                cache_dir=deck_out,
+            )
+            if preview_gif is not None:
+                theme_preview_gifs[variant] = (Path("themes") / variant / preview_gif).as_posix()
+        preview_gif_href = theme_preview_gifs.get(default_slide_theme)
         slides = _build_slide_views(
             default_built.manifest,
             default_variant=default_slide_theme,
@@ -535,6 +561,7 @@ def _build_deck(
             cache_dir=deck_out,
         )
         preview_gif_href = preview_gif.as_posix() if preview_gif is not None else None
+        theme_preview_gifs = {}
         slides = _build_slide_views(
             built.manifest,
             default_variant=None,
@@ -581,15 +608,23 @@ def _build_deck(
     total_minutes: int | None = int(total_seconds // 60) if total_seconds > 0 else None
     if deck.duration_minutes is not None:
         total_minutes = deck.duration_minutes
+    slides_pdf_hrefs = _slides_pdf_hrefs(
+        deck,
+        deck_out,
+        built_by_variant=built_by_variant if slide_theme_config.enabled else None,
+    )
 
     page = env.get_template("deck.html").render(
         deck=deck,
         slides=slides,
         slide_count=len(slides),
         total_duration_min=total_minutes,
-        has_pdf=_has_pdf(deck, deck_out),
+        has_pdf=bool(slides_pdf_hrefs),
         has_notes_pdf=_has_notes_pdf(deck, deck_out),
-        slides_pdf_name=filenames.pdf_name(deck, "slides"),
+        slides_pdf_href=slides_pdf_hrefs.get(default_slide_theme)
+        or slides_pdf_hrefs.get("default")
+        or next(iter(slides_pdf_hrefs.values()), filenames.pdf_name(deck, "slides")),
+        slides_pdf_hrefs=slides_pdf_hrefs,
         notes_pdf_name=filenames.pdf_name(deck, "note"),
         notes_html=notes_html,
         palette_css=render_web_css(
@@ -603,7 +638,12 @@ def _build_deck(
     )
     (deck_out / "index.html").write_text(page, encoding="utf-8")
     cover = slides[0].thumbnail if slides else None
-    return (cover, preview_gif_href)
+    return _DeckCardAssets(
+        thumbnail=cover,
+        theme_thumbnails=dict(slides[0].theme_thumbnails) if slides else {},
+        preview_gif=preview_gif_href,
+        theme_preview_gifs=theme_preview_gifs,
+    )
 
 
 def _build_section_page(
@@ -611,7 +651,9 @@ def _build_section_page(
     site_dir: Path,
     env: Environment,
     thumbs: dict[str, str | None],
+    theme_thumbs: dict[str, dict[str, str]],
     preview_gifs: dict[str, str | None],
+    theme_preview_gifs: dict[str, dict[str, str]],
     deck_dates: dict[str, str],
     palette_css: str,
 ) -> None:
@@ -620,7 +662,9 @@ def _build_section_page(
     page = env.get_template("section.html").render(
         section=section,
         thumbs=thumbs,
+        theme_thumbs=theme_thumbs,
         preview_gifs=preview_gifs,
+        theme_preview_gifs=theme_preview_gifs,
         deck_dates=deck_dates,
         palette_css=palette_css,
     )
@@ -632,7 +676,9 @@ def _build_index(
     site_dir: Path,
     env: Environment,
     thumbs: dict[str, str | None],
+    theme_thumbs: dict[str, dict[str, str]],
     preview_gifs: dict[str, str | None],
+    theme_preview_gifs: dict[str, dict[str, str]],
     deck_dates: dict[str, str],
     palette_css: str,
 ) -> None:
@@ -640,7 +686,9 @@ def _build_index(
         registry=registry,
         latest_section=_latest_section(registry),
         thumbs=thumbs,
+        theme_thumbs=theme_thumbs,
         preview_gifs=preview_gifs,
+        theme_preview_gifs=theme_preview_gifs,
         deck_dates=deck_dates,
         palette_css=palette_css,
     )
@@ -676,13 +724,15 @@ def build(
 
     only_set = set(only)
     deck_thumbs: dict[str, str | None] = {}
+    deck_theme_thumbs: dict[str, dict[str, str]] = {}
     deck_preview_gifs: dict[str, str | None] = {}
+    deck_theme_preview_gifs: dict[str, dict[str, str]] = {}
     deck_dates = {deck.slug: _deck_created_label(deck) for deck in registry.all_decks}
     for section in registry.sections:
         for deck in section.decks:
             if only_set and deck.slug not in only_set:
                 continue
-            deck_thumbs[deck.slug], deck_preview_gifs[deck.slug] = _build_deck(
+            assets = _build_deck(
                 deck,
                 site_dir=site_dir,
                 site_cfg=site_cfg,
@@ -692,6 +742,10 @@ def build(
                 theme_selection=theme_selection,
                 watch=watch,
             )
+            deck_thumbs[deck.slug] = assets.thumbnail
+            deck_theme_thumbs[deck.slug] = assets.theme_thumbnails
+            deck_preview_gifs[deck.slug] = assets.preview_gif
+            deck_theme_preview_gifs[deck.slug] = assets.theme_preview_gifs
 
     site_palette_css = _site_palette_css(site_cfg)
     for section in registry.sections:
@@ -700,7 +754,9 @@ def build(
             site_dir,
             env,
             deck_thumbs,
+            deck_theme_thumbs,
             deck_preview_gifs,
+            deck_theme_preview_gifs,
             deck_dates,
             site_palette_css,
         )
@@ -710,7 +766,9 @@ def build(
         site_dir,
         env,
         deck_thumbs,
+        deck_theme_thumbs,
         deck_preview_gifs,
+        deck_theme_preview_gifs,
         deck_dates,
         site_palette_css,
     )

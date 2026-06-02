@@ -21,7 +21,19 @@
     </button>
     <div class="site-resource-menu-panel" data-resource-panel role="menu" hidden>
       {% if has_pdf %}
-      <a href="{{ slides_pdf_name|urlencode }}" class="site-resource-menu-item" role="menuitem" download>
+      <a
+        href="{{ slides_pdf_href|urlencode }}"
+        class="site-resource-menu-item"
+        role="menuitem"
+        download
+        data-slides-pdf-link
+        data-pdf-default="{{ slides_pdf_href|urlencode }}"
+        {% for variant, href in slides_pdf_hrefs.items() %}
+        {% if variant != "default" %}
+        data-pdf-{{ variant }}="{{ href|urlencode }}"
+        {% endif %}
+        {% endfor %}
+      >
         <i data-lucide="presentation" aria-hidden="true"></i>
         <span class="icon-fallback" aria-hidden="true">S</span>
         <span>Slides</span>

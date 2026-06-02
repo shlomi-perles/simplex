@@ -56,6 +56,8 @@ def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
     assert "simplex.css?v=" in index_html
     assert "viewer.js?v=" in index_html
     assert "notes.js?v=" in index_html
+    assert 'data-card-thumb-dark="/decks/alpha/themes/dark/thumbs/_placeholder.svg"' in index_html
+    assert 'data-card-thumb-light="/decks/alpha/themes/light/thumbs/_placeholder.svg"' in index_html
 
     alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
     assert "Alpha" in alpha_html
@@ -157,6 +159,31 @@ def test_deck_downloads_are_grouped_under_pdf_icon(tmp_path: Path) -> None:
     assert ">Slides</span>" in html
     assert ">Notes</span>" in html
     assert ">ppt</span>" not in html
+
+
+def test_deck_downloads_carry_true_theme_pdf_hrefs(tmp_path: Path) -> None:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
+    deck_out = tmp_path / "site" / "decks" / "alpha"
+    for variant in ("dark", "light"):
+        variant_dir = deck_out / "themes" / variant
+        variant_dir.mkdir(parents=True)
+        (variant_dir / "Alpha-slides.pdf").write_bytes(b"%PDF")
+
+    build(
+        decks_dir=decks_dir,
+        site_dir=tmp_path / "site",
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+
+    html = (deck_out / "index.html").read_text(encoding="utf-8")
+    assert "data-slides-pdf-link" in html
+    assert 'href="themes/dark/Alpha-slides.pdf"' in html
+    assert 'data-pdf-dark="themes/dark/Alpha-slides.pdf"' in html
+    assert 'data-pdf-light="themes/light/Alpha-slides.pdf"' in html
+    assert (deck_out / "Alpha-slides.pdf").exists()
 
 
 def test_build_can_emit_filter_mode_from_site_config(tmp_path: Path) -> None:
