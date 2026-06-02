@@ -19,9 +19,10 @@ def test_simplex_palette_background() -> None:
 
 
 def test_simplex_latex_has_no_legacy_environments() -> None:
-    """The ``{minipage}{20cm}`` env moved from the theme into ``TexPage`` --
-    the LaTeX profile no longer carries it. Tests guard against regression
-    that would split the same magic string across multiple sources again.
+    """Minipage sizing lives in ``TexPage`` rather than theme environments.
+
+    The LaTeX profile no longer carries a deck-wide environment. Tests guard
+    against splitting that layout policy across multiple sources again.
     """
     assert "definition" not in presets.SIMPLEX_DARK.latex.environments
 

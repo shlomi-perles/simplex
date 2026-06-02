@@ -9,21 +9,27 @@ from manim import DL, DOWN, RIGHT, UP, Tex, Write
 from simplex.mobjects.paper import DismissPaper, Paper, PickPage, ShowPaper
 from simplex.slides import Slide
 
+try:
+    from slides.showcase_style import setup_showcase_chrome
+except ModuleNotFoundError:  # direct ``manim slides/paper_showcase.py ...`` execution
+    from showcase_style import setup_showcase_chrome
+
 
 class PaperShowcase(Slide):
     """Paper Mobject -- ArXiv PDF stacking, picking, and dismissal."""
 
     def setup(self) -> None:
         super().setup()
-        self.setup_chrome(
-            footer=r"mobjects/paper.py -- Paper + ShowPaper + PickPage + DismissPaper",
+        setup_showcase_chrome(
+            self,
+            r"mobjects/paper.py -- Paper + ShowPaper + PickPage + DismissPaper",
         )
 
     def construct(self) -> None:
         title = Tex(r"\textbf{Attention Is All You Need} \\ Vaswani et al., 2017")
         title.scale(0.8)
         self.region.place(title, UP, buff=0.2)
-        self.play(Write(title))
+        self.play(Write(self.showcase_title), Write(title))
 
         # Directions are vanilla Manim vectors (DL, RIGHT, DOWN, ...).
         paper = Paper(

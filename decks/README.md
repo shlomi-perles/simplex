@@ -32,7 +32,7 @@ See `src/simplex/render/README.md` for the full cache + re-render semantics.
 
 - `_template/` -- starter copied by `simplex new` (skipped by `discover()`).
 - `showcase/` -- canonical demo of every Simplex-specific helper:
-  - `engine.text`: `Caption`, `TexPage` (fixed-width minipage), `color_tex`
+  - `engine.text`: `Caption`, `TexPage` (region/page-width minipage), `color_tex`
   - `engine.code`: `code_block` + `highlight_code_lines` + `code_explain` + `transform_code_lines`
   - `engine.geometry`: convex hull + surrounding rectangle
   - `engine.region`: direction anchors + `shrink` + `reset` + `split_regions(axis, k)`

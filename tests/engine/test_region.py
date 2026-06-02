@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("manim")
 
-from manim import DOWN, DR, LEFT, ORIGIN, RIGHT, UL, UP, UR
+from manim import DEFAULT_MOBJECT_TO_EDGE_BUFFER, DOWN, DR, LEFT, ORIGIN, RIGHT, UL, UP, UR
 from manim.mobject.opengl.opengl_mobject import OpenGLMobject
 
 from simplex.engine.region import Region
@@ -172,6 +172,17 @@ def test_place_with_buff_pulls_mob_inward() -> None:
     r.place(dot, UP, buff=0.25)
     # Dot's top edge should be 0.25 below the region's top edge.
     assert dot.get_top()[1] == pytest.approx(r.top - 0.25)
+
+
+def test_place_default_buff_uses_manim_edge_buffer() -> None:
+    from manim import Dot
+
+    r = Region.full_frame()
+    dot = Dot(radius=0.1)
+
+    r.place(dot, UP)
+
+    assert dot.get_top()[1] == pytest.approx(r.top - DEFAULT_MOBJECT_TO_EDGE_BUFFER)
 
 
 def test_place_corner_uses_mobject_aligned_edge() -> None:

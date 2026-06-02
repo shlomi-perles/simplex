@@ -33,6 +33,8 @@ def test_chrome_accepts_header_footer_mobjects() -> None:
     assert footer.get_left()[0] == pytest.approx(
         region.left + presets.SIMPLEX_DARK.spacing.footer_buff
     )
+    assert header.z_index > 0
+    assert footer.z_index > 0
 
 
 def test_chrome_does_not_mutate_input_region() -> None:

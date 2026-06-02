@@ -65,7 +65,7 @@ class _SimplexSlideMixin:
         self.setup_chrome()
 
     def setup_chrome(self, **kwargs: Any) -> Chrome | None:
-        """Add header/footer chrome to the canvas and shrink ``self.region``.
+        """Add header/footer chrome to the scene canvas and shrink ``self.region``.
 
         Defaults come from ``self.header``, ``self.footer`` and
         ``self.chrome_kwargs``. A call with no header and no footer is a no-op,
@@ -82,6 +82,11 @@ class _SimplexSlideMixin:
         region = chrome_kwargs.pop("region", self.region)
         chrome = make_chrome(theme, region, **chrome_kwargs)
         cast(Any, self).add_to_canvas(**chrome.mobjects)
+        if chrome.mobjects:
+            cast(Any, self).add(*chrome.mobjects.values())
+            add_fixed = getattr(self, "add_fixed_in_frame_mobjects", None)
+            if callable(add_fixed):
+                add_fixed(*chrome.mobjects.values())
         self.region = chrome.body_region
         return chrome
 

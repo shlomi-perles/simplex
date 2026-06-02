@@ -11,7 +11,7 @@ from numbers import Real
 from typing import Any, Self, cast
 
 import numpy as np
-from manim import Rectangle
+from manim import DEFAULT_MOBJECT_TO_EDGE_BUFFER, Rectangle
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 
 from simplex.engine.opengl_compat import MobjectLike, critical_point, is_mobject
@@ -172,7 +172,7 @@ class Region(Rectangle, metaclass=ConvertToOpenGL):
         self,
         mob: MobjectLike,
         anchor: np.ndarray | Iterable[float] | None = None,
-        buff: float = 0.0,
+        buff: float = DEFAULT_MOBJECT_TO_EDGE_BUFFER,
     ) -> MobjectLike:
         """Move ``mob`` so its anchor sits at the matching point of this region.
 
@@ -373,7 +373,7 @@ class _RegionUpdaterBuilder:
         self,
         mob: MobjectLike,
         anchor: np.ndarray | Iterable[float] | None = None,
-        buff: float = 0.0,
+        buff: float = DEFAULT_MOBJECT_TO_EDGE_BUFFER,
     ) -> Self:
         def updater(placed_mob: MobjectLike) -> None:
             self._region.place(placed_mob, anchor, buff=buff)

@@ -20,8 +20,9 @@ here.
 - `self.setup_chrome(header=..., footer=..., theme=..., region=...)`
   -- convenience wrapper for the common setup path. If neither header nor
   footer is set, it returns without touching the scene; otherwise it calls
-  `make_chrome`, splats the result into `add_to_canvas`, and updates
-  `self.region`.
+  `make_chrome`, registers the result in `add_to_canvas`, adds those
+  mobjects to the scene so they render, registers them as fixed-frame
+  mobjects when supported by a 3D scene, and updates `self.region`.
 - `make_chrome(theme, region, *, header=..., footer=...)`
   -- *pure* factory returning a `Chrome(mobjects, body_region)`
   NamedTuple. `header` and `footer` can be strings or prebuilt Manim

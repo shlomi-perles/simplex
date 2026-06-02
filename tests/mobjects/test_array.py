@@ -157,6 +157,8 @@ def test_pointer_tracks_target_cell() -> None:
     pointer = ArrayPointer(array, 0, label="i")
     before = pointer.arrow.get_center().copy()
 
+    assert pointer.label_scale == pytest.approx(3 / 4)
+
     pointer.set_index(1)
 
     assert pointer.index == 1

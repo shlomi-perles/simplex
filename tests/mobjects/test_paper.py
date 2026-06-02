@@ -159,14 +159,19 @@ def test_paper_shadow_is_blurred_image(sample_pdf: Path) -> None:
     assert shadow.height < config.frame_height * 0.7
 
 
-def test_pick_page_promotes_z_index_only_after_slide_out(sample_pdf: Path) -> None:
+def test_pick_page_preserves_z_index_until_slide_out(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=3, dpi=72, page_height=3.0)
     selected = paper.get_page(1)
+    original_selected_z = selected.z_index
+    original_z_indices = [pg.z_index for pg in paper.page_groups]
     anim = PickPage(paper, page_index=1, slide_direction=RIGHT)
 
     anim.begin()
-    other_z = [pg.z_index for pg in paper.page_groups if pg is not selected]
-    assert selected.z_index < min(other_z)
+    assert selected.z_index == original_selected_z
+    assert [pg.z_index for pg in paper.page_groups] == original_z_indices
+
+    anim.interpolate_mobject(0.49)
+    assert selected.z_index == original_selected_z
 
     anim.interpolate_mobject(0.5)
     assert paper.get_top_page() is selected

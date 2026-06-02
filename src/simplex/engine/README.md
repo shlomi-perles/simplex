@@ -20,7 +20,7 @@ Cross-package types live one level up:
 
 ## Submodules (import directly to keep `simplex.engine` cheap)
 
-- `engine.text` -- `Caption`, `TexPage` (fixed-width minipage; `width_cm` kwarg / class attr); `color_tex(eq, t2c)`; `search_shape_in_text`. Body-sized paragraphs use plain `manim.Tex` -- `apply_theme_defaults` already sets `font_size=theme.typography.body`.
+- `engine.text` -- `Caption`, `TexPage` (region/page-width calibrated minipage; `page_width`, `buff`, `math_spacing`, `equation(n)`); `color_tex(eq, t2c)`; `search_shape_in_text`. Body-sized paragraphs use plain `manim.Tex` -- `apply_theme_defaults` already sets `font_size=theme.typography.body`.
 - `engine.code` -- `code_block`, `highlight_code_lines`, `code_explain`, `transform_code_lines`; `DarculaStyle`, `register_darcula`; `HighlightResult`
 - `engine.geometry` -- `get_surrounding_rectangle` (rotated rect spanning two mobjects), `get_frame_center`, `Arc3d` (sphere arc; Manim's `ArcBetweenPoints` is 2D), `SurroundingRectangleUnion` (merged surrounding rect for groups). For convex hulls, call `manim.ConvexHull` directly; for unit vectors at an angle, use `manim.utils.space_ops.rotate_vector(RIGHT, theta)`; for normalising a vector, use `manim.utils.space_ops.normalize`.
 - `engine.glyph_map` -- `TransformByGlyphMap` (glyph-indexed Tex transitions)

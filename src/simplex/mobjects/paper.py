@@ -530,7 +530,6 @@ class PickPage(Animation):
             *(pg for pg in self._original_order if pg is not self._page),
         ]
         self._paper._set_page_order(self._original_order, arrange=False)
-        self._page.set_z_index(self._paper.z_index - 1, family=True)
 
         self._other_pages = [pg for pg in self._target_order if pg is not self._page]
         self._other_pages_start = [pg.get_center().copy() for pg in self._other_pages]

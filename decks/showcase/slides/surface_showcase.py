@@ -21,15 +21,24 @@ from simplex.engine.scaling import scale_to_fit_mobject
 from simplex.engine.text import Caption
 from simplex.mobjects.surface import ColorBar, ScalarFieldSurface, colorize_surface
 
+try:
+    from slides.showcase_style import setup_showcase_chrome
+except ModuleNotFoundError:  # direct ``manim slides/surface_showcase.py ...`` execution
+    from showcase_style import setup_showcase_chrome
+
 
 class SurfaceColoring(ThreeDSlide):
     """ScalarFieldSurface + ColorBar + colorize_surface with matplotlib colormaps."""
 
     def setup(self) -> None:
         super().setup()
+        self.region = Region.full_frame().fix_in_frame()
+        setup_showcase_chrome(
+            self,
+            r"mobjects/surface.py -- ScalarFieldSurface + ColorBar + colorize_surface",
+        )
 
     def construct(self) -> None:
-        self.region = Region.full_frame().fix_in_frame()
         # ── Sub-slide 1: ScalarFieldSurface with height coloring ──
         self.set_camera_orientation(phi=60 * DEGREES, theta=-45 * DEGREES)
 
@@ -52,7 +61,7 @@ class SurfaceColoring(ThreeDSlide):
         ).to_edge(RIGHT, buff=0.4)
         self.add_fixed_in_frame_mobjects(bar)
 
-        self.play(Create(surface), Write(bar))
+        self.play(Write(self.showcase_title), Create(surface), Write(bar))
         self.next_slide()
 
         # ── Sub-slide 2: live colormap switch ─────────────────────

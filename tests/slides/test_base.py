@@ -36,9 +36,13 @@ class _ChromeSlide:
         self.chrome_kwargs = {}
         self.region = Region.full_frame()
         self.canvas: dict[str, Any] = {}
+        self.mobjects: list[Any] = []
 
     def add_to_canvas(self, **mobjects: Any) -> None:
         self.canvas.update(mobjects)
+
+    def add(self, *mobjects: Any) -> None:
+        self.mobjects.extend(mobjects)
 
 
 def _resolve(
@@ -131,4 +135,5 @@ def test_setup_chrome_adds_canvas_and_updates_region() -> None:
 
     assert chrome is not None
     assert "footer" in stub.canvas
+    assert stub.canvas["footer"] in stub.mobjects
     assert stub.region.bottom > Region.full_frame().bottom

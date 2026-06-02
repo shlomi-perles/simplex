@@ -72,6 +72,8 @@ _EXPORTS: dict[str, str] = {
     "keep_orientation": "simplex.engine.dynamics",
     "maintain_apparent_stroke_width": "simplex.engine.dynamics",
     "make_chrome": "simplex.slides",
+    "minipage_cm_for_page_width": "simplex.engine.text",
+    "munits_per_cm": "simplex.engine.text",
     "presets": "simplex.theme",
     "register_exit": "simplex.engine",
     "resolve_palette": "simplex.theme",
@@ -123,7 +125,14 @@ if TYPE_CHECKING:
     from simplex.engine.ghost_fade import GhostSlideFade
     from simplex.engine.glyph_map import TransformByGlyphMap
     from simplex.engine.scaling import scale_to_fit, scale_to_fit_mobject
-    from simplex.engine.text import Caption, TexPage, color_tex, search_shape_in_text
+    from simplex.engine.text import (
+        Caption,
+        TexPage,
+        color_tex,
+        minipage_cm_for_page_width,
+        munits_per_cm,
+        search_shape_in_text,
+    )
     from simplex.manifest import DeckManifest, MainSlide, Subsection
     from simplex.mobjects import (
         Array,

@@ -1,9 +1,8 @@
 """``make_chrome`` -- header / footer factory for ``Slide``.
 
-Authors call ``self.add_to_canvas(**chrome.mobjects)`` in their scene's
-``setup()`` and re-bind ``self.region = chrome.body_region``. The chrome
-lives on the manim-slides canvas so it survives ``clear_scene`` and
-``Wipe``-style transitions automatically.
+Authors register ``chrome.mobjects`` on the manim-slides canvas and add them
+to the scene. The canvas registration keeps chrome out of ``clear_scene`` /
+``Wipe``-style transitions; adding them makes the mobjects actually render.
 
 ``make_chrome`` is a *pure* factory: it doesn't mutate its ``region``
 argument. It returns a :class:`Chrome` ``NamedTuple`` carrying both the
@@ -24,6 +23,8 @@ from simplex.engine.region import Region
 from simplex.theme.tokens import Theme
 
 type ChromeContent = str | MobjectLike | None
+
+_CHROME_Z_INDEX = 10_000
 
 
 class Chrome(NamedTuple):
@@ -57,10 +58,12 @@ def make_chrome(
     if header is not None:
         head = _as_chrome_mobject(header, font_size=theme.typography.h2)
         region.place(head, UP, buff=theme.spacing.header_buff)
+        head.set_z_index(_CHROME_Z_INDEX, family=True)
         mobs["header"] = head
     if footer is not None:
         foot = _as_chrome_mobject(footer, font_size=theme.typography.caption)
         region.place(foot, DL, buff=theme.spacing.footer_buff)
+        foot.set_z_index(_CHROME_Z_INDEX, family=True)
         mobs["footer"] = foot
 
     body = Region(
