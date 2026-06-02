@@ -15,7 +15,7 @@ pytest.importorskip("manim_slides")
 
 from simplex.engine.region import Region
 from simplex.section import SimplexSectionType
-from simplex.slides.base import Slide, _pretty_class_name
+from simplex.slides.base import Slide, _pretty_class_name, _SimplexSlideMixin
 
 
 class _MiniSlide:
@@ -43,6 +43,44 @@ class _ChromeSlide:
 
     def add(self, *mobjects: Any) -> None:
         self.mobjects.extend(mobjects)
+
+
+class _ForwardingBase:
+    """Minimal super-class stub for exercising the full ``next_slide`` path."""
+
+    def __init__(self, *, current_animation: int = 1, start_animation: int = 0) -> None:
+        self._current_animation = current_animation
+        self._start_animation = start_animation
+        self._current_main: str | None = None
+        self._wait_time_between_slides = 0.1
+        self.events: list[tuple[str, Any]] = []
+
+    @property
+    def wait_time_between_slides(self) -> float:
+        return self._wait_time_between_slides
+
+    @wait_time_between_slides.setter
+    def wait_time_between_slides(self, wait_time: float) -> None:
+        self._wait_time_between_slides = max(wait_time, 0.0)
+
+    def wait(self, duration: float) -> None:
+        self.events.append(("wait", duration))
+        self._current_animation += 1
+
+    def next_slide(self, **kwargs: Any) -> None:
+        self.events.append(
+            (
+                "next_slide",
+                {
+                    "kwargs": kwargs,
+                    "wait_time_between_slides": self.wait_time_between_slides,
+                },
+            )
+        )
+
+
+class _ForwardingSlide(_SimplexSlideMixin, _ForwardingBase):
+    pass
 
 
 def _resolve(
@@ -137,3 +175,26 @@ def test_setup_chrome_adds_canvas_and_updates_region() -> None:
     assert "footer" in stub.canvas
     assert stub.canvas["footer"] in stub.mobjects
     assert stub.region.bottom > Region.full_frame().bottom
+
+
+def test_next_slide_pads_current_slide_before_forwarding() -> None:
+    stub = _ForwardingSlide(current_animation=2, start_animation=1)
+
+    stub.next_slide(name="Intro")
+
+    assert stub.events[0] == ("wait", 0.1)
+    forwarded_name, forwarded = stub.events[1]
+    assert forwarded_name == "next_slide"
+    assert forwarded["kwargs"]["name"] == "Intro"
+    assert forwarded["kwargs"]["section_type"] == SimplexSectionType.MAIN.value
+    assert forwarded["kwargs"]["direction"] == "horizontal"
+    assert forwarded["wait_time_between_slides"] == 0.0
+    assert stub.wait_time_between_slides == 0.1
+
+
+def test_next_slide_does_not_pad_empty_boundaries() -> None:
+    stub = _ForwardingSlide(current_animation=4, start_animation=4)
+
+    stub.next_slide(name="Intro")
+
+    assert [event[0] for event in stub.events] == ["next_slide"]

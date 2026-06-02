@@ -123,7 +123,8 @@ class SurfaceColoring(ThreeDSlide):
             cb_group = VGroup(cb, label).scale_to_fit_height(self.region.height)
             cb_height = cb.height if cb_height is None else cb_height
             cb_group.set_height(cb_height)
-            label.set_font_size(label_font_size).next_to(cb, DOWN, buff=SMALL_BUFF)
+            label.font_size = label_font_size
+            label.next_to(cb, DOWN, buff=SMALL_BUFF)
 
             gallery.add(VGroup(cb, label).move_to(point))
 

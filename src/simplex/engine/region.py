@@ -6,7 +6,7 @@ The region API speaks in Manim's direction vectors (``UP``, ``DR``, ``ORIGIN``,
 mobjects.
 """
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from numbers import Real
 from typing import Any, Self, cast
 
@@ -158,16 +158,6 @@ class Region(Rectangle, metaclass=ConvertToOpenGL):
         """Map a normalized direction vector to the matching point of this region."""
         return critical_point(self, direction)
 
-    @property
-    def always(self) -> "_RegionUpdaterBuilder":
-        """Call region helpers every frame.
-
-        ``place`` is special: the updater belongs to the placed mobject so it
-        can keep following an animated region while Manim suspends the region's
-        own updaters during ``region.animate``.
-        """
-        return _RegionUpdaterBuilder(self)
-
     def place(
         self,
         mob: MobjectLike,
@@ -185,6 +175,24 @@ class Region(Rectangle, metaclass=ConvertToOpenGL):
         mob.move_to(critical_point(self, direction), aligned_edge=direction)
         if buff:
             mob.shift(-direction * buff)
+        return mob
+
+    def always_place(
+        self,
+        mob: MobjectLike,
+        anchor: np.ndarray | Iterable[float] | None = None,
+        buff: float = DEFAULT_MOBJECT_TO_EDGE_BUFFER,
+    ) -> MobjectLike:
+        """Keep ``mob`` placed in this region as either object moves.
+
+        The updater belongs to ``mob`` so placement still follows this region
+        while Manim suspends the region's own updaters during ``region.animate``.
+        """
+
+        def updater(placed_mob: MobjectLike) -> None:
+            self.place(placed_mob, anchor, buff=buff)
+
+        cast(Any, mob).add_updater(updater, call_updater=True)
         return mob
 
     def scale_and_place(
@@ -383,32 +391,3 @@ class Region(Rectangle, metaclass=ConvertToOpenGL):
         if direction[0] < 0 or direction[1] < 0:
             points.reverse()
         return points
-
-
-class _RegionUpdaterBuilder:
-    """Region-specific ``always`` sugar."""
-
-    def __init__(self, region: Region) -> None:
-        self._region = region
-
-    def place(
-        self,
-        mob: MobjectLike,
-        anchor: np.ndarray | Iterable[float] | None = None,
-        buff: float = DEFAULT_MOBJECT_TO_EDGE_BUFFER,
-    ) -> Self:
-        def updater(placed_mob: MobjectLike) -> None:
-            self._region.place(placed_mob, anchor, buff=buff)
-
-        cast(Any, mob).add_updater(updater, call_updater=True)
-        return self
-
-    def __getattr__(self, name: str) -> Callable[..., "_RegionUpdaterBuilder"]:
-        def add_updater(*method_args: Any, **method_kwargs: Any) -> _RegionUpdaterBuilder:
-            self._region.add_updater(
-                lambda region: getattr(region, name)(*method_args, **method_kwargs),
-                call_updater=True,
-            )
-            return self
-
-        return add_updater

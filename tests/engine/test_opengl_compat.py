@@ -1,5 +1,7 @@
 """OpenGL/Cairo mobject compatibility helpers."""
 
+from typing import Any, cast
+
 import numpy as np
 import pytest
 
@@ -59,5 +61,5 @@ def test_set_mobject_z_index_uses_opengl_family() -> None:
     result = set_mobject_z_index(group, 11, family=True)
 
     assert result is group
-    assert group.z_index == 11
-    assert child.z_index == 11
+    assert cast(Any, group).z_index == 11
+    assert cast(Any, child).z_index == 11

@@ -248,7 +248,7 @@ def test_always_place_attaches_updater_to_placed_mobject() -> None:
     r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
     sq = Square(side_length=1.0)
 
-    r.always.place(sq, UR, buff=0.25)
+    r.always_place(sq, UR, buff=0.25)
 
     assert len(r.get_updaters()) == 0
     assert len(sq.get_updaters()) == 1
@@ -261,7 +261,7 @@ def test_always_place_updates_while_region_updating_is_suspended() -> None:
 
     r = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
     sq = Square(side_length=1.0)
-    r.always.place(sq, UR, buff=0.25)
+    r.always_place(sq, UR, buff=0.25)
     initial_right = sq.get_right()[0]
 
     r.suspend_updating()

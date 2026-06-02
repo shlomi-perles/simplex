@@ -12,6 +12,8 @@ Theme and Manim defaults are wired in ``simplex.plugin:activate`` (the
 - ``self.next_slide()`` *after a named main* -> **sub** of that main.
 - ``loop=True`` flips to the ``LOOP`` variant; an explicit ``section_type=``
   always wins.
+- ``wait_time_between_slides`` defaults to a small final-frame hold so the
+  encoded slide segment includes the completed state of the last animation.
 
 The chosen ``SimplexSectionType.value`` round-trips into Manim's native
 section JSON (``Section(type_=...) -> JSON "type"``), which the reconciler
@@ -36,6 +38,7 @@ from simplex.theme.context import get_active_theme
 # (``ImplementBFS`` -> ``Implement BFS``).
 _CAMEL_TAIL = re.compile(r"([A-Z]+)([A-Z][a-z])")
 _CAMEL_LOWER = re.compile(r"([a-z\d])([A-Z])")
+DEFAULT_SLIDE_BOUNDARY_WAIT_TIME = 0.1
 
 
 def _pretty_class_name(name: str) -> str:
@@ -56,10 +59,12 @@ class _SimplexSlideMixin:
     header: ChromeContent = None
     footer: ChromeContent = None
     chrome_kwargs: Mapping[str, Any] = {}
+    slide_boundary_wait_time: float = DEFAULT_SLIDE_BOUNDARY_WAIT_TIME
     _current_main: str | None
 
     def setup(self) -> None:
         cast(Any, super()).setup()
+        cast(Any, self).wait_time_between_slides = self.slide_boundary_wait_time
         self.region = Region.full_frame()
         self._current_main = None
         self.setup_chrome()
@@ -119,12 +124,31 @@ class _SimplexSlideMixin:
             "vertical" if resolved.is_sub else "horizontal",
         )
 
-        cast(Any, super()).next_slide(
-            name=name or self._current_main or "unnamed",
-            section_type=resolved.value,
-            loop=loop,
-            **kwargs,
-        )
+        wait_time = self._pad_current_slide()
+        if wait_time > 0.0:
+            cast(Any, self).wait_time_between_slides = 0.0
+        try:
+            cast(Any, super()).next_slide(
+                name=name or self._current_main or "unnamed",
+                section_type=resolved.value,
+                loop=loop,
+                **kwargs,
+            )
+        finally:
+            if wait_time > 0.0:
+                cast(Any, self).wait_time_between_slides = wait_time
+
+    def _pad_current_slide(self) -> float:
+        """Hold the final frame before closing Simplex's native Manim section."""
+        wait_time = float(cast(Any, self).wait_time_between_slides)
+        if wait_time <= 0.0:
+            return wait_time
+
+        current_animation = int(getattr(self, "_current_animation", 0))
+        start_animation = int(getattr(self, "_start_animation", 0))
+        if current_animation > start_animation:
+            cast(Any, self).wait(wait_time)
+        return wait_time
 
     def _resolve_section_type(
         self,

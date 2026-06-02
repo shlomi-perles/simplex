@@ -328,7 +328,7 @@ class RegionAnchors(Slide):
         )
         for direction, label in all_directions:
             mob = Caption(label)
-            self.region.always.place(mob, direction, buff=SMALL_BUFF)
+            self.region.always_place(mob, direction, buff=SMALL_BUFF)
             markers.append(mob)
         self.play(Write(self.canvas["showcase_title"]), *(Write(m) for m in markers))
         self.next_slide()

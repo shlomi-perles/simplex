@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("manim")
 
-from manim import DecimalNumber, Integer, MarkupText, Paragraph, Variable
+from manim import DecimalNumber, Integer, MarkupText, Mobject, Paragraph, Variable
 from manim.utils.color import ManimColor
 
 from simplex.engine.defaults import apply_theme_defaults
@@ -12,7 +12,7 @@ from simplex.engine.dynamics import DN
 from simplex.theme.presets import SIMPLEX_DARK, SIMPLEX_LIGHT
 
 
-def _drawn_colors(mob) -> set[str]:
+def _drawn_colors(mob: Mobject) -> set[str]:
     return {
         submob.get_color().to_hex()
         for submob in mob.get_family()
