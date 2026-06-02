@@ -21,6 +21,7 @@ from manim import (
     GOLD,
     GREEN,
     LEFT,
+    MED_LARGE_BUFF,
     ORIGIN,
     PI,
     RED,
@@ -34,6 +35,7 @@ from manim import (
     FadeIn,
     Line,
     MathTex,
+    TransformMatchingShapes,
     ShrinkToCenter,
     Square,
     Tex,
@@ -244,17 +246,23 @@ class GraphAndArray(Slide):
             Edge(n2, n3, weight="2"),
         ]
         # Edges before nodes so the nodes render on top of the connecting lines.
-        self.play(FadeIn(*edges, n1, n2, n3))
-
+        graph = VGroup(*edges, n1, n2, n3)
+        split_regions = self.region.split_regions(DOWN, 2)
+        scale_to_fit_mobject(graph, split_regions[0], buff=MED_LARGE_BUFF)
+        split_regions[0].place(graph, ORIGIN)
         arr = Array(
             ["-", "8", "1", "3", "9"],
             label="A:",
             show_indices=True,
             start_index=1,
         )
-        arr.scale(0.8)
-        self.region.place(arr, DOWN, buff=0.6)
-        self.play(Write(arr))
+        arr_cp = arr.copy()
+        arr_cp.animate_append("5").begin()
+        scale_to_fit_mobject(arr_cp, split_regions[1], buff=0.5)
+        scale_to_fit_mobject(arr, arr_cp)
+        split_regions[1].place(arr_cp, ORIGIN)
+        arr.move_to(arr_cp).align_to(arr_cp, LEFT)
+        self.play(Write(arr), Write(graph))
         self.next_slide()
 
         self.play(arr.animate_set_value(1, "b"))
@@ -281,29 +289,29 @@ class RegionAnchors(Slide):
         # Anchors are Manim direction vectors -- no strings. UL/UR/DL/DR
         # use the named diagonals; the literal corner names live on the
         # mobjects so viewers can read them off.
+
+        sidebar = Caption("region.shrink(left=2.5, right=2.5) reflows subsequent placements")
+        self.region.place(sidebar, UP)
+        self.region.update(top=sidebar)
         markers = []
-        for direction, label in (
+        all_directions = (
             (UL, "UL"),
             (UR, "UR"),
             (DL, "DL"),
             (DR, "DR"),
             (ORIGIN, "ORIGIN"),
-        ):
+        )
+        for direction, label in all_directions:
             mob = Caption(label)
-            self.region.place(mob, direction, buff=0.25)
+            self.region.always.place(mob, direction)
             markers.append(mob)
         self.play(*(Write(m) for m in markers))
 
-        self.region.shrink(left=2.5, right=2.5)
-        sidebar = Caption("shrink(left=2.5, right=2.5) reflows subsequent placements")
-        self.region.place(sidebar, ORIGIN)
-        self.play(Write(sidebar))
+        self.play(self.region.animate.shrink(left=2.5, right=2.5), Write(sidebar))
         self.next_slide()
 
-        self.region.reset()
-        full = Caption("region.reset() restores the full frame")
-        self.region.place(full, ORIGIN)
-        self.play(Write(full))
+        full = Caption("region.reset() restores the full frame").move_to(sidebar)
+        self.play(self.region.animate.reset(), TransformMatchingShapes(sidebar, full))
         self.next_slide()
 
         # Region.split_regions divides the region into k equal sub-regions along
