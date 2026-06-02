@@ -32,7 +32,7 @@ class SurfaceColoring(ThreeDSlide):
 
     def setup(self) -> None:
         super().setup()
-        self.region = Region.full_frame().fix_in_frame()
+        self.region = self.region.fix_in_frame()
         setup_showcase_chrome(
             self,
             r"mobjects/surface.py -- ScalarFieldSurface + ColorBar + colorize_surface",
@@ -46,20 +46,17 @@ class SurfaceColoring(ThreeDSlide):
             lambda u, v: np.array([u, v, np.sin(u) * np.cos(v)]),
             u_range=[-3, 3],
             v_range=[-3, 3],
-            resolution=(60, 60),
             color_func="height",
             colormap="RdYlBu_r",
             color_range=(-1, 1),
-            opacity=0.85,
         )
 
         bar = ColorBar(
             colormap="RdYlBu_r",
             min_value=-1,
             max_value=1,
-            height=2.8,
-        ).to_edge(RIGHT, buff=0.4)
-        self.add_fixed_in_frame_mobjects(bar)
+        ).to_edge(RIGHT)
+        bar.fix_in_frame()
 
         self.play(Write(self.canvas["showcase_title"]), Create(surface), Write(bar))
         self.next_slide()
@@ -72,7 +69,6 @@ class SurfaceColoring(ThreeDSlide):
             colormap="viridis",
             min_value=-1,
             max_value=1,
-            height=2.8,
         ).move_to(bar)
 
         new_bar.fix_in_frame()  # Keep the new bar fixed in the frame during the transformation
@@ -85,8 +81,6 @@ class SurfaceColoring(ThreeDSlide):
             lambda u, v: np.array([u, v, np.exp(-(u**2 + v**2))]),
             u_range=[-3, 3],
             v_range=[-3, 3],
-            resolution=(60, 60),
-            opacity=0.9,
         )
         colorize_surface(
             plain,
@@ -94,8 +88,7 @@ class SurfaceColoring(ThreeDSlide):
             colormap="plasma",
         )
 
-        bar2 = ColorBar(colormap="plasma", min_value=0, max_value=4, height=2.8)
-        bar2.align_to(new_bar, LEFT).match_y(new_bar)
+        bar2 = ColorBar(colormap="plasma", min_value=0, max_value=4).move_to(new_bar)
 
         bar2.fix_in_frame()
         self.play(ReplacementTransform(new_bar, bar2), ReplacementTransform(surface, plain))
@@ -111,34 +104,31 @@ class SurfaceColoring(ThreeDSlide):
         title.scale_to_fit_width(self.region.width * 0.7)
         self.region.place(title, UP)
         self.region.update(top=title)
+        self.region.shrink(top=1, bottom=1)
 
         cmap_names = ["viridis", "plasma", "coolwarm", "inferno", "twilight"]
         gallery = VGroup()
-
-        for name in cmap_names:
-            col = VGroup()
+        label_font_size = None
+        cb_height = None
+        for point, name in zip(
+            self.region.linspace(RIGHT, len(cmap_names), inset=1), cmap_names, strict=True
+        ):
             cb = ColorBar(
                 colormap=name,
-                min_value=0,
-                max_value=1,
-                height=2.2,
-                width=0.35,
                 n_labels=3,
-                font_size=18,
             )
             label = Caption(name.replace("_", r"\_"))
-            label.scale_to_fit_width(cb.width * 1.2).next_to(cb, DOWN)
-            col.add(cb, label)
-            gallery.add(col)
+            label.scale_to_fit_width(cb.width * 1.2)
+            label_font_size = label.font_size if label_font_size is None else label_font_size
+            cb_group = VGroup(cb, label).scale_to_fit_height(self.region.height)
+            cb_height = cb.height if cb_height is None else cb_height
+            cb_group.set_height(cb_height)
+            label.set_font_size(label_font_size).next_to(cb, DOWN, buff=SMALL_BUFF)
 
-        gallery.arrange(RIGHT, buff=0.7)
-        scale_to_fit_mobject(gallery, self.region, buff=LARGE_BUFF)
-        self.region.place(gallery)
+            gallery.add(VGroup(cb, label).move_to(point))
 
         title.fix_in_frame()
         gallery.fix_in_frame()
         self.play(Write(title), FadeIn(gallery))
         self.next_slide()
-
-        self.play(FadeOut(title), FadeOut(gallery))
         self.clear_scene()

@@ -14,6 +14,9 @@ import math
 
 import numpy as np
 from manim import (
+    LARGE_BUFF,
+    MED_SMALL_BUFF,
+    SMALL_BUFF,
     AnimationGroup,
     BLUE,
     DL,
@@ -39,8 +42,10 @@ from manim import (
     GrowFromCenter,
     Line,
     MathTex,
+    Rectangle,
     ShrinkToCenter,
     Square,
+    SurroundingRectangle,
     Tex,
     TransformMatchingShapes,
     Triangle,
@@ -277,9 +282,11 @@ class GraphAndArray(Slide):
         )
         arr_cp = arr.copy()
         arr_cp.animate_append("5").begin()
-        scale_to_fit_mobject(arr_cp, split_regions[1], buff=0.5)
+        cp_pointer = ArrayPointer(arr_cp, 2, label="here")
+        arr_cp_group = VGroup(arr_cp, cp_pointer)
+        scale_to_fit_mobject(arr_cp_group, split_regions[1], buff=0.5)
         scale_to_fit_mobject(arr, arr_cp)
-        split_regions[1].place(arr_cp, ORIGIN)
+        split_regions[1].place(arr_cp_group, ORIGIN)
         arr.move_to(arr_cp).align_to(arr_cp, LEFT)
         self.play(Write(self.canvas["showcase_title"]), Write(arr), Write(graph))
         self.next_slide()
@@ -323,9 +330,10 @@ class RegionAnchors(Slide):
         )
         for direction, label in all_directions:
             mob = Caption(label)
-            self.region.always.place(mob, direction)
+            self.region.always.place(mob, direction, buff=SMALL_BUFF)
             markers.append(mob)
         self.play(Write(self.canvas["showcase_title"]), *(Write(m) for m in markers))
+        self.next_slide()
 
         self.play(self.region.animate.shrink(left=2.5, right=2.5), Write(sidebar))
         self.next_slide()
@@ -365,12 +373,12 @@ class OutlineHelpers(OutlineScene):
             OutlinePart(
                 title=Tex(r"Typed parts"),
                 label=Caption(r"Typed\\parts"),
-                visual=VGroup(Circle(radius=0.65), MathTex(r"P_1")).set_color(GOLD),
+                visual=VGroup(Circle(), MathTex(r"P_1")).set_color(GOLD),
             ),
             OutlinePart(
                 title=Tex(r"Progress from Region.linspace"),
                 label=Caption(r"Region\\linspace"),
-                visual=VGroup(Square(side_length=1.2), MathTex(r"x_i")).set_color(BLUE),
+                visual=VGroup(Square(), MathTex(r"x_i")).set_color(BLUE),
             ),
             OutlinePart(
                 title=Tex(r"Mobject-native animation"),
@@ -404,6 +412,9 @@ class ExitAnimations(Slide):
         fade = Tex(r"default exit: Unwrite (Tex default)")
         shrink = Tex(r"per-instance: set\_exit\_animation(mob, ShrinkToCenter)")
         registered = Circle(radius=0.6, color=RED)
+        region_a, region_b, region_c = self.region.split_regions(DOWN, 3)
+        region_a.place(keep, ORIGIN)
+        region_b.place(fade, ORIGIN)
 
         # Per-type override: every Circle in this scene exits via FadeIn-reversed
         # (we cheat with ShrinkToCenter to keep things simple).
@@ -411,9 +422,9 @@ class ExitAnimations(Slide):
 
         set_exit_animation(shrink, ShrinkToCenter)
 
-        keep.shift(UP * 2.4)
-        shrink.shift(DOWN * 1.8)
-        registered.next_to(shrink, DOWN, buff=0.6)
+        registered.next_to(shrink, DOWN)
+        region_c.place(VGroup(shrink, registered), ORIGIN)
+
         self.play(
             Write(self.canvas["showcase_title"]),
             Write(keep),
@@ -442,6 +453,7 @@ class GeometryHelpers(Slide):
         a = Dot(LEFT * 3 + DOWN)
         b = Dot(RIGHT * 3 + UP)
         rect = get_surrounding_rectangle(a, b, buff=0.3)
+        self.region.place(VGroup(a, b, rect), ORIGIN)
         self.play(Write(self.canvas["showcase_title"]), FadeIn(a, b), Write(rect))
         self.next_slide()
         self.clear_scene()
@@ -460,7 +472,7 @@ class GlyphMapTransform(Slide):
 
         for cell, (src, dst, glyph_map, kwargs) in zip(cells, specs, strict=True):
             pair = VGroup(src, dst)
-            scale_to_fit_mobject(pair, cell)
+            scale_to_fit_mobject(pair, cell, buff=MED_SMALL_BUFF)
             cell.place(pair, ORIGIN)
             if np.allclose(src.get_center(), dst.get_center()):
                 dst.move_to(src)
@@ -652,10 +664,14 @@ class TrackingHelpers(Slide):
         )
         readout.scale(0.9)
         readout.next_to(face, DOWN, buff=0.5)
-        self.add(face, ticks, hand, readout)
-
         # `~vt` reads it; `vt @ x` returns an animate.set_value builder for play().
-        self.play(Write(self.canvas["showcase_title"]), angle @ (PI / 2), run_time=1.5)
+
+        self.play(
+            *(Write(mob) for mob in (self.canvas["showcase_title"], hand, readout)),
+            Create(ticks),
+            GrowFromCenter(face),
+        )
+        self.play(angle @ (PI / 2), run_time=1.5)
         self.next_slide()
         self.play(angle @ (5 * PI / 6), run_time=1.5)
         self.next_slide()
@@ -675,15 +691,13 @@ class ShapeAndDebug(Slide):
     def construct(self) -> None:
         # 6x4 grid of dots; group three subsets and surround each with a single
         # merged polygon (the rectangles for adjacent dots union together).
-        grid = VGroup(
-            *(
-                Dot(point=np.array([col - 2.5, row - 1.5, 0.0]) * 0.55, radius=0.12)
-                for row in range(4)
-                for col in range(6)
-            )
-        )
-        grid.set_color(GOLD)
-        self.region.place(grid, ORIGIN)
+        rows, cols = 4, 6
+        grid = VGroup(Dot(radius=0.15, color=GOLD) for _ in range(rows * cols))
+        grid.arrange_in_grid(rows=rows, cols=cols, buff=0.8)
+        region_a, region_b, region_c = self.region.split_regions(RIGHT, 3)
+        scale_to_fit_mobject(grid, region_b, buff=MED_LARGE_BUFF)
+        region_b.place(grid, ORIGIN)
+
         groups = (
             ([0, 1, 6, 7], RED),
             ([3, 4, 5, 9, 10, 11], GREEN),
@@ -693,39 +707,45 @@ class ShapeAndDebug(Slide):
             *(
                 SurroundingRectangleUnion(
                     *(grid[i] for i in indices),
-                    buff=0.18,
-                    unbuff=0.06,
+                    buff=grid[0].radius * 1.2,
+                    unbuff=grid[0].radius * 0.8,
                     corner_radius=0.12,
                     stroke_color=color,
                 )
                 for indices, color in groups
             )
         )
-        self.play(Write(self.canvas["showcase_title"]), FadeIn(grid))
+        self.play(Write(self.canvas["showcase_title"]), Create(grid))
         self.play(*(Write(u) for u in unions))
+        self.next_slide()
 
         # Multi-color index labels for a multi-string MathTex.
         eq = MathTex(r"\sin\!\left(", r"{a^2 + b^2}", r"\over", r"{3n + 1}", r"\right)")
-        eq.scale(1.2)
-        eq.next_to(grid, DOWN, buff=0.6)
+        scale_to_fit_mobject(eq, region_a, buff=MED_LARGE_BUFF)
+        region_a.place(eq, ORIGIN)
         labels = indexx_labels(eq)
         self.play(Write(eq), FadeIn(labels))
         self.next_slide()
 
         # bounding_box(always=True) tracks an animated mob.
-        target = MathTex(r"\Box")
-        target.scale(1.5)
-        target.move_to(LEFT * 4 + UP * 2)
-        bb = bounding_box(target, always=True, include_center=True)
-        self.play(Write(target), FadeIn(bb))
-        self.play(target.animate.shift(RIGHT * 2 + DOWN * 1.5).rotate(PI / 6), run_time=1.5)
+        bounding_rect = Rectangle()
+        scale_to_fit_mobject(bounding_rect, region_c, buff=LARGE_BUFF)
+        region_c.place(bounding_rect, UP)
+        bounding_rect_targ = bounding_rect.copy().rotate(PI / 6)
+        region_c.place(bounding_rect_targ, DOWN)
+        bb = bounding_box(bounding_rect, always=True, include_center=True)
+        self.play(Write(bounding_rect), FadeIn(bb))
+        self.play(
+            bounding_rect.animate.move_to(bounding_rect_targ.get_center()).rotate(PI / 6),
+            run_time=1.5,
+        )
         self.next_slide()
 
         # GhostSlideFade: drift+fade cue that cleans itself up.
-        ghost = MathTex(r"\swarrow")
-        ghost.scale(1.6)
-        ghost.move_to(grid.get_corner(UP + RIGHT))
-        self.play(GhostSlideFade(ghost, shift_vector=DOWN + LEFT, lifetime=1.5))
+        ghost = Circle()
+        scale_to_fit_mobject(ghost, region_c, buff=LARGE_BUFF)
+        self.region.place(ghost, UP)
+        self.play(GhostSlideFade(ghost, shift_vector=DOWN, lifetime=1.5))
         self.next_slide()
         self.clear_scene()
 
@@ -745,6 +765,7 @@ class ScalingHelpers(Slide):
         left, right = self.region.split_regions(RIGHT, 2)
 
         eq = MathTex(r"\int_{-\infty}^{\infty} e^{-x^{2}}\,dx = \sqrt{\pi}")
+        scale_to_fit_mobject(eq, left, buff=MED_LARGE_BUFF).scale(0.5)
         left.place(eq, ORIGIN)
         original_caption = Caption("original")
         original_caption.next_to(eq, DOWN, buff=0.4)
@@ -753,10 +774,10 @@ class ScalingHelpers(Slide):
         # ``scale_to_fit`` keeps aspect, picks the smallest required factor
         # to fit inside *all* supplied lengths, and subtracts a buff.
         fit = eq.copy()
-        scale_to_fit(fit, len_x=right.width, len_y=right.height, buff=0.4)
+        scale_to_fit(fit, len_x=right.width, len_y=right.height / 2, buff=MED_LARGE_BUFF)
         right.place(fit, ORIGIN)
         fit_caption = Caption("scale\\_to\\_fit(len\\_x, len\\_y, buff)")
-        fit_caption.next_to(fit, DOWN, buff=0.4)
+        fit_caption.next_to(fit, DOWN, buff=MED_LARGE_BUFF)
         self.play(Write(fit), Write(fit_caption))
         self.next_slide()
 
@@ -764,8 +785,9 @@ class ScalingHelpers(Slide):
         # so we can fit a copy of eq inside the bounding box of an existing
         # mobject (here, the original ``eq`` on the left).
         boxed = MathTex(r"\sum_{k=1}^{\infty} \frac{1}{k^{2}} = \frac{\pi^{2}}{6}")
-        scale_to_fit_mobject(boxed, eq, buff=0.1)
-        boxed.move_to(eq)
-        self.play(Write(boxed))
+        scale_to_fit_mobject(boxed, eq, buff=MED_SMALL_BUFF)
+        rect_surround = SurroundingRectangle(boxed, buff=0)
+        VGroup(boxed, rect_surround).move_to(eq.get_center())
+        self.play(Write(boxed), Create(rect_surround))
         self.next_slide()
         self.clear_scene()
