@@ -84,7 +84,7 @@ def _try_ffmpeg(
     """Extract a frame via the ``ffmpeg`` CLI if it's on PATH."""
     if shutil.which("ffmpeg") is None:
         return False
-    seek = ["-sseof", "-0.1"] if seek_from_end else ["-ss", "0.1"]
+    seek = ["-sseof", "-0.1"] if seek_from_end else ["-ss", "0"]
     args = [
         "ffmpeg",
         "-y",

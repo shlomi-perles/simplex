@@ -208,7 +208,7 @@ def test_generate_player_frames_can_reuse_cache_without_extracting_missing(
     )
 
     def fail_extract_frame(*_args: object, **_kwargs: object) -> bool:
-        pytest.fail("no-render builds must not extract frames")
+        pytest.fail("disabled missing-frame extraction must not extract frames")
 
     monkeypatch.setattr("simplex.render.thumbnail._extract_frame", fail_extract_frame)
     site_deck_dir = tmp_path / "site" / "decks" / "demo"

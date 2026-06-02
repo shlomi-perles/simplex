@@ -166,7 +166,7 @@ def _build_variant_output(
         manifest,
         site_deck_dir=output_dir,
         cache_dir=cache_dir,
-        extract_missing=render,
+        extract_missing=True,
     )
     enriched = tuple(
         main.model_copy(update={"thumbnail": thumbs.get(main.index)})
@@ -334,9 +334,9 @@ def _theme_asset(
     sub = _sub_at(main, sub_idx)
     frames = built.player_frames.get((int(main.index), sub_idx), {})
     fallback = built.thumbs.get(int(main.index))
-    first_frame = frames.get("first") or fallback
-    last_frame = frames.get("last") or first_frame
     has_video = sub is not None and sub.video is not None and sub.video.exists()
+    first_frame = frames.get("first") if has_video else frames.get("first") or fallback
+    last_frame = frames.get("last") or (fallback if has_video else first_frame)
     return {
         "video": _prefixed_path(
             prefix, _segment_path(int(main.index), sub_idx) if has_video else None
@@ -430,7 +430,9 @@ def _initial_player_frames(
         if not isinstance(variant, str) or not isinstance(raw_asset, dict):
             continue
         frame = (
-            raw_asset.get("firstFrame") or raw_asset.get("lastFrame") or raw_asset.get("thumbnail")
+            raw_asset.get("firstFrame")
+            or (None if raw_asset.get("video") else raw_asset.get("lastFrame"))
+            or raw_asset.get("thumbnail")
         )
         if isinstance(frame, str) and frame:
             out[variant] = frame
