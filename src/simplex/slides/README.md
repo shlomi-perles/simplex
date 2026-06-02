@@ -37,7 +37,7 @@ Slide numbering and a wall clock are presentation chrome, not rendered
 chrome: they're driven by the RevealJS template / `[web]` deck overrides
 (see `simplex.web`), so they survive without being re-rendered.
 
-Reusable mobjects (`Node`, `Edge`, `ArrayMob`, ...) live in
+Reusable mobjects (`Node`, `Edge`, `Array`, ...) live in
 `simplex.mobjects`, not here.
 
 ## Don't

@@ -1,412 +1,689 @@
-"""ArrayMob, ArrayEntry, ArrayPointer -- ported and cleaned from Simplex.
+"""One-dimensional array mobjects for algorithm visualizations.
 
-Vanilla Manim mobjects. No factories; no wrapping. Authors construct directly::
-
-    arr = ArrayMob(\"A:\", \"-\", \"8\", \"1\", \"3\", show_indices=True, starting_index=1)
-    self.play(Write(arr))
-    self.play(arr.animate.at(1, \"b\"))  # `.at` is sync; wrap in `.animate` to animate.
-    self.play(arr.indicate_at(1))
-    self.play(arr.push(\"5\"))
-    self.play(arr.swap(1, 3))
+``Array`` models fixed array slots: frames and indices belong to positions,
+while values are the content that changes or moves between positions. Structural
+helpers such as insert/remove shift slots; swap helpers animate the values.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from typing import Any, cast
 
 import numpy as np
 from manim import (
-    DEFAULT_FONT_SIZE,
     DOWN,
     LEFT,
     MED_LARGE_BUFF,
     ORIGIN,
     RIGHT,
     SMALL_BUFF,
-    TAU,
     UP,
     Animation,
     AnimationGroup,
-    ArcBetweenPoints,
-    FadeIn,
-    FadeOut,
+    Arrow,
     Indicate,
     MathTex,
     Mobject,
-    MoveAlongPath,
     Square,
     Tex,
-    Text,
-    Vector,
+    Transform,
     VGroup,
     VMobject,
 )
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 
 from simplex.engine.opengl_compat import MobjectLike, is_mobject
+from simplex.engine.region import Region
+from simplex.engine.scaling import scale_to_fit
 from simplex.theme.context import get_active_theme
 
-_DEFAULT_CHAR = "-"
-_VALUE_HEIGHT_FRACTION = 0.65
-_INDEX_HEIGHT_FRACTION = 0.18
-_INDEX_BUFF = 0.12
+type CellValue = str | int | float | MobjectLike | None
+type LabelFactory = Callable[[CellValue], MobjectLike]
+
+_PHANTOM_VALUE = r"\phantom{0}"
+_CARDINAL_DIRECTIONS = (UP, DOWN, LEFT, RIGHT)
 
 
-def _is_blank(x: Any) -> bool:
-    return x is None or x == ""
+def _is_blank(value: CellValue) -> bool:
+    return not is_mobject(value) and (value is None or value == "")
 
 
-class ArrayEntry(VGroup, metaclass=ConvertToOpenGL):
-    """One cell of an ArrayMob: a frame + value + optional index label."""
+def _copy_if_mobject(value: CellValue) -> MobjectLike | None:
+    if not is_mobject(value):
+        return None
+    return cast(MobjectLike, cast(Any, value).copy())
+
+
+def _as_point(point: np.ndarray | Iterable[float]) -> np.ndarray:
+    arr = np.asarray(point, dtype=float)
+    if arr.shape == (2,):
+        arr = np.append(arr, 0.0)
+    if arr.shape != (3,):
+        raise ValueError(f"point must be a 2D or 3D vector, got shape {arr.shape}")
+    return arr
+
+
+def _as_cardinal(direction: np.ndarray | Iterable[float]) -> np.ndarray:
+    arr = _as_point(direction)
+    signs = np.sign(arr).astype(float)
+    if not any(np.allclose(signs, candidate) for candidate in _CARDINAL_DIRECTIONS):
+        raise ValueError(
+            "direction must be one of Manim's cardinal vectors: UP, DOWN, LEFT, or RIGHT"
+        )
+    return signs
+
+
+def _is_horizontal(direction: np.ndarray) -> bool:
+    return bool(abs(direction[0]) > 0)
+
+
+def _coerce_values(values: Iterable[CellValue] | CellValue | None) -> list[CellValue]:
+    if values is None:
+        return []
+    if isinstance(values, str | int | float) or is_mobject(values):
+        return [values]
+    return list(values)
+
+
+def _default_label(value: CellValue, *, color: str, config: dict[str, Any]) -> MobjectLike:
+    copied = _copy_if_mobject(value)
+    if copied is not None:
+        copied.set_color(color)
+        return copied
+    opts = dict(config)
+    opts.setdefault("color", color)
+    return MathTex(_PHANTOM_VALUE if _is_blank(value) else str(value), **opts)
+
+
+class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
+    """A single array slot: frame, centered value, and optional index label."""
 
     def __init__(
         self,
-        value: float | str,
-        index: int | str | Tex | MathTex | Text,
+        value: CellValue = None,
         *,
-        index_scale: float = 1.0,
+        index: CellValue = None,
+        side_length: float = 0.85,
+        value_scale: float = 0.72,
+        index_scale: float = 0.28,
+        inner_buff: float = 0.08,
+        index_direction: np.ndarray | Iterable[float] = DOWN,
+        index_buff: float = SMALL_BUFF,
         frame_type: type[VMobject] = Square,
-        index_pos: np.ndarray | None = None,
         frame_config: dict[str, Any] | None = None,
         value_config: dict[str, Any] | None = None,
         index_config: dict[str, Any] | None = None,
+        value_factory: LabelFactory | None = None,
+        index_factory: LabelFactory | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.value = value
-        self.index = index
+        theme = get_active_theme()
+
+        self.value: CellValue = value
+        self.index: CellValue = index
+        self.value_scale = value_scale
         self.index_scale = index_scale
-        self.frame_type = frame_type
-        self.index_pos = np.array(DOWN) if index_pos is None else np.copy(index_pos)
-        self.frame_config = frame_config or {}
-        self.value_config = value_config or {}
-        self.index_config = index_config or {}
+        self.inner_buff = inner_buff
+        self.index_direction = _as_cardinal(index_direction)
+        self.index_buff = index_buff
+        self.value_config = dict(value_config or {})
+        self.index_config = dict(index_config or {})
+        self.value_factory = value_factory
+        self.index_factory = index_factory
+        self.value_color = self.value_config.pop("color", theme.palette.font)
+        self.index_color = self.index_config.pop("color", theme.palette.label)
 
-        self.frame: VMobject = self.frame_type(**self.frame_config)
-        self.value_mob: VMobject = self._make_label(self.value, self.value_config)
-        self.index_mob: VMobject = (
-            self.index
-            if isinstance(self.index, (Tex, MathTex, Text))
-            else self._make_label(self.index, self.index_config)
-        )
+        frame_opts = dict(frame_config or {})
+        frame_opts.setdefault("side_length", side_length)
+        frame_opts.setdefault("stroke_color", theme.palette.edge)
+        frame_opts.setdefault("stroke_width", 2.4)
+        frame_opts.setdefault("fill_color", theme.palette.background)
+        frame_opts.setdefault("fill_opacity", 0.0)
+        self.frame: VMobject = frame_type(**frame_opts)
 
-        if _is_blank(self.value):
-            self.value_mob.set_opacity(0).scale(0.2)
-        if _is_blank(self.index):
-            self.index_mob.set_opacity(0).scale(0.2)
-
+        self.value_mobject = self.make_value_mobject(value)
+        self.index_mobject: MobjectLike | None = None
+        if not _is_blank(index):
+            self.index_mobject = self.make_index_mobject(index)
+        self._sync_submobjects()
         self._place_value()
-        if self.index:
-            self._place_index()
-        self.add(self.frame, self.value_mob, self.index_mob)
+        self._place_index()
 
-    @staticmethod
-    def _make_label(content: Any, config: dict[str, Any]) -> Tex:
-        return Tex(_DEFAULT_CHAR if _is_blank(content) else str(content), **config)
+    @property
+    def frame_center(self) -> np.ndarray:
+        """Return the center of the slot frame, ignoring external labels."""
+        return np.asarray(self.frame.get_center(), dtype=float)
 
-    def _place_value(self) -> ArrayEntry:
-        self.value_mob.move_to(self.frame)
-        target = self.frame.height * _VALUE_HEIGHT_FRACTION
-        if self.value_mob.width < self.value_mob.height:
-            self.value_mob.scale_to_fit_height(target)
-        else:
-            self.value_mob.scale_to_fit_width(target)
-        if _is_blank(self.value):
-            self.value_mob.scale(0.1)
+    def move_frame_to(self, point: np.ndarray | Iterable[float]) -> ArrayCell:
+        """Move the whole cell so the frame center lands on ``point``."""
+        self.shift(_as_point(point) - self.frame_center)
         return self
 
-    def _place_index(self) -> ArrayEntry:
-        self.index_mob.scale_to_fit_height(
-            self.frame.height * _INDEX_HEIGHT_FRACTION * self.index_scale,
+    def make_value_mobject(self, value: CellValue) -> MobjectLike:
+        """Build and fit a value label for this cell without installing it."""
+        mob = (
+            self.value_factory(value)
+            if self.value_factory is not None
+            else _default_label(value, color=self.value_color, config=self.value_config)
         )
-        self.index_mob.next_to(
-            self.frame,
-            self.index_pos,
-            buff=-(self.index_mob.height + _INDEX_BUFF),
-        )
-        self.index_mob.align_to(self.frame, RIGHT).shift(LEFT * _INDEX_BUFF)
-        return self
-
-    def set_value(self, value: float | str) -> ArrayEntry:
-        self.value = value
-        self.value_mob.become(self._make_label(value, self.value_config))
         if _is_blank(value):
-            self.value_mob.set_opacity(0).scale(0.2)
-        self._place_value()
-        return self
+            mob.set_opacity(0.0)
+        self._fit_value_mobject(mob)
+        return mob
 
-    def set_index(self, index: int | str | Tex | MathTex | Text) -> ArrayEntry:
-        self.index = index
-        new = (
-            index
-            if isinstance(index, (Tex, MathTex, Text))
-            else self._make_label(index, self.index_config)
+    def make_index_mobject(self, index: CellValue) -> MobjectLike:
+        """Build and fit an index label for this cell without installing it."""
+        mob = (
+            self.index_factory(index)
+            if self.index_factory is not None
+            else _default_label(index, color=self.index_color, config=self.index_config)
         )
-        self.index_mob.become(new)
-        if _is_blank(index):
-            self.index_mob.set_opacity(0).scale(0.2)
+        self._fit_index_mobject(mob)
+        return mob
+
+    def set_value(self, value: CellValue) -> ArrayCell:
+        """Synchronously replace the value label."""
+        self.value = value
+        self.value_mobject = self.make_value_mobject(value)
+        self._sync_submobjects()
+        self._place_value()
         self._place_index()
         return self
 
+    def set_index(self, index: CellValue) -> ArrayCell:
+        """Synchronously replace, add, or remove the index label."""
+        self.index = index
+        self.index_mobject = None if _is_blank(index) else self.make_index_mobject(index)
+        self._sync_submobjects()
+        self._place_value()
+        self._place_index()
+        return self
 
-class ArrayMob(VGroup, metaclass=ConvertToOpenGL):
-    """A named horizontal array of cells with animation helpers.
+    def highlight(self, color: str | None = None, **kwargs: Any) -> Animation:
+        """Return an attention animation for this cell."""
+        color = color or get_active_theme().palette.accent
+        return Indicate(self, color=color, **kwargs)
 
-    Indices are author-facing (start at ``starting_index``). Internal storage
-    is dense -- ``get_entry(i)`` translates to ``self.entries[i - starting_index]``.
+    def _sync_submobjects(self) -> None:
+        self.remove(*tuple(self.submobjects))
+        self.add(self.frame, cast(Any, self.value_mobject))
+        if self.index_mobject is not None:
+            self.add(cast(Any, self.index_mobject))
+
+    def _content_region(self) -> Region:
+        region = Region(
+            top=self.frame.get_top(),
+            bottom=self.frame.get_bottom(),
+            left=self.frame.get_left(),
+            right=self.frame.get_right(),
+        )
+        buff = min(self.inner_buff, self.frame.width / 3, self.frame.height / 3)
+        region.shrink(top=buff, bottom=buff, left=buff, right=buff)
+        return region
+
+    def _fit_value_mobject(self, mob: MobjectLike) -> None:
+        region = self._content_region()
+        scale_to_fit(
+            cast(Mobject, mob),
+            len_x=region.width * self.value_scale,
+            len_y=region.height * self.value_scale,
+        )
+        region.place(cast(Mobject, mob), ORIGIN)
+
+    def _fit_index_mobject(self, mob: MobjectLike) -> None:
+        scale_to_fit(
+            cast(Mobject, mob),
+            len_x=self.frame.width * 0.75,
+            len_y=self.frame.height * self.index_scale,
+        )
+
+    def _place_value(self) -> None:
+        self._fit_value_mobject(self.value_mobject)
+
+    def _place_index(self) -> None:
+        if self.index_mobject is None:
+            return
+        self._fit_index_mobject(self.index_mobject)
+        cast(Mobject, self.index_mobject).next_to(
+            self.frame,
+            self.index_direction,
+            buff=self.index_buff,
+        )
+
+
+class Array(VGroup, metaclass=ConvertToOpenGL):
+    """A theme-aware, one-dimensional array visualization.
+
+    ``index`` arguments use the visible array indices, i.e. ``start_index`` is
+    subtracted internally before indexing ``cells``.
     """
 
     def __init__(
         self,
-        name: str,
-        *values: Any,
-        name_config: dict[str, Any] | None = None,
-        name_scale: float = 1.0,
+        values: Iterable[CellValue] | CellValue | None = None,
+        *,
+        label: CellValue = None,
         show_indices: bool = False,
-        indices_pos: np.ndarray | None = None,
-        indices_scale: float = 1.0,
-        starting_index: int = 0,
-        align_point: np.ndarray | None = None,
-        frame_config: dict[str, Any] | None = None,
-        value_config: dict[str, Any] | None = None,
-        indices_config: dict[str, Any] | None = None,
+        start_index: int = 0,
+        direction: np.ndarray | Iterable[float] = RIGHT,
+        cell_buff: float = 0.0,
+        label_buff: float = MED_LARGE_BUFF,
+        cell_config: dict[str, Any] | None = None,
+        label_config: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        self.array_name = name
-        self.values = values
-        self.name_config = name_config or {}
-        self.name_scale = name_scale
+        self.start_index = start_index
         self.show_indices = show_indices
-        self.indices_pos = np.array(UP) if indices_pos is None else np.copy(indices_pos)
-        self.indices_scale = indices_scale
-        self.starting_index = starting_index
-        self.align_point = np.array(ORIGIN) if align_point is None else np.copy(align_point)
-        self._entry_kwargs: dict[str, Any] = {
-            "frame_config": frame_config or {},
-            "value_config": value_config or {},
-            "index_config": indices_config or {},
-        }
+        self.direction = _as_cardinal(direction)
+        self.cell_buff = cell_buff
+        self.label_buff = label_buff
+        self.cell_config = dict(cell_config or {})
+        self.label_config = dict(label_config or {})
 
-        self.entries: VGroup = VGroup()
-        self.name_mob: Tex
-        self.reference_entry: ArrayEntry
-        self._build()
+        self.label_mobject = self._make_label(label)
+        self.cells = VGroup()
+        if self.label_mobject is not None:
+            self.add(cast(Any, self.label_mobject))
+        self.add(self.cells)
+
+        for value in _coerce_values(values):
+            self.cells.add(self._make_cell(value, len(self.cells)))
+        self.relayout(anchor_point=ORIGIN)
         self.center()
 
-    def _build(self) -> None:
-        name_font = 3.5 * DEFAULT_FONT_SIZE * self.name_scale
-        self.name_mob = Tex(self.array_name, font_size=name_font, **self.name_config)
-        self.reference_entry = ArrayEntry(0, 0, **self._entry_kwargs).set_opacity(0)
-        self.add(VGroup(self.name_mob, self.reference_entry))
-
-        for idx, val in enumerate(self.values, start=self.starting_index):
-            self.entries += ArrayEntry(
-                val,
-                idx if self.show_indices else "",
-                index_scale=self.indices_scale,
-                index_pos=self.indices_pos,
-                **self._entry_kwargs,
-            )
-        self.entries.arrange(buff=0)
-        self.add(*self.entries)
-
-        self.name_mob.next_to(self.align_point, LEFT, buff=0)
-        self.entries.next_to(self.name_mob, RIGHT, buff=MED_LARGE_BUFF)
-        self.reference_entry.move_to(self.entries[0])
-
-    def get_entry(self, index: int) -> ArrayEntry:
-        return cast(ArrayEntry, self.entries[index - self.starting_index])
-
-    def at(self, index: int, value: float | str) -> ArrayEntry:
-        """Synchronously update one cell's value (returns the entry; not an animation)."""
-        return self.get_entry(index).set_value(value)
-
-    def indicate_at(
-        self,
-        index: int,
+    @classmethod
+    def from_region(
+        cls,
+        region: Region,
+        values: Iterable[CellValue] | CellValue | None = None,
         *,
-        color: str | None = None,
-        preserve_color: bool = True,
+        anchor: np.ndarray | Iterable[float] = ORIGIN,
+        buff: float = 0.0,
+        scale: bool = False,
         **kwargs: Any,
-    ) -> AnimationGroup:
-        theme = get_active_theme()
-        color = color or theme.palette.accent
-        entry = self.get_entry(index)
-        if preserve_color:
-            entry.set_color(color)
-        entry.set_z_index(self.get_z_index() + 1)
-        return AnimationGroup(Indicate(entry, **kwargs))
+    ) -> Array:
+        """Create an array and place it inside a ``Region``."""
+        array = cls(values, **kwargs)
+        array.fit_to_region(region, anchor=anchor, buff=buff, scale=scale)
+        return array
+
+    @property
+    def values(self) -> tuple[CellValue, ...]:
+        """Current values in visible index order."""
+        return tuple(cell.value for cell in self.iter_cells())
+
+    def iter_cells(self) -> tuple[ArrayCell, ...]:
+        """Return cells in visible index order."""
+        return tuple(cast(ArrayCell, cell) for cell in self.cells)
+
+    def cell(self, index: int) -> ArrayCell:
+        """Return the cell at visible ``index``."""
+        return self._cell_at_offset(self._offset_for_index(index))
+
+    def get_entry(self, index: int) -> ArrayCell:
+        """Compatibility alias for :meth:`cell`."""
+        return self.cell(index)
+
+    def set_value(self, index: int, value: CellValue) -> Array:
+        """Synchronously replace the value at visible ``index``."""
+        self.cell(index).set_value(value)
+        return self
+
+    def at(self, index: int, value: CellValue) -> Array:
+        """Compatibility alias for :meth:`set_value`."""
+        return self.set_value(index, value)
+
+    def append(self, value: CellValue) -> Array:
+        """Synchronously append a new cell."""
+        self._insert_cell_at_offset(len(self.cells), value)
+        return self
+
+    def prepend(self, value: CellValue) -> Array:
+        """Synchronously prepend a new cell."""
+        self._insert_cell_at_offset(0, value)
+        return self
+
+    def insert_at(self, index: int, value: CellValue) -> Array:
+        """Synchronously insert before visible ``index``.
+
+        Passing ``start_index + len(cells)`` appends.
+        """
+        self._insert_cell_at_offset(self._offset_for_index(index, allow_end=True), value)
+        return self
+
+    def remove_at(self, index: int) -> Array:
+        """Synchronously remove the cell at visible ``index``."""
+        self._remove_cell_at_offset(self._offset_for_index(index))
+        return self
+
+    def swap(self, i: int, j: int) -> Array:
+        """Synchronously swap values between two visible indices."""
+        if i == j:
+            return self
+        cell_i = self.cell(i)
+        cell_j = self.cell(j)
+        value_i = cell_i.value
+        value_j = cell_j.value
+        cell_i.set_value(value_j)
+        cell_j.set_value(value_i)
+        return self
+
+    def relayout(
+        self,
+        *,
+        anchor_index: int = 0,
+        anchor_point: np.ndarray | Iterable[float] | None = None,
+    ) -> Array:
+        """Recompute cell positions while pinning one frame center."""
+        if len(self.cells) == 0:
+            if self.label_mobject is not None and anchor_point is not None:
+                cast(Mobject, self.label_mobject).move_to(_as_point(anchor_point))
+            return self
+
+        anchor_index = int(np.clip(anchor_index, 0, len(self.cells) - 1))
+        anchor = (
+            self._cell_at_offset(anchor_index).frame_center
+            if anchor_point is None
+            else _as_point(anchor_point)
+        )
+        step = self._step_vector()
+        origin = anchor - step * anchor_index
+        for offset, cell in enumerate(self.iter_cells()):
+            cell.move_frame_to(origin + step * offset)
+        self._place_label()
+        return self
+
+    def fit_to_region(
+        self,
+        region: Region,
+        *,
+        anchor: np.ndarray | Iterable[float] = ORIGIN,
+        buff: float = 0.0,
+        scale: bool = False,
+    ) -> Array:
+        """Optionally scale the array, then place it inside ``region``."""
+        if scale:
+            scale_to_fit(self, len_x=region.width, len_y=region.height, buff=buff)
+        region.place(self, anchor, buff=buff)
+        return self
+
+    def indicate(self, index: int, color: str | None = None, **kwargs: Any) -> Animation:
+        """Return an attention animation for one cell."""
+        return self.cell(index).highlight(color=color, **kwargs)
+
+    def indicate_at(self, index: int, color: str | None = None, **kwargs: Any) -> Animation:
+        """Compatibility alias for :meth:`indicate`."""
+        return self.indicate(index, color=color, **kwargs)
+
+    def animate_set_value(self, index: int, value: CellValue, **kwargs: Any) -> AnimationGroup:
+        """Animate replacing one value."""
+        from simplex.mobjects.array_animations import animate_set_value
+
+        return animate_set_value(self, index, value, **kwargs)
+
+    def animate_append(self, value: CellValue, **kwargs: Any) -> AnimationGroup:
+        """Animate appending a cell."""
+        from simplex.mobjects.array_animations import animate_insert
+
+        index = self.start_index + len(self.cells)
+        return animate_insert(self, index, value, **kwargs)
+
+    def animate_prepend(self, value: CellValue, **kwargs: Any) -> AnimationGroup:
+        """Animate prepending a cell."""
+        from simplex.mobjects.array_animations import animate_insert
+
+        return animate_insert(self, self.start_index, value, **kwargs)
+
+    def animate_insert_at(self, index: int, value: CellValue, **kwargs: Any) -> AnimationGroup:
+        """Animate inserting a cell before visible ``index``."""
+        from simplex.mobjects.array_animations import animate_insert
+
+        return animate_insert(self, index, value, **kwargs)
+
+    def animate_remove(self, index: int | None = None, **kwargs: Any) -> AnimationGroup:
+        """Animate removing one cell. Defaults to the last cell."""
+        from simplex.mobjects.array_animations import animate_remove
+
+        if index is None:
+            index = self.start_index + len(self.cells) - 1
+        return animate_remove(self, index, **kwargs)
+
+    def animate_swap(self, i: int, j: int, **kwargs: Any) -> AnimationGroup:
+        """Animate swapping values between two visible indices."""
+        from simplex.mobjects.array_animations import animate_swap
+
+        return animate_swap(self, i, j, **kwargs)
 
     def push(
         self,
-        value: int | str,
+        value: CellValue,
         *,
-        side: np.ndarray = RIGHT,
+        side: np.ndarray | Iterable[float] = RIGHT,
         **kwargs: Any,
-    ) -> Animation:
-        side = np.array(side)
-        new_entry = ArrayEntry(
-            value,
-            len(self.entries) + self.starting_index if self.show_indices else "",
-            index_scale=self.indices_scale,
-            index_pos=self.indices_pos,
-            **self._entry_kwargs,
-        ).match_height(self.reference_entry)
-
-        if len(self.entries) == 0 or np.allclose(side, LEFT):
-            new_entry.move_to(self.reference_entry)
-        else:
-            new_entry.next_to(self.entries[-1], side, buff=0)
-
+    ) -> AnimationGroup:
+        """Compatibility alias for animated append/prepend."""
+        side = _as_cardinal(side)
         if np.allclose(side, LEFT):
-            self.entries.insert(0, new_entry)
-            self.add(new_entry)
-            tail = cast(VGroup, self.entries[1:])
-            return AnimationGroup(
-                FadeIn(new_entry, shift=-side, **kwargs),
-                cast(Animation, tail.animate.next_to(self.reference_entry, RIGHT, buff=0)),
-            )
-        self.entries.add(new_entry)
-        self.add(new_entry)
-        return FadeIn(new_entry, shift=-side, **kwargs)
+            return self.animate_prepend(value, **kwargs)
+        return self.animate_append(value, **kwargs)
 
-    def pop(
+    def pop(self, index: int | None = None, **kwargs: Any) -> AnimationGroup:
+        """Compatibility alias for :meth:`animate_remove`."""
+        return self.animate_remove(index, **kwargs)
+
+    def _make_label(self, label: CellValue) -> MobjectLike | None:
+        if _is_blank(label):
+            return None
+        copied = _copy_if_mobject(label)
+        if copied is not None:
+            return copied
+        theme = get_active_theme()
+        opts = dict(self.label_config)
+        opts.setdefault("color", theme.palette.font)
+        return Tex(str(label), **opts)
+
+    def _make_cell(self, value: CellValue, offset: int) -> ArrayCell:
+        index = self.start_index + offset if self.show_indices else None
+        return ArrayCell(value, index=index, **self.cell_config)
+
+    def _cell_at_offset(self, offset: int) -> ArrayCell:
+        return cast(ArrayCell, self.cells[offset])
+
+    def _offset_for_index(self, index: int, *, allow_end: bool = False) -> int:
+        offset = index - self.start_index
+        upper = len(self.cells) if allow_end else len(self.cells) - 1
+        if offset < 0 or offset > upper:
+            end = self.start_index + len(self.cells) - (0 if allow_end else 1)
+            raise IndexError(f"array index {index} out of range [{self.start_index}, {end}]")
+        return offset
+
+    def _insert_cell_at_offset(
         self,
-        index: int | None = None,
+        offset: int,
+        value: CellValue,
         *,
-        shift: np.ndarray = DOWN,
-        **kwargs: Any,
-    ) -> AnimationGroup:
-        index = len(self.entries) + self.starting_index - 1 if index is None else index
-        kwargs.setdefault("lag_ratio", 1)
+        relayout: bool = True,
+    ) -> ArrayCell:
+        old_first = self._cell_at_offset(0) if len(self.cells) else None
+        old_first_center = None if old_first is None else old_first.frame_center.copy()
+        cell = self._make_cell(value, offset)
+        self.cells.insert(offset, cell)
+        self._refresh_indices()
+        if relayout:
+            if old_first_center is None:
+                self.relayout(anchor_point=ORIGIN)
+            else:
+                anchor_offset = 1 if offset == 0 else 0
+                self.relayout(anchor_index=anchor_offset, anchor_point=old_first_center)
+        return cell
 
-        target = self.get_entry(index)
-        anims: list[Animation] = [FadeOut(target, shift=shift)]
-        self.remove(target)
-        self.entries.remove(target)
+    def _remove_cell_at_offset(self, offset: int, *, relayout: bool = True) -> ArrayCell:
+        removed = self._cell_at_offset(offset)
+        anchor_point: np.ndarray | None = None
+        anchor_index = 0
+        if len(self.cells) > 1:
+            if offset == 0:
+                anchor_point = removed.frame_center.copy()
+            else:
+                anchor_point = self._cell_at_offset(0).frame_center.copy()
+        self.cells.remove(removed)
+        self._refresh_indices()
+        if relayout and anchor_point is not None:
+            self.relayout(anchor_index=anchor_index, anchor_point=anchor_point)
+        return removed
 
-        if len(self.entries) == 0:
-            return AnimationGroup(*anims, **kwargs)
+    def _refresh_indices(self) -> None:
+        for offset, cell in enumerate(self.iter_cells()):
+            cell.set_index(self.start_index + offset if self.show_indices else None)
 
-        tail = cast(VGroup, self.entries[index - self.starting_index :])
-        remaining = VGroup(*tail)
-        if len(remaining) > 0:
-            anchor: Mobject = (
-                self.get_entry(index - 1) if index != self.starting_index else self.reference_entry
-            )
-            anims.append(cast(Animation, remaining.animate.next_to(anchor, RIGHT, buff=0)))
-        return AnimationGroup(*anims, **kwargs)
-
-    def swap(
-        self,
-        i: int,
-        j: int,
-        *,
-        arc_angle: float = TAU / 3,
-        **kwargs: Any,
-    ) -> AnimationGroup:
-        if i > j:
-            i, j = j, i
-        entry_i = self.get_entry(i)
-        entry_j = self.get_entry(j)
-        right_path = ArcBetweenPoints(
-            entry_i.get_center(),
-            entry_j.get_center(),
-            angle=arc_angle,
+    def _place_label(self) -> None:
+        if self.label_mobject is None or len(self.cells) == 0:
+            return
+        cast(Mobject, self.label_mobject).next_to(
+            self.cells,
+            -self.direction,
+            buff=self.label_buff,
         )
-        left_path = ArcBetweenPoints(
-            entry_j.get_center(),
-            entry_i.get_center(),
-            angle=arc_angle,
-        )
-        anim = AnimationGroup(
-            MoveAlongPath(entry_i, right_path),
-            MoveAlongPath(entry_j, left_path),
-            **kwargs,
-        )
-        a, b = i - self.starting_index, j - self.starting_index
-        subs = self.entries.submobjects
-        subs[a], subs[b] = subs[b], subs[a]
-        return anim
+
+    def _step_vector(self) -> np.ndarray:
+        if len(self.cells) == 0:
+            return self.direction
+        reference = self._cell_at_offset(0).frame
+        extent = reference.width if _is_horizontal(self.direction) else reference.height
+        return self.direction * (extent + self.cell_buff)
 
 
-class ArrayPointer(Vector):
-    """An arrow pointing at an ArrayMob entry, with an optional caption.
-
-    Animate moves between entries via ``pointer.to_entry(new_index)``.
-    """
+class ArrayPointer(VGroup, metaclass=ConvertToOpenGL):
+    """An arrow pointing at one ``Array`` cell, with an optional label."""
 
     def __init__(
         self,
-        array: ArrayMob,
+        array: Array,
         index: int,
-        text: str | MobjectLike | None = None,
+        label: CellValue = None,
         *,
-        text_scale: float = 0.6,
-        direction: np.ndarray | None = None,
-        change_value_color: bool = True,
-        value_color: str | None = None,
-        text_config: dict[str, Any] | None = None,
+        direction: np.ndarray | Iterable[float] = DOWN,
+        length: float = 0.55,
+        buff: float = SMALL_BUFF,
+        label_buff: float = SMALL_BUFF,
+        label_scale: float = 0.6,
+        label_config: dict[str, Any] | None = None,
+        color: str | None = None,
         **kwargs: Any,
     ) -> None:
+        super().__init__(**kwargs)
         theme = get_active_theme()
-        arrow_color: str = kwargs.setdefault("color", theme.palette.accent)
-        direction = np.array(DOWN) if direction is None else np.copy(direction)
-        super().__init__(direction, **kwargs)
-
         self.array = array
         self.index = index
-        self.arrow = self[0]
-        self.change_value_color = change_value_color
-        self.value_color = value_color or arrow_color
-        self.text_scale = text_scale
-        self.text_config = text_config or {}
-        self._base_z = array.get_z_index()
-        array.get_entry(index).set_z_index(self._base_z + 1)
-        self._position_arrow()
-        self.text_mob = self._make_text(text)
-        self.add(self.text_mob)
+        self.direction = _as_cardinal(direction)
+        self.buff = buff
+        self.label_buff = label_buff
+        self.label_scale = label_scale
+        self.label_config = dict(label_config or {})
+        self.pointer_color = color or theme.palette.accent
 
-    def _make_text(self, text: str | MobjectLike | None) -> MobjectLike:
-        if _is_blank(text):
-            return Text(".").set_opacity(0)
-        mob = text if is_mobject(text) else MathTex(str(text), **self.text_config)
-        mob.scale(self.text_scale)
-        mob.next_to(self.arrow, direction=-self.get_vector(), buff=SMALL_BUFF)
-        mob.set_color(self.get_color())
-        return mob
-
-    def _position_arrow(self) -> ArrayPointer:
-        return self.next_to(
-            self.array.get_entry(self.index),
-            direction=-self.get_vector(),
+        self.arrow = Arrow(
+            start=ORIGIN,
+            end=self.direction * length,
+            buff=0.0,
+            color=self.pointer_color,
+            max_tip_length_to_length_ratio=0.32,
         )
+        self.label_mobject = self._make_label(label)
+        self.add(self.arrow)
+        if self.label_mobject is not None:
+            self.add(cast(Any, self.label_mobject))
+        self._place()
+
+    def set_index(self, index: int, label: CellValue | None = None) -> ArrayPointer:
+        """Synchronously point at another cell."""
+        self.index = index
+        if label is not None:
+            self.set_label(label)
+        self._place()
+        return self
+
+    def set_label(self, label: CellValue) -> ArrayPointer:
+        """Synchronously replace the pointer label."""
+        if self.label_mobject is not None:
+            self.remove(cast(Mobject, self.label_mobject))
+        self.label_mobject = self._make_label(label)
+        if self.label_mobject is not None:
+            self.add(cast(Any, self.label_mobject))
+        self._place_label()
+        return self
+
+    def animate_to(
+        self,
+        index: int,
+        *,
+        label: CellValue | None = None,
+        **kwargs: Any,
+    ) -> Animation:
+        """Animate this pointer to another cell."""
+        target = self.copy()
+        target.array = self.array
+        target.index = index
+        if label is not None:
+            target.set_label(label)
+        target._place()
+        self.index = index
+        return Transform(self, target, **kwargs)
 
     def to_entry(
         self,
         index: int,
         *,
-        text: str | MobjectLike | None = None,
+        text: CellValue | None = None,
+        label: CellValue | None = None,
         **kwargs: Any,
-    ) -> AnimationGroup:
-        anims: list[Animation] = []
-        if self.change_value_color:
-            prev_entry = self.array.get_entry(self.index)
-            new_entry = self.array.get_entry(index)
-            reset_color = self.array.reference_entry.value_mob.get_color()
-            anims.append(
-                cast(
-                    Animation, prev_entry.animate.set_color(reset_color).set_z_index(self._base_z)
-                ),
-            )
-            anims.append(
-                cast(
-                    Animation,
-                    new_entry.animate.set_color(self.value_color).set_z_index(self._base_z + 1),
-                ),
-            )
-        self.index = index
-        if text is not None:
-            anims.append(cast(Animation, self.text_mob.animate.become(self._make_text(text))))
-        return AnimationGroup(*anims, cast(Animation, self.animate._position_arrow()), **kwargs)
+    ) -> Animation:
+        """Compatibility alias for :meth:`animate_to`."""
+        return self.animate_to(index, label=label if label is not None else text, **kwargs)
+
+    def _make_label(self, label: CellValue) -> MobjectLike | None:
+        if _is_blank(label):
+            return None
+        copied = _copy_if_mobject(label)
+        if copied is not None:
+            copied.scale(self.label_scale)
+            copied.set_color(self.pointer_color)
+            return copied
+        opts = dict(self.label_config)
+        opts.setdefault("color", self.pointer_color)
+        mob = MathTex(str(label), **opts)
+        mob.scale(self.label_scale)
+        return mob
+
+    def _place(self) -> None:
+        self.arrow.next_to(
+            self.array.cell(self.index).frame,
+            -self.direction,
+            buff=self.buff,
+        )
+        self._place_label()
+
+    def _place_label(self) -> None:
+        if self.label_mobject is None:
+            return
+        cast(Mobject, self.label_mobject).next_to(
+            self.arrow,
+            -self.direction,
+            buff=self.label_buff,
+        )
+
+
+ArrayEntry = ArrayCell
+ArrayMob = Array
+
+__all__ = [
+    "Array",
+    "ArrayCell",
+    "ArrayEntry",
+    "ArrayMob",
+    "ArrayPointer",
+    "CellValue",
+]

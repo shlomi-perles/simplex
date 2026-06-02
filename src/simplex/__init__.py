@@ -13,6 +13,8 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 _EXPORTS: dict[str, str] = {
+    "Array": "simplex.mobjects",
+    "ArrayCell": "simplex.mobjects",
     "ArrayEntry": "simplex.mobjects",
     "ArrayMob": "simplex.mobjects",
     "ArrayPointer": "simplex.mobjects",
@@ -124,6 +126,8 @@ if TYPE_CHECKING:
     from simplex.engine.text import Caption, TexPage, color_tex, search_shape_in_text
     from simplex.manifest import DeckManifest, MainSlide, Subsection
     from simplex.mobjects import (
+        Array,
+        ArrayCell,
         ArrayEntry,
         ArrayMob,
         ArrayPointer,

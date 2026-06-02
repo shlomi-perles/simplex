@@ -38,4 +38,4 @@ See `src/simplex/render/README.md` for the full cache + re-render semantics.
   - `engine.region`: direction anchors + `shrink` + `reset` + `split_regions(axis, k)`
   - `engine.animations`: `set_exit_animation` + `register_exit` + `clear_scene(exclude=...)`
   - `engine.scaling`: `scale_to_fit(len_x, len_y, buff)`
-  - `mobjects.graph` / `mobjects.array`: `Node`, `Edge`, `ArrayMob`, `ArrayPointer`
+  - `mobjects.graph` / `mobjects.array`: `Node`, `Edge`, `Array`, `ArrayPointer`

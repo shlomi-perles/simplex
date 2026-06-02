@@ -3,6 +3,8 @@
 from simplex import (
     SIMPLEX_DARK,
     SIMPLEX_LIGHT,
+    Array,
+    ArrayCell,
     BaseSlide,
     Caption,
     Paper,
@@ -18,6 +20,8 @@ from simplex.slides import ThreeDSlide as ThreeDSlideFromSlides
 
 
 def test_top_level_authoring_imports() -> None:
+    assert Array.__name__ == "Array"
+    assert ArrayCell.__name__ == "ArrayCell"
     assert Slide is SlideFromSlides
     assert ThreeDSlide is ThreeDSlideFromSlides
     assert BaseSlide is Slide

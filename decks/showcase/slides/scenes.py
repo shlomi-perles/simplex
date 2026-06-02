@@ -60,7 +60,7 @@ from simplex.engine.ghost_fade import GhostSlideFade
 from simplex.engine.glyph_map import TransformByGlyphMap
 from simplex.engine.scaling import scale_to_fit, scale_to_fit_mobject
 from simplex.engine.text import Caption, TexPage, color_tex
-from simplex.mobjects import ArrayMob, ArrayPointer, Edge, Node
+from simplex.mobjects import Array, ArrayPointer, Edge, Node
 from simplex.slides import OutlinePart, OutlineScene, Slide
 
 
@@ -228,7 +228,7 @@ class GraphAndArray(Slide):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(
-            footer="Components -- Node, Edge, ArrayMob, ArrayPointer",
+            footer="Components -- Node, Edge, Array, ArrayPointer",
         )
 
     def construct(self) -> None:
@@ -246,30 +246,26 @@ class GraphAndArray(Slide):
         # Edges before nodes so the nodes render on top of the connecting lines.
         self.play(FadeIn(*edges, n1, n2, n3))
 
-        arr = ArrayMob(
-            "A:",
-            "-",
-            "8",
-            "1",
-            "3",
-            "9",
+        arr = Array(
+            ["-", "8", "1", "3", "9"],
+            label="A:",
             show_indices=True,
-            starting_index=1,
+            start_index=1,
         )
         arr.scale(0.8)
         self.region.place(arr, DOWN, buff=0.6)
         self.play(Write(arr))
         self.next_slide()
 
-        self.play(arr.animate.at(1, "b"))
-        self.play(arr.indicate_at(2))
-        self.play(arr.push("5"))
-        self.play(arr.swap(2, 4))
+        self.play(arr.animate_set_value(1, "b"))
+        self.play(arr.indicate(2))
+        self.play(arr.animate_append("5"))
+        self.play(arr.animate_swap(2, 4))
         self.next_slide()
 
-        pointer = ArrayPointer(arr, 2, text="here")
+        pointer = ArrayPointer(arr, 2, label="here")
         self.play(Write(pointer))
-        self.play(pointer.to_entry(4))
+        self.play(pointer.animate_to(4))
         self.next_slide()
         self.clear_scene()
 

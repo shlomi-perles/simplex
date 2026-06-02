@@ -9,12 +9,11 @@ namespace convention.
   `ShrinkToCenter` exit animation.
 - `Edge` -- `Line` between two anchors with optional `MathTex` weight
   label at the midpoint.
-- `ArrayEntry` -- one cell of an `ArrayMob` (frame + value + optional
+- `ArrayCell` / `ArrayEntry` -- one array slot (frame + value + optional
   index label).
-- `ArrayMob` -- named horizontal array with animation helpers (`at`,
-  `indicate_at`, `push`, `pop`, `swap`).
-- `ArrayPointer` -- arrow pointing at an entry, with `to_entry(new_i)`
-  animation.
+- `Array` / `ArrayMob` -- one-dimensional array with animation helpers
+  (`animate_set_value`, `animate_append`, `animate_remove`, `animate_swap`).
+- `ArrayPointer` -- arrow pointing at a cell, with `animate_to(new_i)`.
 - `OutlineProgressBar` -- linspace-driven dot progress bar used by
   `simplex.slides.OutlineScene`.
 

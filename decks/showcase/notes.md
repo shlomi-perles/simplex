@@ -11,7 +11,7 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 | `TextHelpers` | `engine.text` | `Tex` body defaults, `Caption`, `TexPage` (default 20 cm + `width_cm` kwarg), `color_tex` |
 | `CodeHelpers` | `engine.code` | `code_block`, `highlight_code_lines`, `code_explain`, `transform_code_lines` |
 | `CodeWithMath` | `engine.code` | `code_with_math` -- inline LaTeX (`$...$`) in pseudocode, with `bold_math` + `math_color` styling |
-| `GraphAndArray` | `mobjects.graph` + `mobjects.array` | `Node`, `Edge`, `ArrayMob`, `ArrayPointer` |
+| `GraphAndArray` | `mobjects.graph` + `mobjects.array` | `Node`, `Edge`, `Array`, `ArrayPointer` |
 | `RegionAnchors` | `engine.region` | direction anchors (`UL`/`UR`/`DL`/`DR`/`ORIGIN`), `shrink`, `reset`, `split_regions(axis, k)` |
 | `ExitAnimations` | `engine.animations` | `set_exit_animation`, `register_exit`, `clear_scene(exclude=...)` |
 | `GeometryHelpers` | `engine.geometry` | `get_surrounding_rectangle` (rotated rect spanning two mobjects). For convex hulls, call vanilla `manim.ConvexHull` -- Simplex no longer wraps it. |

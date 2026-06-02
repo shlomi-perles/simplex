@@ -6,13 +6,15 @@ Slide, in a one-off Scene, or in a notebook. None of them require the
 slide system.
 """
 
-from simplex.mobjects.array import ArrayEntry, ArrayMob, ArrayPointer
+from simplex.mobjects.array import Array, ArrayCell, ArrayEntry, ArrayMob, ArrayPointer
 from simplex.mobjects.graph import Edge, Node
 from simplex.mobjects.outline import OutlineProgressBar
 from simplex.mobjects.paper import DismissPaper, Paper, PickPage, ShowPaper
 from simplex.mobjects.surface import ColorBar, ScalarFieldSurface, colorize_surface
 
 __all__ = [
+    "Array",
+    "ArrayCell",
     "ArrayEntry",
     "ArrayMob",
     "ArrayPointer",
