@@ -769,6 +769,11 @@
     function mediaKeyFor(main, sub, theme, asset) {
       return [main, sub, theme, asset.video || "", asset.firstFrame || "", asset.lastFrame || ""].join("|");
     }
+    function startPreviewFor(asset) {
+      if (!asset) return null;
+      if (asset.firstFrame) return asset.firstFrame;
+      return asset.video ? null : (asset.lastFrame || asset.thumbnail || null);
+    }
     function activeVideoSnapshot() {
       var video = activeVideo();
       if (!video || !video.classList.contains("is-active") || !videoRepresentsCurrent(video)) {
@@ -806,7 +811,7 @@
         ? null
         : isThemeSwap && themeSeekMode === "end"
         ? (asset.lastFrame || asset.firstFrame || asset.thumbnail)
-        : (asset.firstFrame || asset.lastFrame || asset.thumbnail);
+        : startPreviewFor(asset);
       var autoplay = options.autoplay === true;
       if (isThemeSwap) {
         if (preserveThemeTime) autoplay = prior.playing;
@@ -830,7 +835,7 @@
         preserveThemeTime ? captureFreeze(true) : !!(freeze && !freeze.hidden)
       );
       if (shouldFreeze && !freezeCaptured) {
-        previewSrc = asset.firstFrame || asset.lastFrame || asset.thumbnail;
+        previewSrc = startPreviewFor(asset);
       }
       if (isThemeSwap && !prior.video) {
         var staleActive = activeVideo();

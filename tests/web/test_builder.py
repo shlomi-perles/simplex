@@ -2,9 +2,30 @@
 
 from pathlib import Path
 
+import av
+import numpy as np
+
 from simplex.deck.config import SlideThemeConfig
 from simplex.web.builder import build
 from simplex.web.site_config import NavLink, SiteConfig
+
+
+def _write_solid_mp4(path: Path, color: tuple[int, int, int], frames: int = 6) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    width, height = 160, 90
+    array = np.zeros((height, width, 3), dtype=np.uint8)
+    array[:, :] = color
+    with av.open(str(path), mode="w") as container:
+        stream = container.add_stream("h264", rate=15)
+        stream.width = width
+        stream.height = height
+        stream.pix_fmt = "yuv420p"
+        for _ in range(frames):
+            frame = av.VideoFrame.from_ndarray(array, format="rgb24")
+            for packet in stream.encode(frame):
+                container.mux(packet)
+        for packet in stream.encode():
+            container.mux(packet)
 
 
 def _write_deck(root: Path, slug: str, title: str, *, scenes: tuple[str, ...] = ()) -> None:
@@ -234,6 +255,38 @@ def test_build_player_manifest_includes_vertical_subslides(tmp_path: Path) -> No
     assert '"subIndex": 0' in html
     assert '"subIndex": 1' in html
     assert '"video": "themes/dark/segments/0001_01.mp4"' in html
+
+
+def test_no_render_build_generates_player_start_frames_for_existing_videos(
+    tmp_path: Path,
+) -> None:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir, "alpha", "Alpha", scenes=("Intro",))
+    site_dir = tmp_path / "site"
+    for variant, color in {"dark": (40, 80, 180), "light": (210, 230, 245)}.items():
+        variant_dir = site_dir / "decks" / "alpha" / "themes" / variant
+        media_dir = variant_dir / "media"
+        slides_dir = variant_dir / "slides"
+        slides_dir.mkdir(parents=True)
+        _write_solid_mp4(media_dir / "intro.mp4", color=color)
+        (slides_dir / "Intro.json").write_text(
+            '{"slides":[{"file":"media/intro.mp4"}]}',
+            encoding="utf-8",
+        )
+
+    build(
+        decks_dir=decks_dir,
+        site_dir=site_dir,
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+
+    html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
+    assert '"firstFrame": "themes/dark/player-frames/' in html
+    assert '"lastFrame": "themes/dark/player-frames/' in html
+    assert '"thumbnail": "themes/dark/thumbs/' in html
+    assert list((site_dir / "decks" / "alpha" / "themes" / "dark" / "player-frames").glob("*.jpg"))
 
 
 def test_build_emits_section_pages_and_orders(tmp_path: Path) -> None:
