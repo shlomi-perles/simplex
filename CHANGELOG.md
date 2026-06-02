@@ -4,6 +4,32 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.12.1...manim-simplex-v0.13.0) (2026-06-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **slides:** Region.always.place(...) has been removed. Use Region.always_place(...) to keep a mobject anchored to a Region.
+
+### Features
+
+* **engine:** improve TexPage and showcase layout helpers ([c7d9327](https://github.com/shlomi-perles/simplex/commit/c7d9327972f1b65c9a05acfd70cc53c7cb912570))
+* **mobjects:** rewrite array mobject and animations ([79a1c09](https://github.com/shlomi-perles/simplex/commit/79a1c09255500e3333a2c9f293b87bc8e39376be))
+
+
+### Bug Fixes
+
+* **mobjects:** refine array mobject layout ([1f9cbf0](https://github.com/shlomi-perles/simplex/commit/1f9cbf0d550600e22ba7c322559b0ced2bf401d2))
+* **opengl:** support showcase partial render smoke tests ([892f25f](https://github.com/shlomi-perles/simplex/commit/892f25f88cdf107805739d262dcc226d70333b73))
+* **slides:** keep final frames inside slide sections ([50f68a4](https://github.com/shlomi-perles/simplex/commit/50f68a4cae42f3db713856e017b7315060870deb))
+* **theme:** refine layout and theme defaults ([f7a6c72](https://github.com/shlomi-perles/simplex/commit/f7a6c72b3875b27d2402dc181160b39b3c199fda))
+
+
+### Documentation
+
+* **showcase:** refresh slide scenes ([368d930](https://github.com/shlomi-perles/simplex/commit/368d93021bd715e333862d03e2f874877c32448e))
+* **showcase:** update showcase scenes ([ed36745](https://github.com/shlomi-perles/simplex/commit/ed367453f60ec427cdccc409dff6a378b05e313f))
+
 ## [0.12.1](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.12.0...manim-simplex-v0.12.1) (2026-06-02)
 
 
