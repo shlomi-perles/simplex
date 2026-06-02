@@ -13,8 +13,8 @@ from typing import Any, cast
 import numpy as np
 from manim import (
     DOWN,
+    DR,
     LEFT,
-    MED_LARGE_BUFF,
     ORIGIN,
     RIGHT,
     SMALL_BUFF,
@@ -43,6 +43,13 @@ type LabelFactory = Callable[[CellValue], MobjectLike]
 
 _PHANTOM_VALUE = r"\phantom{0}"
 _CARDINAL_DIRECTIONS = (UP, DOWN, LEFT, RIGHT)
+_VALUE_SIZE_FRACTION = 4 / 5
+_LABEL_SIZE_FRACTION = 4 / 5
+_LABEL_BUFF_FRACTION = 1 / 5
+_INDEX_SIZE_FRACTION = 1 / 4
+_INDEX_INSET_FRACTION = 1 / 20
+_POINTER_LENGTH_FRACTION = 1 / 2
+_POINTER_LABEL_SCALE = 1 / 2
 
 
 def _is_blank(value: CellValue) -> bool:
@@ -74,6 +81,14 @@ def _as_cardinal(direction: np.ndarray | Iterable[float]) -> np.ndarray:
     return signs
 
 
+def _as_anchor(anchor: np.ndarray | Iterable[float]) -> np.ndarray:
+    arr = _as_point(anchor)
+    signs = np.sign(arr).astype(float)
+    if np.allclose(signs, ORIGIN):
+        raise ValueError("anchor must point to an edge or corner, not ORIGIN")
+    return signs
+
+
 def _is_horizontal(direction: np.ndarray) -> bool:
     return bool(abs(direction[0]) > 0)
 
@@ -86,14 +101,11 @@ def _coerce_values(values: Iterable[CellValue] | CellValue | None) -> list[CellV
     return list(values)
 
 
-def _default_label(value: CellValue, *, color: str, config: dict[str, Any]) -> MobjectLike:
+def _default_label(value: CellValue, *, config: dict[str, Any]) -> MobjectLike:
     copied = _copy_if_mobject(value)
     if copied is not None:
-        copied.set_color(color)
         return copied
-    opts = dict(config)
-    opts.setdefault("color", color)
-    return MathTex(_PHANTOM_VALUE if _is_blank(value) else str(value), **opts)
+    return MathTex(_PHANTOM_VALUE if _is_blank(value) else str(value), **config)
 
 
 class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
@@ -104,12 +116,11 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
         value: CellValue = None,
         *,
         index: CellValue = None,
-        side_length: float = 0.85,
-        value_scale: float = 0.72,
-        index_scale: float = 0.28,
-        inner_buff: float = 0.08,
-        index_direction: np.ndarray | Iterable[float] = DOWN,
-        index_buff: float = SMALL_BUFF,
+        frame_scale: float = 1.0,
+        value_scale: float = _VALUE_SIZE_FRACTION,
+        index_scale: float = _INDEX_SIZE_FRACTION,
+        index_anchor: np.ndarray | Iterable[float] = DR,
+        index_buff: float | None = None,
         frame_type: type[VMobject] = Square,
         frame_config: dict[str, Any] | None = None,
         value_config: dict[str, Any] | None = None,
@@ -119,29 +130,23 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
-        theme = get_active_theme()
 
         self.value: CellValue = value
         self.index: CellValue = index
+        self.frame_scale = frame_scale
         self.value_scale = value_scale
         self.index_scale = index_scale
-        self.inner_buff = inner_buff
-        self.index_direction = _as_cardinal(index_direction)
+        self.index_anchor = _as_anchor(index_anchor)
         self.index_buff = index_buff
         self.value_config = dict(value_config or {})
         self.index_config = dict(index_config or {})
         self.value_factory = value_factory
         self.index_factory = index_factory
-        self.value_color = self.value_config.pop("color", theme.palette.font)
-        self.index_color = self.index_config.pop("color", theme.palette.label)
 
         frame_opts = dict(frame_config or {})
-        frame_opts.setdefault("side_length", side_length)
-        frame_opts.setdefault("stroke_color", theme.palette.edge)
-        frame_opts.setdefault("stroke_width", 2.4)
-        frame_opts.setdefault("fill_color", theme.palette.background)
-        frame_opts.setdefault("fill_opacity", 0.0)
         self.frame: VMobject = frame_type(**frame_opts)
+        if frame_scale != 1:
+            self.frame.scale(frame_scale)
 
         self.value_mobject = self.make_value_mobject(value)
         self.index_mobject: MobjectLike | None = None
@@ -166,7 +171,7 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
         mob = (
             self.value_factory(value)
             if self.value_factory is not None
-            else _default_label(value, color=self.value_color, config=self.value_config)
+            else _default_label(value, config=self.value_config)
         )
         if _is_blank(value):
             mob.set_opacity(0.0)
@@ -178,7 +183,7 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
         mob = (
             self.index_factory(index)
             if self.index_factory is not None
-            else _default_label(index, color=self.index_color, config=self.index_config)
+            else _default_label(index, config=self.index_config)
         )
         self._fit_index_mobject(mob)
         return mob
@@ -194,6 +199,9 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
 
     def set_index(self, index: CellValue) -> ArrayCell:
         """Synchronously replace, add, or remove the index label."""
+        if index == self.index:
+            self._place_index()
+            return self
         self.index = index
         self.index_mobject = None if _is_blank(index) else self.make_index_mobject(index)
         self._sync_submobjects()
@@ -213,15 +221,12 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
             self.add(cast(Any, self.index_mobject))
 
     def _content_region(self) -> Region:
-        region = Region(
+        return Region(
             top=self.frame.get_top(),
             bottom=self.frame.get_bottom(),
             left=self.frame.get_left(),
             right=self.frame.get_right(),
         )
-        buff = min(self.inner_buff, self.frame.width / 3, self.frame.height / 3)
-        region.shrink(top=buff, bottom=buff, left=buff, right=buff)
-        return region
 
     def _fit_value_mobject(self, mob: MobjectLike) -> None:
         region = self._content_region()
@@ -235,7 +240,7 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
     def _fit_index_mobject(self, mob: MobjectLike) -> None:
         scale_to_fit(
             cast(Mobject, mob),
-            len_x=self.frame.width * 0.75,
+            len_x=self.frame.width * self.index_scale,
             len_y=self.frame.height * self.index_scale,
         )
 
@@ -246,11 +251,11 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
         if self.index_mobject is None:
             return
         self._fit_index_mobject(self.index_mobject)
-        cast(Mobject, self.index_mobject).next_to(
-            self.frame,
-            self.index_direction,
-            buff=self.index_buff,
-        )
+        frame_region = self._content_region()
+        buff = self.index_buff
+        if buff is None:
+            buff = min(self.frame.width, self.frame.height) * _INDEX_INSET_FRACTION
+        frame_region.place(cast(Mobject, self.index_mobject), self.index_anchor, buff=buff)
 
 
 class Array(VGroup, metaclass=ConvertToOpenGL):
@@ -269,7 +274,8 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         start_index: int = 0,
         direction: np.ndarray | Iterable[float] = RIGHT,
         cell_buff: float = 0.0,
-        label_buff: float = MED_LARGE_BUFF,
+        label_buff: float | None = None,
+        label_scale: float = _LABEL_SIZE_FRACTION,
         cell_config: dict[str, Any] | None = None,
         label_config: dict[str, Any] | None = None,
         **kwargs: Any,
@@ -280,6 +286,7 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         self.direction = _as_cardinal(direction)
         self.cell_buff = cell_buff
         self.label_buff = label_buff
+        self.label_scale = label_scale
         self.cell_config = dict(cell_config or {})
         self.label_config = dict(label_config or {})
 
@@ -293,22 +300,6 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
             self.cells.add(self._make_cell(value, len(self.cells)))
         self.relayout(anchor_point=ORIGIN)
         self.center()
-
-    @classmethod
-    def from_region(
-        cls,
-        region: Region,
-        values: Iterable[CellValue] | CellValue | None = None,
-        *,
-        anchor: np.ndarray | Iterable[float] = ORIGIN,
-        buff: float = 0.0,
-        scale: bool = False,
-        **kwargs: Any,
-    ) -> Array:
-        """Create an array and place it inside a ``Region``."""
-        array = cls(values, **kwargs)
-        array.fit_to_region(region, anchor=anchor, buff=buff, scale=scale)
-        return array
 
     @property
     def values(self) -> tuple[CellValue, ...]:
@@ -360,15 +351,17 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         return self
 
     def swap(self, i: int, j: int) -> Array:
-        """Synchronously swap values between two visible indices."""
+        """Synchronously swap two visible cells."""
         if i == j:
             return self
-        cell_i = self.cell(i)
-        cell_j = self.cell(j)
-        value_i = cell_i.value
-        value_j = cell_j.value
-        cell_i.set_value(value_j)
-        cell_j.set_value(value_i)
+        a = self._offset_for_index(i)
+        b = self._offset_for_index(j)
+        anchor = self._cell_at_offset(0).frame_center.copy()
+        self.cells.submobjects[a], self.cells.submobjects[b] = (
+            self.cells.submobjects[b],
+            self.cells.submobjects[a],
+        )
+        self.relayout(anchor_point=anchor)
         return self
 
     def relayout(
@@ -394,20 +387,6 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         for offset, cell in enumerate(self.iter_cells()):
             cell.move_frame_to(origin + step * offset)
         self._place_label()
-        return self
-
-    def fit_to_region(
-        self,
-        region: Region,
-        *,
-        anchor: np.ndarray | Iterable[float] = ORIGIN,
-        buff: float = 0.0,
-        scale: bool = False,
-    ) -> Array:
-        """Optionally scale the array, then place it inside ``region``."""
-        if scale:
-            scale_to_fit(self, len_x=region.width, len_y=region.height, buff=buff)
-        region.place(self, anchor, buff=buff)
         return self
 
     def indicate(self, index: int, color: str | None = None, **kwargs: Any) -> Animation:
@@ -480,10 +459,7 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         copied = _copy_if_mobject(label)
         if copied is not None:
             return copied
-        theme = get_active_theme()
-        opts = dict(self.label_config)
-        opts.setdefault("color", theme.palette.font)
-        return Tex(str(label), **opts)
+        return Tex(str(label), **self.label_config)
 
     def _make_cell(self, value: CellValue, offset: int) -> ArrayCell:
         index = self.start_index + offset if self.show_indices else None
@@ -510,6 +486,7 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         old_first = self._cell_at_offset(0) if len(self.cells) else None
         old_first_center = None if old_first is None else old_first.frame_center.copy()
         cell = self._make_cell(value, offset)
+        self._match_existing_cell_geometry(cell)
         self.cells.insert(offset, cell)
         self._refresh_indices()
         if relayout:
@@ -542,10 +519,12 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
     def _place_label(self) -> None:
         if self.label_mobject is None or len(self.cells) == 0:
             return
+        frames = self._frames()
+        self._fit_label_mobject()
         cast(Mobject, self.label_mobject).next_to(
-            self.cells,
+            frames,
             -self.direction,
-            buff=self.label_buff,
+            buff=self._label_buff(),
         )
 
     def _step_vector(self) -> np.ndarray:
@@ -554,6 +533,42 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         reference = self._cell_at_offset(0).frame
         extent = reference.width if _is_horizontal(self.direction) else reference.height
         return self.direction * (extent + self.cell_buff)
+
+    def _frames(self) -> VGroup:
+        return VGroup(*(cell.frame for cell in self.iter_cells()))
+
+    def _cell_extent(self) -> float:
+        reference = self._cell_at_offset(0).frame
+        return reference.height if _is_horizontal(self.direction) else reference.width
+
+    def _fit_label_mobject(self) -> None:
+        if self.label_mobject is None:
+            return
+        if _is_horizontal(self.direction):
+            scale_to_fit(
+                cast(Mobject, self.label_mobject),
+                len_y=self._cell_extent() * self.label_scale,
+            )
+        else:
+            scale_to_fit(
+                cast(Mobject, self.label_mobject),
+                len_x=self._cell_extent() * self.label_scale,
+            )
+
+    def _label_buff(self) -> float:
+        if self.label_buff is not None:
+            return self.label_buff
+        return self._cell_extent() * _LABEL_BUFF_FRACTION
+
+    def _match_existing_cell_geometry(self, cell: ArrayCell) -> None:
+        if len(self.cells) == 0:
+            return
+        reference = self._cell_at_offset(0).frame
+        if cell.frame.width <= 0:
+            return
+        cell.frame.scale(reference.width / cell.frame.width)
+        cell._place_value()
+        cell._place_index()
 
 
 class ArrayPointer(VGroup, metaclass=ConvertToOpenGL):
@@ -566,10 +581,10 @@ class ArrayPointer(VGroup, metaclass=ConvertToOpenGL):
         label: CellValue = None,
         *,
         direction: np.ndarray | Iterable[float] = DOWN,
-        length: float = 0.55,
+        length: float | None = None,
         buff: float = SMALL_BUFF,
         label_buff: float = SMALL_BUFF,
-        label_scale: float = 0.6,
+        label_scale: float = _POINTER_LABEL_SCALE,
         label_config: dict[str, Any] | None = None,
         color: str | None = None,
         **kwargs: Any,
@@ -584,13 +599,15 @@ class ArrayPointer(VGroup, metaclass=ConvertToOpenGL):
         self.label_scale = label_scale
         self.label_config = dict(label_config or {})
         self.pointer_color = color or theme.palette.accent
+        if length is None:
+            frame = self.array.cell(self.index).frame
+            length = min(frame.width, frame.height) * _POINTER_LENGTH_FRACTION
 
         self.arrow = Arrow(
             start=ORIGIN,
             end=self.direction * length,
             buff=0.0,
             color=self.pointer_color,
-            max_tip_length_to_length_ratio=0.32,
         )
         self.label_mobject = self._make_label(label)
         self.add(self.arrow)

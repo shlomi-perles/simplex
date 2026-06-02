@@ -21,6 +21,8 @@ from manim import (
 
 from simplex.mobjects.array import Array, ArrayCell, CellValue
 
+_INSERT_ENTRANCE_SHIFT_FRACTION = 1 / 2
+
 
 class _ArrayAnimationGroup(AnimationGroup):
     """AnimationGroup with a small cleanup hook for semantic state updates."""
@@ -66,7 +68,7 @@ def animate_insert(
     index: int,
     value: CellValue,
     *,
-    slide_in: float = 0.25,
+    slide_in: float | None = None,
     **kwargs: Any,
 ) -> AnimationGroup:
     """Animate inserting a new cell before visible ``index``."""
@@ -88,7 +90,11 @@ def animate_insert(
     _move_label_to(array, old_label_center)
 
     new_cell.save_state()
-    start = new_target - array.direction * slide_in
+    shift_distance = slide_in
+    if shift_distance is None:
+        shift_distance = _cell_motion_extent(array, new_cell) * _INSERT_ENTRANCE_SHIFT_FRACTION
+    entry_direction = -array.direction if offset == 0 else array.direction
+    start = new_target + entry_direction * shift_distance
     new_cell.move_frame_to(start)
     new_cell.set_opacity(0.0)
 
@@ -144,23 +150,30 @@ def animate_swap(
     arc_angle: float = TAU / 4,
     **kwargs: Any,
 ) -> AnimationGroup:
-    """Animate swapping values between two visible indices."""
+    """Animate swapping two visible cells."""
     if i == j:
         return _ArrayAnimationGroup(Wait(run_time=0), **kwargs)
 
-    cell_i = array.cell(i)
-    cell_j = array.cell(j)
-    start_i = cell_i.value_mobject.get_center()
-    start_j = cell_j.value_mobject.get_center()
+    offset_i = array._offset_for_index(i)
+    offset_j = array._offset_for_index(j)
+    cell_i = array._cell_at_offset(offset_i)
+    cell_j = array._cell_at_offset(offset_j)
+    anchor = array._cell_at_offset(0).frame_center.copy()
+    start_i = cell_i.frame_center
+    start_j = cell_j.frame_center
     path_i = ArcBetweenPoints(start_i, start_j, angle=arc_angle)
     path_j = ArcBetweenPoints(start_j, start_i, angle=arc_angle)
 
     def cleanup() -> None:
-        array.swap(i, j)
+        array.cells.submobjects[offset_i], array.cells.submobjects[offset_j] = (
+            array.cells.submobjects[offset_j],
+            array.cells.submobjects[offset_i],
+        )
+        array.relayout(anchor_point=anchor)
 
     return _ArrayAnimationGroup(
-        MoveAlongPath(cast(Any, cell_i.value_mobject), path_i),
-        MoveAlongPath(cast(Any, cell_j.value_mobject), path_j),
+        MoveAlongPath(cast(Any, cell_i), path_i),
+        MoveAlongPath(cast(Any, cell_j), path_j),
         cleanup=cleanup,
         **kwargs,
     )
@@ -194,6 +207,10 @@ def _relayout_after_remove(
 
 def _centers_for(cells: tuple[ArrayCell, ...]) -> list[np.ndarray]:
     return [cell.frame_center.copy() for cell in cells]
+
+
+def _cell_motion_extent(array: Array, cell: ArrayCell) -> float:
+    return cell.frame.width if abs(array.direction[0]) > 0 else cell.frame.height
 
 
 def _shift_cells(

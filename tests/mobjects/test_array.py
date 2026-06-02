@@ -7,10 +7,9 @@ import pytest
 
 pytest.importorskip("manim")
 
-from manim import RIGHT
+from manim import Circle, VGroup
 
 import simplex
-from simplex.engine.region import Region
 from simplex.mobjects import Array, ArrayCell, ArrayEntry, ArrayMob, ArrayPointer
 
 
@@ -37,6 +36,37 @@ def test_array_constructs_with_indices_and_label() -> None:
     assert array.cell(1).value == "a"
     assert array.cell(3).index == 3
     assert array.label_mobject is not None
+
+
+def test_default_index_is_inside_dr_corner() -> None:
+    array = Array(["a"], show_indices=True)
+    cell = array.cell(0)
+    index = cell.index_mobject
+    assert index is not None
+
+    assert index.get_right()[0] <= cell.frame.get_right()[0]
+    assert index.get_bottom()[1] >= cell.frame.get_bottom()[1]
+    assert index.get_center()[0] > cell.frame_center[0]
+    assert index.get_center()[1] < cell.frame_center[1]
+
+
+def test_array_label_uses_frame_geometry_not_indices() -> None:
+    array = Array(["a", "b"], label="A:", show_indices=True)
+    frames = VGroup(*(cell.frame for cell in array.iter_cells()))
+    label = array.label_mobject
+    assert label is not None
+
+    cell_height = array.cell(0).frame.height
+    assert label.get_center()[1] == pytest.approx(frames.get_center()[1])
+    assert label.height == pytest.approx(cell_height * 4 / 5)
+    assert frames.get_left()[0] - label.get_right()[0] == pytest.approx(cell_height / 5)
+
+
+def test_cell_frame_type_uses_manim_shape_defaults() -> None:
+    cell = ArrayCell("x", index=0, frame_type=Circle)
+
+    assert isinstance(cell.frame, Circle)
+    assert cell.frame.width == pytest.approx(Circle().width)
 
 
 def test_array_rejects_out_of_range_visible_index() -> None:
@@ -67,16 +97,59 @@ def test_insert_remove_and_append_keep_indices_contiguous() -> None:
     assert [cell.index for cell in array.iter_cells()] == [1, 2, 3]
 
 
-def test_swap_exchanges_values_not_slots_or_indices() -> None:
+def test_swap_exchanges_whole_cells() -> None:
     array = Array(["a", "b", "c"], show_indices=True, start_index=1)
-    centers = [cell.frame_center.copy() for cell in array.iter_cells()]
+    first, second, third = array.iter_cells()
+    first_center = first.frame_center.copy()
+    third_center = third.frame_center.copy()
 
     array.swap(1, 3)
 
     assert array.values == ("c", "b", "a")
-    assert [cell.index for cell in array.iter_cells()] == [1, 2, 3]
-    for cell, center in zip(array.iter_cells(), centers, strict=True):
-        assert np.allclose(cell.frame_center, center)
+    assert array.iter_cells() == (third, second, first)
+    assert [cell.index for cell in array.iter_cells()] == [3, 2, 1]
+    assert np.allclose(first.frame_center, third_center)
+    assert np.allclose(third.frame_center, first_center)
+
+
+def test_append_matches_scaled_cell_geometry_and_keeps_label_stable() -> None:
+    array = Array(["a", "b"], label="A:", show_indices=True)
+    array.scale(4 / 5)
+    label = array.label_mobject
+    assert label is not None
+    label_center = label.get_center().copy()
+    width = array.cell(0).frame.width
+    height = array.cell(0).frame.height
+
+    array.append("c")
+
+    new_cell = array.cell(2)
+    assert new_cell.frame.width == pytest.approx(width)
+    assert new_cell.frame.height == pytest.approx(height)
+    assert np.allclose(label.get_center(), label_center)
+
+
+def test_append_animation_keeps_label_stable_during_setup() -> None:
+    array = Array(["a", "b"], label="A:", show_indices=True)
+    label = array.label_mobject
+    assert label is not None
+    label_center = label.get_center().copy()
+
+    array.animate_append("c")
+
+    assert np.allclose(label.get_center(), label_center)
+
+
+def test_swap_animation_cleanup_swaps_cells() -> None:
+    array = Array(["a", "b", "c"], show_indices=True, start_index=1)
+    first, second, third = array.iter_cells()
+    anim = array.animate_swap(1, 3)
+
+    anim.begin()
+    anim.clean_up_from_scene(cast(Any, _SceneStub()))
+
+    assert array.iter_cells() == (third, second, first)
+    assert array.values == ("c", "b", "a")
 
 
 def test_pointer_tracks_target_cell() -> None:
@@ -89,13 +162,6 @@ def test_pointer_tracks_target_cell() -> None:
     assert pointer.index == 1
     assert not np.allclose(pointer.arrow.get_center(), before)
     assert pointer.arrow.get_center()[0] > before[0]
-
-
-def test_from_region_places_array_inside_region() -> None:
-    region = Region(top=2.0, bottom=-2.0, left=-3.0, right=3.0)
-    array = Array.from_region(region, ["x", "y"], anchor=RIGHT, buff=0.2)
-
-    assert array.get_right()[0] <= region.right - 0.2 + 1e-6
 
 
 def test_animation_cleanup_updates_value_semantics() -> None:
