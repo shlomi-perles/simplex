@@ -4,6 +4,13 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.12.0...manim-simplex-v0.12.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* use true start frames for deck previews ([3b7273f](https://github.com/shlomi-perles/simplex/commit/3b7273f958e82e648ace22c7041c3dae86a24f39))
+
 ## [0.12.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.11.0...manim-simplex-v0.12.0) (2026-06-02)
 
 
