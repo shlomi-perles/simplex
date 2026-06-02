@@ -145,6 +145,24 @@ def _build_site(tmp_path: Path) -> Path:
     return site_dir
 
 
+def _build_site_with_variant_pdfs(tmp_path: Path) -> Path:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir)
+    site_dir = tmp_path / "site"
+    for variant in ("dark", "light"):
+        variant_dir = site_dir / "decks" / "alpha" / "themes" / variant
+        variant_dir.mkdir(parents=True, exist_ok=True)
+        (variant_dir / "Alpha-slides.pdf").write_bytes(b"%PDF")
+    build(
+        decks_dir=decks_dir,
+        site_dir=site_dir,
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+    return site_dir
+
+
 def _build_site_with_real_subslide_video(tmp_path: Path) -> Path:
     decks_dir = tmp_path / "decks"
     decks_dir.mkdir()
@@ -280,6 +298,67 @@ def test_initial_light_theme_selects_light_sidebar_thumbnails(
         expect(page.locator(".deck-grid")).to_have_class(
             re.compile(r"\bis-true-slide-theme-light\b"),
         )
+
+
+def test_homepage_cards_follow_global_theme(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        page.add_init_script("window.localStorage.setItem('simplex-theme', 'light');")
+        page.goto(base_url)
+
+        first_thumb = page.locator(".carousel-card img").first
+        expect(first_thumb).to_have_attribute("src", re.compile(r"themes/light/"))
+
+        page.locator("[data-theme-toggle]").click()
+        expect(first_thumb).to_have_attribute("src", re.compile(r"themes/dark/"))
+
+
+def test_active_thumbnail_border_uses_slide_theme_not_global_theme(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        page.add_init_script("window.localStorage.setItem('simplex-theme', 'light');")
+        _open_deck(page, base_url)
+
+        page.locator("[data-settings-toggle]").click()
+        page.locator('[data-setting="slide-theme"]').click()
+
+        active_border = page.evaluate(
+            """
+            () => getComputedStyle(
+              document.querySelector('.deck-slide-card[aria-current="true"] .deck-slide-thumb'),
+              '::after'
+            ).borderColor
+            """
+        )
+        assert active_border == "rgb(244, 200, 74)"
+
+
+def test_slides_pdf_href_follows_slide_theme(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_variant_pdfs(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        slides_pdf = page.locator("[data-slides-pdf-link]")
+        expect(slides_pdf).to_have_attribute("href", re.compile(r"themes/dark/Alpha-slides\.pdf"))
+
+        page.locator("[data-settings-toggle]").click()
+        page.locator('[data-setting="slide-theme"]').click()
+        expect(slides_pdf).to_have_attribute("href", re.compile(r"themes/light/Alpha-slides\.pdf"))
 
 
 def test_direct_player_has_tap_zones_and_progress_bar(

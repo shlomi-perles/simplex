@@ -8,6 +8,22 @@
 (function () {
   "use strict";
 
+  function normalizeThemeName(theme) {
+    return theme === "light" ? "light" : "dark";
+  }
+
+  function currentDocumentTheme() {
+    return normalizeThemeName(document.documentElement.dataset.theme || "dark");
+  }
+
+  function themedAsset(el, name, theme) {
+    var normalized = normalizeThemeName(theme);
+    return el.getAttribute("data-" + name + "-" + normalized) ||
+      el.getAttribute("data-" + name + "-default") ||
+      el.getAttribute("data-" + name) ||
+      "";
+  }
+
   function initIcons() {
     if (!window.lucide || typeof window.lucide.createIcons !== "function") return;
     try {
@@ -78,26 +94,58 @@
     }
   }
 
+  function initThemedDeckCards() {
+    var images = Array.prototype.slice.call(document.querySelectorAll(
+      "img[data-card-thumb-default], img[data-card-thumb-dark], img[data-card-thumb-light]"
+    ));
+    if (!images.length) return;
+
+    function apply(theme) {
+      var currentTheme = normalizeThemeName(theme);
+      images.forEach(function (img) {
+        var preview = img.dataset.previewLoaded === "true"
+          ? themedAsset(img, "preview-gif", currentTheme)
+          : "";
+        var src = preview || themedAsset(img, "card-thumb", currentTheme);
+        if (src && img.getAttribute("src") !== src) img.setAttribute("src", src);
+      });
+    }
+
+    apply(currentDocumentTheme());
+    window.addEventListener("simplex.theme", function (e) {
+      apply(e.detail && e.detail.theme ? e.detail.theme : currentDocumentTheme());
+    });
+  }
+
   function initPreviewGifs() {
     var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var saveData = navigator.connection && navigator.connection.saveData;
     if (reduce || saveData) return;
 
-    var images = Array.prototype.slice.call(document.querySelectorAll("img[data-preview-gif]"));
+    var images = Array.prototype.slice.call(document.querySelectorAll(
+      "img[data-preview-gif], img[data-preview-gif-dark], img[data-preview-gif-light]"
+    ));
     if (!images.length) return;
 
-    function load() {
-      images.forEach(function (img) {
-        var src = img.dataset.previewGif;
-        if (!src || img.dataset.previewLoaded === "true") return;
+    function loadPreview(img, src) {
+      if (!src || img.dataset.previewLoadedSrc === src) return;
+      img.dataset.previewLoadingSrc = src;
+      var gif = new Image();
+      gif.decoding = "async";
+      gif.onload = function () {
+        if (img.dataset.previewLoadingSrc !== src) return;
         img.dataset.previewLoaded = "true";
-        var gif = new Image();
-        gif.decoding = "async";
-        gif.onload = function () {
-          img.src = src;
-          img.classList.add("is-preview-gif");
-        };
-        gif.src = src;
+        img.dataset.previewLoadedSrc = src;
+        img.src = src;
+        img.classList.add("is-preview-gif");
+      };
+      gif.src = src;
+    }
+
+    function load() {
+      var theme = currentDocumentTheme();
+      images.forEach(function (img) {
+        loadPreview(img, themedAsset(img, "preview-gif", theme));
       });
     }
 
@@ -111,6 +159,14 @@
 
     if (document.readyState === "complete") schedule();
     else window.addEventListener("load", schedule, { once: true });
+    window.addEventListener("simplex.theme", function (e) {
+      var theme = e.detail && e.detail.theme ? e.detail.theme : currentDocumentTheme();
+      images.forEach(function (img) {
+        if (img.dataset.previewLoaded === "true") {
+          loadPreview(img, themedAsset(img, "preview-gif", theme));
+        }
+      });
+    });
   }
 
   // ------------------------------------------------------------------
@@ -215,6 +271,7 @@
     var slideNumberEl = deck.querySelector("[data-player-slide-number]");
     var progressBar = deck.querySelector("[data-player-progress-bar]");
     var tapZones = deck.querySelectorAll("[data-tap]");
+    var slidesPdfLink = document.querySelector("[data-slides-pdf-link]");
     var manifest = readManifest();
     var slides = Array.isArray(manifest.slides) ? manifest.slides : [];
     var timeline = [];
@@ -268,11 +325,7 @@
     var reduceMotion = window.matchMedia &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var saveData = navigator.connection && navigator.connection.saveData;
-    var clockFormatter = new Intl.DateTimeFormat(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    var clockFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: "medium" });
     var hourCycle = clockFormatter.resolvedOptions().hourCycle || "";
     var durationHourDigits = hourCycle === "h11" || hourCycle === "h12" ? 1 : 2;
 
@@ -315,11 +368,18 @@
         if (src && img.getAttribute("src") !== src) img.setAttribute("src", src);
       });
     }
+    function applySlidesPdfTheme(theme) {
+      if (!slidesPdfLink) return;
+      var href = themedAsset(slidesPdfLink, "pdf", theme);
+      if (href) slidesPdfLink.setAttribute("href", href);
+    }
     function applySlideThemeDom(theme) {
       state.effectiveSlideTheme = chooseSlideTheme(theme);
+      deck.dataset.currentSlideTheme = state.effectiveSlideTheme;
       deck.classList.toggle("is-slide-theme-light", slideThemeMode === "filter" && state.effectiveSlideTheme === "light");
       deck.classList.toggle("is-true-slide-theme-light", state.effectiveSlideTheme === "light");
       if (stage) stage.dataset.slideTheme = state.effectiveSlideTheme;
+      applySlidesPdfTheme(state.effectiveSlideTheme);
       if (slideThemeSetting) {
         slideThemeSetting.dataset.slideTheme = state.effectiveSlideTheme;
         slideThemeSetting.setAttribute(
@@ -1133,6 +1193,7 @@
     document.addEventListener("DOMContentLoaded", function () {
       initTheme();
       initIcons();
+      initThemedDeckCards();
       initPreviewGifs();
       initCarousels();
       initResourceMenus();
@@ -1141,6 +1202,7 @@
   } else {
     initTheme();
     initIcons();
+    initThemedDeckCards();
     initPreviewGifs();
     initCarousels();
     initResourceMenus();

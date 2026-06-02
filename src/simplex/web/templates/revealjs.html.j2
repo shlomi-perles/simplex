@@ -13,6 +13,7 @@
     :root {
       --simplex-stage-bg: #2b2b2b;
       --simplex-stage-progress: rgba(255, 255, 255, 0.08);
+      --simplex-stopwatch-active: #f4c84a;
     }
     :root[data-theme="light"] {
       --simplex-stage-bg: #f3f5f7;
@@ -148,7 +149,7 @@
       opacity: .55;
     }
     .simplex-stopwatch.is-running::before {
-      background: var(--simplex-accent, #ffd700);
+      background: var(--simplex-stopwatch-active);
       opacity: 1;
     }
   </style>
@@ -239,11 +240,7 @@
         slideNumber: {% if show_slide_number %}true{% else %}false{% endif %},
         stopwatch: {% if show_stopwatch %}true{% else %}false{% endif %},
       };
-      const clockFormatter = new Intl.DateTimeFormat(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-      });
+      const clockFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: 'medium' });
       const hourCycle = clockFormatter.resolvedOptions().hourCycle || '';
       const durationHourDigits = hourCycle === 'h11' || hourCycle === 'h12' ? 1 : 2;
       const stopwatchState = {
