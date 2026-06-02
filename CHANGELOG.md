@@ -4,6 +4,13 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.11.0...manim-simplex-v0.12.0) (2026-06-02)
+
+
+### Features
+
+* **web:** make deck assets theme-aware ([deeb954](https://github.com/shlomi-perles/simplex/commit/deeb9545ff96aa7aabb64094c76a8d37e3d34b7e))
+
 ## [0.11.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.10.0...manim-simplex-v0.11.0) (2026-06-02)
 
 
