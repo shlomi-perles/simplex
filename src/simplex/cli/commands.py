@@ -279,7 +279,8 @@ def build(
     """Build the full static portal under ``site/``."""
     manim_args = tuple(ctx.args)
     if no_render and manim_args:
-        raise typer.BadParameter("Manim render flags cannot be used with --no-render")
+        typer.echo("Error: Manim render flags cannot be used with --no-render.", err=True)
+        raise typer.Exit(code=2)
     build_site(
         _DECKS,
         _SITE,

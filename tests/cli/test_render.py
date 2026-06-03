@@ -215,7 +215,7 @@ def test_build_no_render_rejects_manim_flags(
     result = CliRunner().invoke(app, ["build", "--no-render", "--disable_caching"])
 
     assert result.exit_code != 0
-    assert "Manim render flags cannot be used with --no-render" in result.output
+    assert "Error: Manim render flags cannot be used with --no-render." in result.output
     assert calls == []
 
 
