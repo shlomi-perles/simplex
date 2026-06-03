@@ -294,7 +294,7 @@ class Paper(Group, metaclass=ConvertToOpenGL):
         # Submobjects stored back-to-front for correct z-order.
         self._page_groups = page_groups
         super().__init__(*reversed(page_groups), **kwargs)
-        self._arrange_stack()
+        self._arrange_stack(anchor=np.zeros(3), step_vector=self._nominal_stack_step())
         self._sync_submobjects()
 
     # -- source resolution ---------------------------------------------------
@@ -314,10 +314,30 @@ class Paper(Group, metaclass=ConvertToOpenGL):
 
     # -- layout --------------------------------------------------------------
 
-    def _arrange_stack(self) -> None:
-        """Position pages: page 0 at origin (top), others offset behind."""
+    def _nominal_stack_step(self) -> np.ndarray:
+        """Return the untransformed vector between consecutive stack pages."""
+        return self._stack_dir * self._stack_offset
+
+    def _current_stack_anchor(self) -> np.ndarray:
+        """Return the current world-space position of the top page."""
+        if not self._page_groups:
+            return self.get_center().copy()
+        return self.get_top_page().get_center().copy()
+
+    def _current_stack_step(self) -> np.ndarray:
+        """Return the current world-space vector between stacked pages."""
+        if len(self._page_groups) < 2:
+            return self._nominal_stack_step()
+
+        step = self._page_groups[1].get_center() - self._page_groups[0].get_center()
+        if np.linalg.norm(step) > 1e-8:
+            return step
+        return self._nominal_stack_step()
+
+    def _arrange_stack(self, *, anchor: np.ndarray, step_vector: np.ndarray) -> None:
+        """Position pages relative to a world-space stack anchor."""
         for i, pg in enumerate(self._page_groups):
-            pg.move_to(self._stack_dir * self._stack_offset * i)
+            pg.move_to(anchor + step_vector * i)
 
     def _sync_submobjects(self) -> None:
         """Keep submobject draw order and z-index in front-page order."""
@@ -331,10 +351,14 @@ class Paper(Group, metaclass=ConvertToOpenGL):
             set_mobject_z_index(pg, base_z + count - front_index, family=True)
 
     def _set_page_order(self, page_groups: list[Group], *, arrange: bool) -> None:
+        anchor = self._current_stack_anchor() if arrange else None
+        step_vector = self._current_stack_step() if arrange else None
         self._page_groups = list(page_groups)
         self._sync_submobjects()
         if arrange:
-            self._arrange_stack()
+            assert anchor is not None
+            assert step_vector is not None
+            self._arrange_stack(anchor=anchor, step_vector=step_vector)
 
     # -- public API ----------------------------------------------------------
 
@@ -522,6 +546,8 @@ class PickPage(Animation):
 
     def begin(self) -> None:
         self._page = self._paper.get_page(self._page_index)
+        self._stack_anchor = self._paper._current_stack_anchor()
+        self._stack_step = self._paper._current_stack_step()
         self._start_pos = self._page.get_center().copy()
         self._original_order = self._paper.page_groups
         self._target_order = [
@@ -533,12 +559,12 @@ class PickPage(Animation):
         self._other_pages = [pg for pg in self._target_order if pg is not self._page]
         self._other_pages_start = [pg.get_center().copy() for pg in self._other_pages]
         self._other_pages_end = [
-            self._paper._stack_dir * self._paper._stack_offset * i
+            self._stack_anchor + self._stack_step * i
             for i, pg in enumerate(self._target_order)
             if pg is not self._page
         ]
 
-        self._end_pos = self._paper._stack_dir * self._paper._stack_offset * 0
+        self._end_pos = self._stack_anchor
         self._midpoint = self._start_pos + self._slide_vec
         self._promoted = False
         super().begin()

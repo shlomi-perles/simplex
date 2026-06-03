@@ -105,6 +105,21 @@ def test_paper_reorder_to_top(sample_pdf: Path) -> None:
     assert paper.get_top_page() is original_back
 
 
+def test_paper_reorder_preserves_transformed_stack_layout(sample_pdf: Path) -> None:
+    paper = Paper(sample_pdf, pages=3, dpi=72, page_height=4.0, shadow=False)
+    paper.scale(0.5)
+    paper.shift(2 * RIGHT + UP)
+    anchor = paper.get_top_page().get_center().copy()
+    step = paper.get_page(1).get_center() - paper.get_top_page().get_center()
+    original_back = paper.get_page(2)
+
+    paper.reorder_page_to_top(2)
+
+    assert paper.get_top_page() is original_back
+    for i, page in enumerate(paper.page_groups):
+        assert np.allclose(page.get_center(), anchor + step * i, atol=0.01)
+
+
 def test_show_paper_constructs(sample_pdf: Path) -> None:
     paper = Paper(sample_pdf, pages=2, dpi=72, page_height=3.0)
     anim = ShowPaper(paper, direction=DOWN)
@@ -188,6 +203,24 @@ def test_pick_page_preserves_z_index_until_slide_out(sample_pdf: Path) -> None:
     other_z = [pg.z_index for pg in paper.page_groups if pg is not selected]
     assert selected.z_index > max(other_z)
     anim.finish()
+
+
+def test_pick_page_preserves_transformed_stack_layout(sample_pdf: Path) -> None:
+    paper = Paper(sample_pdf, pages=3, dpi=72, page_height=4.0, shadow=False)
+    paper.scale(0.5)
+    paper.shift(2 * RIGHT + UP)
+    anchor = paper.get_top_page().get_center().copy()
+    step = paper.get_page(1).get_center() - paper.get_top_page().get_center()
+    selected = paper.get_page(2)
+    anim = PickPage(paper, page_index=2, slide_direction=RIGHT)
+
+    anim.begin()
+    anim.interpolate_mobject(1.0)
+    anim.finish()
+
+    assert paper.get_top_page() is selected
+    for i, page in enumerate(paper.page_groups):
+        assert np.allclose(page.get_center(), anchor + step * i, atol=0.01)
 
 
 def test_dismiss_is_show_subclass(sample_pdf: Path) -> None:
