@@ -4,11 +4,11 @@ import pytest
 
 pytest.importorskip("manim")
 
-from manim import LARGE_BUFF
+from manim import LARGE_BUFF, RED, MathTex, Tex
 
 from simplex.engine.defaults import apply_theme_defaults
 from simplex.engine.region import Region
-from simplex.engine.text import Caption, TexPage, minipage_cm_for_page_width
+from simplex.engine.text import Caption, TexPage, color_tex, minipage_cm_for_page_width
 from simplex.theme import presets
 from simplex.theme.context import active_theme
 
@@ -113,3 +113,15 @@ def test_explicit_font_size_wins_over_theme_default() -> None:
     with active_theme(presets.SIMPLEX_DARK):
         mob = Caption("hi", font_size=12)
         assert mob.font_size == 12
+
+
+def test_color_tex_infers_mathtex_probe_class() -> None:
+    eq = MathTex("a", "+", "b")
+
+    assert color_tex(eq, {"a": RED}) is eq
+
+
+def test_color_tex_keeps_tex_return_type() -> None:
+    eq = Tex("alpha beta")
+
+    assert color_tex(eq, {"alpha": RED}) is eq

@@ -147,8 +147,11 @@ def test_render_unknown_scene_fails(project: Path, monkeypatch: pytest.MonkeyPat
     ) -> None:
         raise ValueError("unknown scene name(s): ['Ghost']")
 
+    def fake_export(deck: Any, *, output_dir: Path) -> Path:
+        return output_dir / "noop.pdf"
+
     monkeypatch.setattr(commands.runner, "render", boom)
-    monkeypatch.setattr(commands.pdf, "export", lambda deck, *, output_dir: output_dir / "noop.pdf")
+    monkeypatch.setattr(commands.pdf, "export", fake_export)
     result = CliRunner().invoke(app, ["render", "demo", "--scene", "Ghost"])
     assert result.exit_code != 0
 
@@ -210,7 +213,11 @@ def test_build_no_render_rejects_manim_flags(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[object] = []
-    monkeypatch.setattr(commands, "build_site", lambda *args, **kwargs: calls.append(args))
+
+    def fake_build_site(*args: Any, **kwargs: Any) -> None:
+        calls.append(args)
+
+    monkeypatch.setattr(commands, "build_site", fake_build_site)
 
     result = CliRunner().invoke(app, ["build", "--no-render", "--disable_caching"])
 

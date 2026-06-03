@@ -30,6 +30,7 @@ from manim import (
     config,
 )
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
+from manim.typing import Point3DLike
 from manim.utils.space_ops import angle_of_vector, normalize
 
 from simplex.engine.opengl_compat import MobjectLike, VMobjectLike, is_mobject
@@ -102,7 +103,7 @@ def _mobject_points(mobject: MobjectLike) -> np.ndarray:
 
 
 def _edge_point(
-    obj: MobjectLike | np.ndarray | None,
+    obj: MobjectLike | Point3DLike | None,
     fallback_dir: np.ndarray,
     getter_name: str,
 ) -> np.ndarray:
@@ -128,10 +129,10 @@ def _edge_point(
 
 def get_frame_center(
     *,
-    left: MobjectLike | np.ndarray | None = None,
-    right: MobjectLike | np.ndarray | None = None,
-    top: MobjectLike | np.ndarray | None = None,
-    bottom: MobjectLike | np.ndarray | None = None,
+    left: MobjectLike | Point3DLike | None = None,
+    right: MobjectLike | Point3DLike | None = None,
+    top: MobjectLike | Point3DLike | None = None,
+    bottom: MobjectLike | Point3DLike | None = None,
 ) -> np.ndarray:
     """Center of the rectangle defined by the four edges.
 
@@ -163,9 +164,9 @@ class Arc3d(VMobject, metaclass=ConvertToOpenGL):
 
     def __init__(
         self,
-        a: np.ndarray,
-        b: np.ndarray,
-        center: np.ndarray,
+        a: Point3DLike,
+        b: Point3DLike,
+        center: Point3DLike,
         *,
         radius: float = 1.0,
         segments: int = 40,

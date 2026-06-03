@@ -136,7 +136,7 @@ class TextHelpers(Slide):
             page_width=self.region.width * 0.62,
         )
         formula = MathTex(r"a^2 + b^2 = c^2")
-        color_tex(formula, {"a": RED, "b": BLUE, "c": YELLOW}, tex_class=cast(Any, MathTex))
+        color_tex(formula, {"a": RED, "b": BLUE, "c": YELLOW})
         region_c.place(narrow, UP)
         self.play(Write(narrow))
         self.next_slide()

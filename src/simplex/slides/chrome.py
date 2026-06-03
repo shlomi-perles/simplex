@@ -79,6 +79,6 @@ def make_chrome(
 def _as_chrome_mobject(content: ChromeContent, *, font_size: float) -> MobjectLike:
     if is_mobject(content):
         return content
-    if content is None:
-        raise ValueError("chrome content cannot be None")
-    return Tex(content, font_size=font_size)
+    if isinstance(content, str):
+        return Tex(content, font_size=font_size)
+    raise ValueError("chrome content cannot be None")

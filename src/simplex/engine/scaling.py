@@ -11,13 +11,12 @@ Stroke-aware scaling uses Manim 0.19+'s native
 from typing import Any
 
 import numpy as np
-from manim import Mobject
 
-from simplex.engine.opengl_compat import is_vmobject
+from simplex.engine.opengl_compat import MobjectLike, is_vmobject
 
 
-def scale_to_fit(
-    mobject: Mobject,
+def scale_to_fit[MobjectT: MobjectLike](
+    mobject: MobjectT,
     *,
     len_x: float | None = None,
     len_y: float | None = None,
@@ -27,7 +26,7 @@ def scale_to_fit(
     min_scale: float | None = None,
     max_scale: float | None = None,
     scale_stroke: bool = False,
-) -> Mobject:
+) -> MobjectT:
     """Uniformly scale `mobject` so it fits inside any subset of the given lengths.
 
     The smallest required scale is applied (preserves aspect ratio).
@@ -54,11 +53,11 @@ def scale_to_fit(
     return mobject
 
 
-def scale_to_fit_mobject(
-    mobject: Mobject,
-    other: Mobject,
+def scale_to_fit_mobject[MobjectT: MobjectLike](
+    mobject: MobjectT,
+    other: MobjectLike,
     **kwargs: Any,
-) -> Mobject:
+) -> MobjectT:
     """Scale `mobject` to fit inside the bounding box of `other`."""
     return scale_to_fit(
         mobject,

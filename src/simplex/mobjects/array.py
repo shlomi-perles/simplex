@@ -32,6 +32,7 @@ from manim import (
     VMobject,
 )
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
+from manim.typing import PointNDLike, VectorNDLike
 
 from simplex.engine.opengl_compat import MobjectLike, is_mobject
 from simplex.engine.region import Region
@@ -62,7 +63,7 @@ def _copy_if_mobject(value: CellValue) -> MobjectLike | None:
     return cast(MobjectLike, cast(Any, value).copy())
 
 
-def _as_point(point: np.ndarray | Iterable[float]) -> np.ndarray:
+def _as_point(point: PointNDLike) -> np.ndarray:
     arr = np.asarray(point, dtype=float)
     if arr.shape == (2,):
         arr = np.append(arr, 0.0)
@@ -71,7 +72,7 @@ def _as_point(point: np.ndarray | Iterable[float]) -> np.ndarray:
     return arr
 
 
-def _as_cardinal(direction: np.ndarray | Iterable[float]) -> np.ndarray:
+def _as_cardinal(direction: VectorNDLike) -> np.ndarray:
     arr = _as_point(direction)
     signs = np.sign(arr).astype(float)
     if not any(np.allclose(signs, candidate) for candidate in _CARDINAL_DIRECTIONS):
@@ -81,7 +82,7 @@ def _as_cardinal(direction: np.ndarray | Iterable[float]) -> np.ndarray:
     return signs
 
 
-def _as_anchor(anchor: np.ndarray | Iterable[float]) -> np.ndarray:
+def _as_anchor(anchor: VectorNDLike) -> np.ndarray:
     arr = _as_point(anchor)
     signs = np.sign(arr).astype(float)
     if np.allclose(signs, ORIGIN):
@@ -119,7 +120,7 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
         frame_scale: float = 1.0,
         value_scale: float = _VALUE_SIZE_FRACTION,
         index_scale: float = _INDEX_SIZE_FRACTION,
-        index_anchor: np.ndarray | Iterable[float] = DR,
+        index_anchor: VectorNDLike = DR,
         index_buff: float | None = None,
         frame_type: type[VMobject] = Square,
         frame_config: dict[str, Any] | None = None,
@@ -161,7 +162,7 @@ class ArrayCell(VGroup, metaclass=ConvertToOpenGL):
         """Return the center of the slot frame, ignoring external labels."""
         return np.asarray(self.frame.get_center(), dtype=float)
 
-    def move_frame_to(self, point: np.ndarray | Iterable[float]) -> ArrayCell:
+    def move_frame_to(self, point: PointNDLike) -> ArrayCell:
         """Move the whole cell so the frame center lands on ``point``."""
         self.shift(_as_point(point) - self.frame_center)
         return self
@@ -272,7 +273,7 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         label: CellValue = None,
         show_indices: bool = False,
         start_index: int = 0,
-        direction: np.ndarray | Iterable[float] = RIGHT,
+        direction: VectorNDLike = RIGHT,
         cell_buff: float = 0.0,
         label_buff: float | None = None,
         label_scale: float = _LABEL_SIZE_FRACTION,
@@ -368,7 +369,7 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         self,
         *,
         anchor_index: int = 0,
-        anchor_point: np.ndarray | Iterable[float] | None = None,
+        anchor_point: PointNDLike | None = None,
     ) -> Array:
         """Recompute cell positions while pinning one frame center."""
         if len(self.cells) == 0:
@@ -440,7 +441,7 @@ class Array(VGroup, metaclass=ConvertToOpenGL):
         self,
         value: CellValue,
         *,
-        side: np.ndarray | Iterable[float] = RIGHT,
+        side: VectorNDLike = RIGHT,
         **kwargs: Any,
     ) -> AnimationGroup:
         """Compatibility alias for animated append/prepend."""
@@ -580,7 +581,7 @@ class ArrayPointer(VGroup, metaclass=ConvertToOpenGL):
         index: int,
         label: CellValue = None,
         *,
-        direction: np.ndarray | Iterable[float] = DOWN,
+        direction: VectorNDLike = DOWN,
         length: float | None = None,
         buff: float = SMALL_BUFF,
         label_buff: float = SMALL_BUFF,

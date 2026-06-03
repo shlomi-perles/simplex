@@ -26,10 +26,10 @@ from manim import (
     ReplacementTransform,
     TransformMatchingShapes,
     VGroup,
+    VMobject,
     Write,
 )
 
-from simplex.engine.opengl_compat import is_vmobject
 from simplex.engine.region import Region
 from simplex.engine.scaling import scale_to_fit
 from simplex.mobjects.outline import OutlineProgressBar
@@ -228,7 +228,7 @@ class OutlineScene(Slide):
         if part.visual is None:
             return
         self._place_feature_visual(part.visual, part)
-        if is_vmobject(part.visual):
+        if isinstance(part.visual, VMobject):
             self.play(DrawBorderThenFill(part.visual))
         else:
             self.play(FadeIn(part.visual))
@@ -382,14 +382,14 @@ class OutlineScene(Slide):
         return self.region.width
 
     def _enter(self, mob: Mobject) -> Any:
-        return Write(mob) if is_vmobject(mob) else FadeIn(mob)
+        return Write(mob) if isinstance(mob, VMobject) else FadeIn(mob)
 
     def _animate_progress(self, index: int) -> Any:
         builder = cast(Any, self.progress_bar.animate)
         return builder(run_time=self.progress_run_time).set_index(index)
 
     def _title_to_label_animation(self, title: Mobject, label: Mobject) -> Animation:
-        if is_vmobject(title) and is_vmobject(label):
+        if isinstance(title, VMobject) and isinstance(label, VMobject):
             return TransformMatchingShapes(title, label)
         return ReplacementTransform(title, label)
 

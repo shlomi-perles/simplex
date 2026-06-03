@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import re
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, Self, cast
 
@@ -36,6 +36,7 @@ from manim import (
 )
 from manim.camera.camera import Camera
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
+from manim.typing import Vector3DLike
 from manim.utils.color import ParsableManimColor
 from manim.utils.tex_file_writing import tex_hash
 from PIL import ImageFilter
@@ -57,6 +58,7 @@ _BORDER_STROKE_WIDTH = 1.5
 
 _ARXIV_ABS_RE = re.compile(r"arxiv\.org/abs/(.+?)(?:\?|$)")
 _ARXIV_PDF_RE = re.compile(r"arxiv\.org/pdf/(.+?)(?:\.pdf)?(?:\?|$)")
+type _PdfRender = Callable[..., Any]
 
 
 def _paper_dir() -> Path:
@@ -127,7 +129,8 @@ def _render_pages(
     for i in range(n):
         out = cache / f"page_{i}_dpi{dpi}.png"
         if not out.exists():
-            bitmap = doc[i].render(scale=scale)
+            render_page = cast(_PdfRender, doc[i].render)
+            bitmap = render_page(scale=scale)
             bitmap.to_pil().save(out)
             logger.info("Rendered %s page %d → %s", pdf_path.name, i, out)
         rendered.append(out)
@@ -223,14 +226,14 @@ class Paper(Group, metaclass=ConvertToOpenGL):
         dpi: int = _DEFAULT_DPI,
         page_height: float = _PAGE_HEIGHT,
         shadow: bool = True,
-        shadow_direction: np.ndarray = DL,
+        shadow_direction: Vector3DLike = DL,
         shadow_opacity: float = _SHADOW_OPACITY,
         shadow_blur: float = _SHADOW_BLUR,
         shadow_scale: float = _SHADOW_SCALE,
         border: bool = False,
         border_color: ParsableManimColor | None = None,
         border_stroke_width: float = _BORDER_STROKE_WIDTH,
-        stack_direction: np.ndarray = DL,
+        stack_direction: Vector3DLike = DL,
         stack_offset: float | None = None,
         timeout: int = _DEFAULT_TIMEOUT,
         **kwargs: Any,
@@ -417,7 +420,7 @@ class ShowPaper(AnimationGroup):
         cls,
         paper: Paper,
         *,
-        direction: np.ndarray = DOWN,
+        direction: Vector3DLike = DOWN,
         lag_ratio: float = 0.3,
         dismiss: bool = False,
         use_override: bool = True,
@@ -437,7 +440,7 @@ class ShowPaper(AnimationGroup):
         self,
         paper: Paper,
         *,
-        direction: np.ndarray = DOWN,
+        direction: Vector3DLike = DOWN,
         lag_ratio: float = 0.3,
         dismiss: bool = False,
         **kwargs: Any,
@@ -462,7 +465,7 @@ class DismissPaper(ShowPaper):
         cls,
         paper: Paper,
         *,
-        direction: np.ndarray = DOWN,
+        direction: Vector3DLike = DOWN,
         lag_ratio: float = 0.3,
         use_override: bool = True,
         **kwargs: Any,
@@ -481,7 +484,7 @@ class DismissPaper(ShowPaper):
         self,
         paper: Paper,
         *,
-        direction: np.ndarray = DOWN,
+        direction: Vector3DLike = DOWN,
         lag_ratio: float = 0.3,
         **kwargs: Any,
     ) -> None:
@@ -513,7 +516,7 @@ class PickPage(Animation):
         paper: Paper,
         page_index: int = 1,
         *,
-        slide_direction: np.ndarray = RIGHT,
+        slide_direction: Vector3DLike = RIGHT,
         overshoot: float = 3.0,
         use_override: bool = True,
         **kwargs: Any,
@@ -533,7 +536,7 @@ class PickPage(Animation):
         paper: Paper,
         page_index: int = 1,
         *,
-        slide_direction: np.ndarray = RIGHT,
+        slide_direction: Vector3DLike = RIGHT,
         overshoot: float = 3.0,
         **kwargs: Any,
     ) -> None:

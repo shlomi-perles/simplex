@@ -91,26 +91,12 @@ Repository = "https://github.com/shlomi-perles/simplex"
 [tool.basedpyright]
 include = ["src", "tests"]
 pythonVersion = "3.13"
-# Manim's type stubs in 0.20.x are incomplete: VGroup(...) widens to
-# `Group | Unknown`, Animation subclasses' `__init__` deliberately differs
-# from the inherited `__new__`, color constants are `ManimColor` instances
-# typed as `str`. Demote these categories to warnings rather than rewriting
-# upstream's stubs in this plugin. Tracked for cleanup as stubs improve.
-reportArgumentType = "warning"
-reportAssignmentType = "warning"
-# manim-slides converters (PDF, PowerPoint, RevealJS) are Pydantic models
-# with sensible defaults the stubs don't expose; reportCallIssue fires on
-# every conversion call. Demote.
-reportCallIssue = "warning"
-reportInconsistentConstructor = "warning"
 reportMissingTypeStubs = false
 # Tests deliberately exercise private helpers (e.g. `_resolve_section_type`,
 # `_interpret_delay`) to keep the public surface small while still
 # covering edge cases.
 reportPrivateUsage = false
-reportReturnType = "warning"
 reportUnknownArgumentType = false
-reportUnknownLambdaType = "warning"
 reportUnknownMemberType = false
 reportUnknownVariableType = false
 typeCheckingMode = "strict"

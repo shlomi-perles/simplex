@@ -32,6 +32,9 @@ type DisplayMathSpacing = (
     | Mapping[str, int | float]
 )
 type PageWidth = int | float | Region
+type _TexLike = Tex | MathTex
+type _TexClass = type[Tex] | type[MathTex]
+type _ProbeCacheKey = tuple[_TexClass, str]
 
 _DISPLAY_MATH_RE = re.compile(r"(\\\[(?:.|\n)*?\\\])", re.DOTALL)
 _DISPLAY_LENGTH_NAMES = (
@@ -40,6 +43,7 @@ _DISPLAY_LENGTH_NAMES = (
     "abovedisplayshortskip",
     "belowdisplayshortskip",
 )
+_PROBE_CACHE: dict[_ProbeCacheKey, _TexLike] = {}
 
 
 def _minipage_env(width_cm: float) -> str:
@@ -248,28 +252,37 @@ def search_shape_in_text(text: VMobject, shape: VMobject) -> list[list[slice]]:
     return results
 
 
-@functools.lru_cache(maxsize=256)
-def _build_probe(tex_class: type[Tex], substring: str) -> Tex:
-    return tex_class(substring)
+def _build_probe(tex_class: _TexClass, substring: str) -> _TexLike:
+    key = (tex_class, substring)
+    probe = _PROBE_CACHE.get(key)
+    if probe is None:
+        probe = tex_class(substring)
+        _PROBE_CACHE[key] = probe
+    return probe
 
 
-def color_tex(
-    equation: Tex | MathTex,
+def _resolve_tex_class(equation: _TexLike) -> _TexClass:
+    return type(equation)
+
+
+def color_tex[TexLikeT: (Tex, MathTex)](
+    equation: TexLikeT,
     t2c: Mapping[str, ParsableManimColor],
     *,
-    tex_class: type[Tex] = Tex,
-) -> Tex | MathTex:
+    tex_class: _TexClass | None = None,
+) -> TexLikeT:
     """Color substrings of a rendered Tex/MathTex by shape-matching probes.
 
     Example::
 
         eq = MathTex(r\"a^2 + b^2 = c^2\")
-        color_tex(eq, {\"a\": \"#FF6B6B\", \"b\": \"#4ECDC4\", \"c\": \"#FFD93D\"}, tex_class=MathTex)
+        color_tex(eq, {\"a\": \"#FF6B6B\", \"b\": \"#4ECDC4\", \"c\": \"#FFD93D\"})
 
     Returns ``equation`` so callers can chain.
     """
+    resolved_tex_class = tex_class if tex_class is not None else _resolve_tex_class(equation)
     for substring, color in t2c.items():
-        probe = _build_probe(tex_class, substring)  # type: ignore[arg-type]
+        probe = _build_probe(resolved_tex_class, substring)
         for line_idx, hits in enumerate(search_shape_in_text(equation, probe)):
             for span in hits:
                 equation[line_idx][span].set_color(color)

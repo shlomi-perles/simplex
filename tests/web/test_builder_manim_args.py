@@ -40,10 +40,16 @@ def test_build_threads_manim_args_to_deck_builder(
             theme_preview_gifs={},
         )
 
-    monkeypatch.setattr(builder, "_copy_static", lambda _site_dir: None)
+    def fake_copy_static(_site_dir: Path) -> None:
+        return None
+
+    def noop_builder_step(*args: Any, **kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr(builder, "_copy_static", fake_copy_static)
     monkeypatch.setattr(builder, "_build_deck", fake_build_deck)
-    monkeypatch.setattr(builder, "_build_section_page", lambda *args, **kwargs: None)
-    monkeypatch.setattr(builder, "_build_index", lambda *args, **kwargs: None)
+    monkeypatch.setattr(builder, "_build_section_page", noop_builder_step)
+    monkeypatch.setattr(builder, "_build_index", noop_builder_step)
 
     builder.build(
         decks_dir,
@@ -81,8 +87,11 @@ def test_maybe_render_passes_manim_args_to_runner(
             }
         )
 
+    def fake_export(*args: Any, **kwargs: Any) -> None:
+        return None
+
     monkeypatch.setattr(builder.runner, "render", fake_render)
-    monkeypatch.setattr(builder.pdf, "export", lambda *args, **kwargs: None)
+    monkeypatch.setattr(builder.pdf, "export", fake_export)
 
     builder._maybe_render(
         deck,

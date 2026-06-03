@@ -30,6 +30,7 @@ from manim import (
     index_labels,
     turn_animation_into_updater,
 )
+from manim.typing import Vector3DLike
 from manim.utils.color import ParsableManimColor
 
 from simplex.engine.opengl_compat import critical_point
@@ -123,7 +124,7 @@ def debug_glyph(
     writing_cycle_length: float = 5.0,
     writing_dot_color: str = "#4080FF",
     show_dot_count: bool = False,
-    dot_count_direction: np.ndarray = DOWN,
+    dot_count_direction: Vector3DLike = DOWN,
 ) -> None:
     """Reduce a glyph to a faint outline + one dot per anchor point.
 

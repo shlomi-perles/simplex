@@ -98,7 +98,10 @@ def test_render_finds_manim_slides_next_to_python(
     python_exe.write_text("", encoding="utf-8")
     manim_slides.write_text("", encoding="utf-8")
 
-    monkeypatch.setattr(runner.shutil, "which", lambda _name: None)
+    def fake_which(_name: str) -> None:
+        return None
+
+    monkeypatch.setattr(runner.shutil, "which", fake_which)
     monkeypatch.setattr(runner.sys, "executable", str(python_exe))
 
     deck = _deck(tmp_path)

@@ -18,6 +18,7 @@ from manim import (
     Transform,
     Wait,
 )
+from manim.typing import Vector3DLike
 
 from simplex.mobjects.array import Array, ArrayCell, CellValue
 
@@ -109,7 +110,7 @@ def animate_remove(
     array: Array,
     index: int,
     *,
-    shift: np.ndarray = DOWN,
+    shift: Vector3DLike = DOWN,
     **kwargs: Any,
 ) -> AnimationGroup:
     """Animate removing the cell at visible ``index``."""
@@ -131,7 +132,7 @@ def animate_remove(
         cell.move_frame_to(center)
     _move_label_to(array, old_label_center)
 
-    animations: list[Animation] = [FadeOut(removed, shift=shift)]
+    animations: list[Animation] = [FadeOut(removed, shift=np.asarray(shift, dtype=float))]
     animations.extend(_shift_cells(survivor_cells, _centers_for(survivor_cells), survivor_targets))
     if old_label_center is not None and target_label_center is not None:
         animations.extend(_shift_label(array, old_label_center, target_label_center))

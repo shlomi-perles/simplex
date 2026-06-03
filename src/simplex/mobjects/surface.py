@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from manim.opengl import OpenGLMobject
@@ -37,9 +37,14 @@ from manim import (
 )
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
 from manim.opengl import OpenGLSurface
+from manim.typing import Point2DLike, Point3DLike
 from manim.utils.color import ManimColor, ParsableManimColor, color_to_rgba, interpolate_color
 
-type _ScalarFunc = Callable[..., Any]
+type _ScalarInput = float | int | np.ndarray
+type _ScalarResult = float | int | np.ndarray
+type _ScalarFunc2D = Callable[[_ScalarInput, _ScalarInput], _ScalarResult]
+type _ScalarFunc3D = Callable[[_ScalarInput, _ScalarInput, _ScalarInput], _ScalarResult]
+type _ScalarFunc = _ScalarFunc2D | _ScalarFunc3D
 
 __all__ = [
     "ColorBar",
@@ -81,6 +86,13 @@ def _detect_arity(func: _ScalarFunc) -> int:
     )
 
 
+def _float_pair(values: object, *, name: str) -> tuple[float, float]:
+    arr = np.asarray(values, dtype=float)
+    if arr.shape != (2,):
+        raise ValueError(f"{name} must contain exactly two values, got shape {arr.shape}")
+    return float(arr[0]), float(arr[1])
+
+
 def _scalars_to_rgba(
     scalars: np.ndarray,
     colormap: list[ManimColor],
@@ -112,25 +124,27 @@ def _eval_scalar_field(
 ) -> np.ndarray:
     nu, nv = surface.resolution
     if arity == 2:
-        u_vals = np.linspace(*surface.u_range, nu)
-        v_vals = np.linspace(*surface.v_range, nv)
+        u_vals = np.linspace(*_float_pair(surface.u_range, name="u_range"), nu)
+        v_vals = np.linspace(*_float_pair(surface.v_range, name="v_range"), nv)
         uu, vv = np.meshgrid(u_vals, v_vals, indexing="ij")
+        func2 = cast(_ScalarFunc2D, func)
         try:
-            result = np.asarray(func(uu, vv))
+            result = np.asarray(func2(uu, vv))
             if result.shape == (nu, nv):
                 return result.ravel()
         except (TypeError, ValueError):
             pass
-        return np.vectorize(func)(uu, vv).ravel()
+        return np.vectorize(func2)(uu, vv).ravel()
 
     s_points = surface.get_surface_points_and_nudged_points()[0]
+    func3 = cast(_ScalarFunc3D, func)
     try:
-        result = np.asarray(func(s_points[:, 0], s_points[:, 1], s_points[:, 2]))
+        result = np.asarray(func3(s_points[:, 0], s_points[:, 1], s_points[:, 2]))
         if result.shape == (len(s_points),):
             return result
     except (TypeError, ValueError):
         pass
-    return np.array([func(p[0], p[1], p[2]) for p in s_points])
+    return np.asarray([func3(p[0], p[1], p[2]) for p in s_points])
 
 
 def _interpolate_cmap(cmap: list[ManimColor], t: float) -> ManimColor:
@@ -169,7 +183,7 @@ def colorize_surface(
     cmap = _resolve_colormap(colormap)
     arity = _detect_arity(color_func)
     scalars = _eval_scalar_field(color_func, surface, arity)
-    surface.color_by_val = _scalars_to_rgba(scalars, cmap, surface.opacity, color_range)  # type: ignore[assignment]  # ndarray accepted at runtime
+    surface.color_by_val = _scalars_to_rgba(scalars, cmap, surface.get_opacity(), color_range)  # type: ignore[assignment]  # ndarray accepted at runtime
     surface.colorscale = True
     return surface
 
@@ -275,7 +289,7 @@ class ScalarFieldSurface(OpenGLSurface):
         arity = self._get_arity(func)
         scalars = _eval_scalar_field(func, self, arity)
         self.color_by_val = _scalars_to_rgba(  # type: ignore[assignment]  # ndarray accepted at runtime
-            scalars, self._colormap, self.opacity, self._color_range
+            scalars, self._colormap, self.get_opacity(), self._color_range
         )
         self.colorscale = True
         return self
@@ -283,21 +297,38 @@ class ScalarFieldSurface(OpenGLSurface):
     # ── Preset factories ──────────────────────────────────────
 
     @staticmethod
-    def height_func() -> _ScalarFunc:
+    def height_func() -> _ScalarFunc3D:
         """``(x, y, z) -> z``"""
-        return lambda x, y, z: z
+
+        def height(_x: _ScalarInput, _y: _ScalarInput, z: _ScalarInput) -> _ScalarResult:
+            return z
+
+        return height
 
     @staticmethod
-    def distance_from(center: Sequence[float] = (0, 0, 0)) -> _ScalarFunc:
+    def distance_from(center: Point3DLike = (0, 0, 0)) -> _ScalarFunc3D:
         """``(x, y, z) -> euclidean distance to center``"""
-        cx, cy, cz = float(center[0]), float(center[1]), float(center[2])
-        return lambda x, y, z: np.sqrt((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2)
+        center_arr = np.asarray(center, dtype=float)
+        if center_arr.shape != (3,):
+            raise ValueError(
+                f"center must contain exactly three values, got shape {center_arr.shape}"
+            )
+        cx, cy, cz = (float(v) for v in center_arr)
+
+        def distance(x: _ScalarInput, y: _ScalarInput, z: _ScalarInput) -> _ScalarResult:
+            return np.sqrt((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2)
+
+        return distance
 
     @staticmethod
-    def angle_around(center: Sequence[float] = (0, 0)) -> _ScalarFunc:
+    def angle_around(center: Point2DLike = (0, 0)) -> _ScalarFunc3D:
         """``(x, y, z) -> atan2(y - cy, x - cx)``"""
-        cx, cy = float(center[0]), float(center[1])
-        return lambda x, y, z: np.arctan2(y - cy, x - cx)
+        cx, cy = _float_pair(center, name="center")
+
+        def angle(x: _ScalarInput, y: _ScalarInput, _z: _ScalarInput) -> _ScalarResult:
+            return np.arctan2(y - cy, x - cx)
+
+        return angle
 
     # ── Interpolation ────────────────────────────────────────
 
