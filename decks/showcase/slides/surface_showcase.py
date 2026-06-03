@@ -9,15 +9,31 @@ renderer:
 - Live ``set_colormap`` / ``refresh_colors`` on the same surface
 """
 
-from manim import *
-from manim.opengl import *
+from typing import Any, cast
+
+import numpy as np
+import numpy.typing as npt
+from manim import (
+    DEGREES,
+    DOWN,
+    RIGHT,
+    SMALL_BUFF,
+    UP,
+    Create,
+    FadeIn,
+    FadeOut,
+    ReplacementTransform,
+    Tex,
+    VGroup,
+    Write,
+    config,
+)
+from manim.opengl import OpenGLSurface
 
 config.renderer = "opengl"
 config.write_to_movie = True
 
 from simplex import ThreeDSlide
-from simplex.engine.region import Region
-from simplex.engine.scaling import scale_to_fit_mobject
 from simplex.engine.text import Caption
 from simplex.mobjects.surface import ColorBar, ScalarFieldSurface, colorize_surface
 
@@ -25,6 +41,17 @@ try:
     from slides.showcase_style import setup_showcase_chrome
 except ModuleNotFoundError:  # direct ``manim slides/surface_showcase.py ...`` execution
     from showcase_style import setup_showcase_chrome
+
+
+type SurfacePoint = npt.NDArray[np.float64]
+
+
+def _wave_surface_point(u: float, v: float) -> SurfacePoint:
+    return np.asarray([u, v, np.sin(u) * np.cos(v)], dtype=np.float64)
+
+
+def _gaussian_surface_point(u: float, v: float) -> SurfacePoint:
+    return np.asarray([u, v, np.exp(-(u**2 + v**2))], dtype=np.float64)
 
 
 class SurfaceColoring(ThreeDSlide):
@@ -43,7 +70,7 @@ class SurfaceColoring(ThreeDSlide):
         self.set_camera_orientation(phi=60 * DEGREES, theta=-45 * DEGREES)
 
         surface = ScalarFieldSurface(
-            lambda u, v: np.array([u, v, np.sin(u) * np.cos(v)]),
+            _wave_surface_point,
             u_range=[-3, 3],
             v_range=[-3, 3],
             color_func="height",
@@ -58,7 +85,7 @@ class SurfaceColoring(ThreeDSlide):
         ).to_edge(RIGHT)
         bar.fix_in_frame()
 
-        self.play(Write(self.canvas["showcase_title"]), Create(surface), Write(bar))
+        self.play(Write(self.canvas["showcase_title"]), Create(cast(Any, surface)), Write(bar))
         self.next_slide()
 
         # ── Sub-slide 2: live colormap switch ─────────────────────
@@ -78,25 +105,28 @@ class SurfaceColoring(ThreeDSlide):
         # ── Sub-slide 3: colorize_surface on a plain OpenGLSurface ─
 
         plain = OpenGLSurface(
-            lambda u, v: np.array([u, v, np.exp(-(u**2 + v**2))]),
+            _gaussian_surface_point,
             u_range=[-3, 3],
             v_range=[-3, 3],
         )
         colorize_surface(
             plain,
-            ScalarFieldSurface.distance_from(ORIGIN),
+            ScalarFieldSurface.distance_from((0.0, 0.0, 0.0)),
             colormap="plasma",
         )
 
         bar2 = ColorBar(colormap="plasma", min_value=0, max_value=4).move_to(new_bar)
 
         bar2.fix_in_frame()
-        self.play(ReplacementTransform(new_bar, bar2), ReplacementTransform(surface, plain))
+        self.play(
+            ReplacementTransform(new_bar, bar2),
+            ReplacementTransform(cast(Any, surface), cast(Any, plain)),
+        )
         self.begin_ambient_camera_rotation(rate=0.2)
         self.wait(2)
         self.next_slide()
 
-        self.play(FadeOut(plain), FadeOut(bar2))
+        self.play(FadeOut(cast(Any, plain)), FadeOut(bar2))
         # self.remove_fixed_in_frame_mobjects(bar)
 
         # ── Sub-slide 4: matplotlib colormap gallery ──────────────
@@ -108,8 +138,8 @@ class SurfaceColoring(ThreeDSlide):
 
         cmap_names = ["viridis", "plasma", "coolwarm", "inferno", "twilight"]
         gallery = VGroup()
-        label_font_size = None
-        cb_height = None
+        label_font_size: float | None = None
+        cb_height: float | None = None
         for point, name in zip(
             self.region.linspace(RIGHT, len(cmap_names), inset=1), cmap_names, strict=True
         ):

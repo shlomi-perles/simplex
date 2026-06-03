@@ -11,12 +11,15 @@ Toggle the clock or counter from ``[web]`` in ``deck.toml``.
 """
 
 import math
+from typing import Any, cast
 
 import numpy as np
 from manim import (
     LARGE_BUFF,
     MED_SMALL_BUFF,
     SMALL_BUFF,
+    YELLOW,
+    Animation,
     AnimationGroup,
     BLUE,
     DL,
@@ -42,6 +45,7 @@ from manim import (
     GrowFromCenter,
     Line,
     MathTex,
+    Mobject,
     Rectangle,
     ShrinkToCenter,
     Square,
@@ -51,6 +55,7 @@ from manim import (
     Triangle,
     Unwrite,
     VGroup,
+    VMobject,
     Write,
     always_redraw,
 )
@@ -70,6 +75,7 @@ from simplex.engine.dynamics import DN, VT
 from simplex.engine.geometry import SurroundingRectangleUnion, get_surrounding_rectangle
 from simplex.engine.ghost_fade import GhostSlideFade
 from simplex.engine.glyph_map import TransformByGlyphMap
+from simplex.engine.region import Region
 from simplex.engine.scaling import scale_to_fit, scale_to_fit_mobject
 from simplex.engine.text import Caption, TexPage, color_tex
 from simplex.mobjects import Array, ArrayPointer, Edge, Node
@@ -81,20 +87,27 @@ except ModuleNotFoundError:  # direct ``manim slides/scenes.py ...`` execution
     from showcase_style import setup_showcase_chrome
 
 
+type GlyphMapSpec = tuple[Any, ...]
+type GlyphSpec = tuple[VMobject, VMobject, tuple[GlyphMapSpec, ...], dict[str, Any]]
+type GlyphGridEntry = tuple[Region, VMobject, VMobject, tuple[GlyphMapSpec, ...], dict[str, Any]]
+
+
 class TextHelpers(Slide):
     def setup(self) -> None:
         super().setup()
         setup_showcase_chrome(self, "engine/text.py -- Tex, Caption, TexPage, color_tex")
 
     def construct(self) -> None:
+        self.next_slide(name="Custom Slide's name")
+        region_a, region_b, region_c = self.region.split_regions(DOWN, 3)
         body = Tex(r"Body paragraphs default to \textit{theme.typography.body}: $E = mc^2$.")
         self.region.place(body, UP)
-        self.play(Write(self.canvas["showcase_title"]), Write(body))
-        self.next_slide(name="Custom Slide's name")
-
         cap = Caption("Captions use the smaller theme.typography.caption font size.")
         cap.next_to(body, DOWN)
-        self.play(Write(cap))
+        pars_group = VGroup(body, cap)
+        region_a.place(pars_group)
+
+        self.play(Write(self.canvas["showcase_title"]), Write(pars_group))
         self.next_slide()
 
         page = TexPage(
@@ -111,9 +124,8 @@ class TextHelpers(Slide):
             r"Display equations are isolated, so \texttt{page.equation(0)} can be "
             r"animated directly.",
             page_width=self.region,
-            math_spacing=2,
         )
-        page.next_to(cap, DOWN)
+        region_b.place(page)
         self.play(Write(page))
         self.play(page.equation(0).animate.set_color(GOLD))
         self.next_slide()
@@ -123,14 +135,15 @@ class TextHelpers(Slide):
             r"number of Manim units instead of a Region.",
             page_width=self.region.width * 0.62,
         )
-        narrow.next_to(page, DOWN)
+        formula = MathTex(r"a^2 + b^2 = c^2")
+        color_tex(formula, {"a": RED, "b": BLUE, "c": YELLOW}, tex_class=cast(Any, MathTex))
+        region_c.place(narrow, UP)
         self.play(Write(narrow))
         self.next_slide()
 
-        formula = MathTex(r"a^2 + b^2 = c^2")
-        color_tex(formula, {"a": "#FF6B6B", "b": "#4ECDC4", "c": "#FFD93D"}, tex_class=MathTex)
-        formula.next_to(narrow, DOWN)
         self.play(Write(formula))
+        self.next_slide()
+
         self.clear_scene()
 
 
@@ -139,117 +152,88 @@ class CodeHelpers(Slide):
         super().setup()
         setup_showcase_chrome(
             self,
-            "engine/code.py -- code_block + highlight + explain + transform",
+            "engine/code.py -- code_block + highlight + explain + transform + code_with_math",
         )
 
     def construct(self) -> None:
-        snippet = (
-            "def bfs(graph, start):\n"
-            "    queue = [start]\n"
-            "    visited = {start}\n"
-            "    while queue:\n"
-            "        node = queue.pop(0)\n"
-            "        for nb in graph[node]:\n"
-            "            if nb not in visited:\n"
-            "                visited.add(nb)\n"
-            "                queue.append(nb)\n"
-            "    return visited\n"
+        snippet_bfs = (
+            "def BFS(G,s):\n"
+            "    queue ← Build Queue({s})\n"
+            "    for each vertex u in V do:\n"
+            "        dist[u] ← ∞\n"
+            "    dist[s] ← 0\n"
+            "    π[s] ← None\n\n"
+            "    while queue ≠ ø do:\n"
+            "        u = queue.pop(0)\n"
+            "        for neighbor v of u & dist[v] = ∞:\n"
+            "                queue.push(v)\n"
+            "                dist[v] = dist[u] + 1\n"
+            "                π[v] = u\n"
         )
-        code = code_block(snippet)
-        scale_to_fit(code, len_x=self.region.width * 0.55, len_y=self.region.height * 0.55)
-        self.region.place(code)
-        self.play(Write(self.canvas["showcase_title"]), FadeIn(code))
-
-        result = highlight_code_lines(code, lines=[5, 6, 7, 8, 9])
-        self.play(result.fade)
-        if result.indicate is not None:
-            self.play(result.indicate)
+        snippet_dfs = (
+            "def DFS(G,s):\n"
+            "    queue ← Build Queue({s})\n"
+            "    Init dists to ∞, dist[s] ← 0\n"
+            "    π[s] ← None\n\n"
+            "    while queue ≠ ø do:\n"
+            "        u = queue.pop()\n"
+            "        for neighbor v of u & dist[v] = ∞:\n"
+            "                queue.push(v)\n"
+            "                dist[v] = dist[u] + 1\n"
+            "                π[v] ← u\n                \n"
+        )
+        snippet_dfs_tex = (
+            "def DFS($G$,$s$):\n"
+            "    queue $\\leftarrow$ Build Queue({$s$})\n"
+            "    Init dists to $\\infty$, dist[$s$] $\\leftarrow$ 0\n"
+            "    $\\pi$[$s$] $\\leftarrow$ None\n\n"
+            "    while queue $\\neq \\emptyset$ do:\n"
+            "        $u$ = queue.pop()\n"
+            "        for neighbor $v$ of $u$ & dist[$v$] = $\\infty$:\n"
+            "                queue.push($v$)\n"
+            "                dist[$v$] = dist[$u$] + 1\n"
+            "                $\\pi$[$v$] $\\leftarrow$ $u$                \n"
+        )
+        bfs_code = code_block(snippet_bfs)
+        dfs_code = code_block(snippet_dfs)
+        dfs_code_tex = code_with_math(snippet_dfs_tex)
+        self.region.scale_and_place(bfs_code)
+        # scale_factor = dfs_code.line_numbers.lines_text.get_font_size() / bfs_code.line_numbers.lines_text.get_font_size()
+        scale_factor = bfs_code.code_lines[0].height / dfs_code.code_lines[0].height
+        dfs_code.scale(scale_factor)
+        dfs_code_tex.scale(scale_factor)
+        dfs_code.align_to(bfs_code, UL)
+        dfs_code_tex.code_lines.align_to(dfs_code.code_lines, UL)
+        self.play(Write(self.canvas["showcase_title"]), Write(bfs_code))
         self.next_slide()
 
-        mob, anim = code_explain(
-            code,
-            lines=[5, 6],
-            explanation="Dequeue\n+\nexpand neighbours",
+        result = highlight_code_lines(bfs_code, lines=[1, 2, 3, 4, 5, 6])
+        self.play(result.fade)
+        self.play(result.indicate)
+        self.next_slide()
+
+        brace, anim = code_explain(
+            bfs_code,
+            lines=[9, 10],
+            explanation="Dequeue\n+ expand neighbours",
         )
-        self.add(mob)
         self.play(anim)
         self.next_slide()
-
-        # transform_code_lines morphs one Code block into another by line
-        # mapping. Here we show a refactored two-liner side-by-side.
-        refactor_src = code_block("for nb in graph[node]:\n    if nb not in visited:\n")
-        refactor_dst = code_block("for nb in graph[node] - visited:\n    visited.add(nb)\n")
-        refactor_src.scale(0.6)
-        refactor_src.next_to(code, DOWN, buff=0.4)
-        refactor_dst.scale(0.6)
-        refactor_dst.move_to(refactor_src)
-        self.play(FadeIn(refactor_src))
-        self.play(transform_code_lines(refactor_src, refactor_dst, {1: 1, 2: 2}))
-        self.next_slide()
-        self.clear_scene()
-
-
-class CodeWithMath(Slide):
-    def setup(self) -> None:
-        super().setup()
-        setup_showcase_chrome(
-            self,
-            "engine/code.py -- code_with_math (inline LaTeX in code)",
+        self.play(Unwrite(cast(Any, brace)))
+        self.play(highlight_code_lines(bfs_code).fade)  # Fade-in all lines to prepare for transform
+        self.play(transform_code_lines(bfs_code, dfs_code, {1: 1, 2: 2, 3: 3, 4: 3, 5: 3, 6: 4}))
+        self.play(
+            transform_code_lines(bfs_code, dfs_code, {8: 6, 9: 7, 10: 8, 11: 9, 12: 10, 13: 11})
         )
-
-    def construct(self) -> None:
-        # ``code_with_math`` renders any ``$...$`` regions as MathTex.
-        # The inline math sits at the surrounding code's font size --
-        # the helper calibrates against a cached reference glyph, so big
-        # operators (``\bigcup``) and short symbols (``\infty``) both
-        # land at the right size.
-        pseudo = code_with_math(
-            "def dijkstra(G, s):\n"
-            "    for v in $V_G$:\n"
-            "        d[v] = $\\infty$\n"
-            "    d[s] = $0$\n"
-            "    Q = $V_G$\n"
-            "    while $Q \\neq \\emptyset$:\n"
-            "        u = argmin($d[v] : v \\in Q$)\n"
-            "        Q.remove(u)\n"
-            "        for (u, v) in $E_G$:\n"
-            "            if $d[v] > d[u] + w(u, v)$:\n"
-            "                $d[v] \\gets d[u] + w(u, v)$\n",
-        )
-        scale_to_fit(pseudo, len_x=self.region.width * 0.7, len_y=self.region.height * 0.7)
-        self.region.place(pseudo)
-        self.play(Write(self.canvas["showcase_title"]), FadeIn(pseudo))
-
-        # All the engine/code helpers still work over math-laden blocks
-        # -- highlight, explain, and transform all operate on
-        # ``code_lines`` so the inline-tex substitutions are transparent.
-        result = highlight_code_lines(pseudo, lines=[10, 11])
-        self.play(result.fade)
-        if result.indicate is not None:
-            self.play(result.indicate)
         self.next_slide()
 
-        mob, anim = code_explain(
-            pseudo,
-            lines=[10, 11],
-            explanation="Edge\n+\nrelaxation",
+        self.play(
+            transform_code_lines(
+                dfs_code, dfs_code_tex, {i: i for i in range(1, len(dfs_code_tex.code_lines) + 1)}
+            )
         )
-        self.add(mob)
-        self.play(anim)
         self.next_slide()
 
-        # ``bold_math=True`` wraps each match in ``\boldsymbol{...}`` and
-        # ``math_color`` recolours the rendered math. Useful when the
-        # algorithm's variables are the visual focus of the slide.
-        styled = code_with_math(
-            "norm($x$) = $\\sqrt{\\sum_{i=1}^{n} x_i^2}$",
-            bold_math=True,
-            math_color=GOLD,
-        )
-        scale_to_fit(styled, len_x=self.region.width * 0.5, len_y=self.region.height * 0.2)
-        styled.next_to(pseudo, DOWN, buff=0.4)
-        self.play(Write(styled))
-        self.next_slide()
         self.clear_scene()
 
 
@@ -283,9 +267,9 @@ Return $M\leftarrow VV^\top$ over $\mathbb{F}_2$\;
 """,
             caption=r"\textbf{Degeneracy-Guided Assignment}",
         )
-        scale_to_fit(algorithm, len_x=self.region.width * 0.76, len_y=self.region.height * 0.72)
-        self.region.place(algorithm)
-        self.play(Write(self.canvas["showcase_title"]), FadeIn(algorithm))
+
+        self.region.scale_and_place(algorithm)
+        self.play(Write(self.canvas["showcase_title"]), Write(algorithm))
 
         result = highlight_code_lines(algorithm, lines=[4, 5, 6, 7])
         self.play(result.fade)
@@ -293,12 +277,11 @@ Return $M\leftarrow VV^\top$ over $\mathbb{F}_2$\;
             self.play(result.indicate)
         self.next_slide()
 
-        mob, anim = code_explain(
+        _mob, anim = code_explain(
             algorithm,
             lines=[4, 5, 6],
             explanation="Reverse-order\nassignment",
         )
-        self.add(mob)
         self.play(anim)
         self.next_slide()
         self.clear_scene()
@@ -324,7 +307,7 @@ class GraphAndArray(Slide):
         # Edges before nodes so the nodes render on top of the connecting lines.
         graph = VGroup(*edges, n1, n2, n3)
         split_regions = self.region.split_regions(DOWN, 2)
-        split_regions[0].scale_and_place(graph, ORIGIN, buff=MED_LARGE_BUFF)
+        split_regions[0].scale_and_place(graph)
         arr = Array(
             ["-", "8", "1", "3", "9"],
             label="A:",
@@ -335,7 +318,7 @@ class GraphAndArray(Slide):
         arr_cp.animate_append("5").begin()
         cp_pointer = ArrayPointer(arr_cp, 2, label="here")
         arr_cp_group = VGroup(arr_cp, cp_pointer)
-        split_regions[1].scale_and_place(arr_cp_group, ORIGIN, buff=0.5)
+        split_regions[1].scale_and_place(arr_cp_group)
         scale_to_fit_mobject(arr, arr_cp)
         arr.move_to(arr_cp).align_to(arr_cp, LEFT)
         self.play(Write(self.canvas["showcase_title"]), Write(arr), Write(graph))
@@ -409,7 +392,7 @@ class RegionAnchors(Slide):
         points = self.region.linspace(RIGHT, 3)
         dots = VGroup(*(Dot(p, color=GOLD) for p in points))
         caption = Caption("linspace(RIGHT, 3) keeps equal margins")
-        self.region.place(caption, DOWN, buff=0.35)
+        self.region.place(caption, DOWN)
         self.play(FadeIn(dots), Write(caption))
         self.next_slide()
         self.clear_scene()
@@ -418,7 +401,7 @@ class RegionAnchors(Slide):
 class OutlineHelpers(OutlineScene):
     """``slides/outline.py`` -- typed outline parts and linspace progress dots."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         parts = [
             OutlinePart(
                 title=Tex(r"Typed parts"),
@@ -444,7 +427,7 @@ class OutlineHelpers(OutlineScene):
 
     def reveal_outline(self) -> None:
         self.outline_started = True
-        intro = [Write(self.canvas["showcase_title"]), self.progress_bar.appear()]
+        intro: list[Any] = [Write(self.canvas["showcase_title"]), self.progress_bar.appear()]
         intro.extend(FadeIn(mob) for mob in self.initial_mobjects.submobjects[1:])
         self.play(AnimationGroup(*intro, lag_ratio=0.04))
 
@@ -502,7 +485,7 @@ class GeometryHelpers(Slide):
     def construct(self) -> None:
         a = Dot(LEFT * 3 + DOWN)
         b = Dot(RIGHT * 3 + UP)
-        rect = get_surrounding_rectangle(a, b, buff=0.3)
+        rect = get_surrounding_rectangle(a, b)
         self.region.place(VGroup(a, b, rect), ORIGIN)
         self.play(Write(self.canvas["showcase_title"]), FadeIn(a, b), Write(rect))
         self.next_slide()
@@ -515,19 +498,28 @@ class GlyphMapTransform(Slide):
         setup_showcase_chrome(self, "engine/glyph_map.py -- TransformByGlyphMap")
 
     def construct(self) -> None:
-        specs = [getattr(self, f"_glyph_specs_{idx}")() for idx in range(1, 9)]
+        specs: tuple[GlyphSpec, ...] = (
+            self._glyph_specs_1(),
+            self._glyph_specs_2(),
+            self._glyph_specs_3(),
+            self._glyph_specs_4(),
+            self._glyph_specs_5(),
+            self._glyph_specs_6(),
+            self._glyph_specs_7(),
+            self._glyph_specs_8(),
+        )
         cells = self._grid_regions(row_counts=(3, 3, 2), cols=3)
-        entries = []
+        entries: list[GlyphGridEntry] = []
         starts = VGroup()
         labels = VGroup()
-        animations = []
+        animations: list[Animation] = []
 
         for idx, (cell, (src, dst, glyph_map, kwargs)) in enumerate(
             zip(cells, specs, strict=True),
             start=1,
         ):
             pair = VGroup(src, dst)
-            cell.scale_and_place(pair, ORIGIN, buff=MED_SMALL_BUFF)
+            cell.scale_and_place(pair, buff=MED_SMALL_BUFF)
             self._realign_if_overlaid(src, dst)
             label = Caption(str(idx))
             cell.place(label, UL, buff=SMALL_BUFF)
@@ -550,21 +542,21 @@ class GlyphMapTransform(Slide):
         self.next_slide()
         self.clear_scene()
 
-    def _grid_regions(self, *, row_counts: tuple[int, ...], cols: int):
+    def _grid_regions(self, *, row_counts: tuple[int, ...], cols: int) -> list[Region]:
         rows = self.region.split_regions(DOWN, len(row_counts))
-        cells = []
+        cells: list[Region] = []
         for row, count in zip(rows, row_counts, strict=True):
             cells.extend(row.split_regions(RIGHT, cols)[:count])
         return cells
 
     @staticmethod
-    def _realign_if_overlaid(src, dst) -> None:
+    def _realign_if_overlaid(src: Mobject, dst: Mobject) -> None:
         if np.allclose(src.get_center(), dst.get_center()):
             dst.move_to(src)
 
     @staticmethod
-    def _apply_min_font_size(entries) -> None:
-        font_mobjects = [
+    def _apply_min_font_size(entries: list[GlyphGridEntry]) -> None:
+        font_mobjects: list[Any] = [
             mob for _, src, dst, _, _ in entries for mob in (src, dst) if hasattr(mob, "font_size")
         ]
         if not font_mobjects:
@@ -573,7 +565,7 @@ class GlyphMapTransform(Slide):
         for mob in font_mobjects:
             mob.font_size = font_size
 
-    def _glyph_specs_1(self):
+    def _glyph_specs_1(self) -> GlyphSpec:
         exp1 = MathTex("f(x) = 4x^2 + 5x + 6")
         exp2 = MathTex("f(-3) = 4(-3)^2 + 5(-3) + 6").move_to(exp1)
         return (
@@ -587,7 +579,7 @@ class GlyphMapTransform(Slide):
             {},
         )
 
-    def _glyph_specs_2(self):
+    def _glyph_specs_2(self) -> GlyphSpec:
         exp1 = MathTex("ax^2 + bx + c = 0")
         exp2 = MathTex("x^2 + \\frac{b}{a}x + \\frac{c}{a} = 0").move_to(exp1)
         return (
@@ -601,7 +593,7 @@ class GlyphMapTransform(Slide):
             {},
         )
 
-    def _glyph_specs_3(self):
+    def _glyph_specs_3(self) -> GlyphSpec:
         exp1 = MathTex("\\frac{x^2y^3}{w^4z^{-8}}")
         exp2 = MathTex("\\frac{x^2y^3z^8}{w^4}").move_to(exp1)
         return (
@@ -614,7 +606,7 @@ class GlyphMapTransform(Slide):
             {},
         )
 
-    def _glyph_specs_4(self):
+    def _glyph_specs_4(self) -> GlyphSpec:
         exp1 = MathTex("{ { 3x+2y \\over 2x+y } + 12z")
         exp2 = MathTex("\\left( { 2x+y \\over 3x+2y } \\right) ^ {-1} + 12z").move_to(exp1)
         return (
@@ -630,7 +622,7 @@ class GlyphMapTransform(Slide):
             {"default_introducer": Write},
         )
 
-    def _glyph_specs_5(self):
+    def _glyph_specs_5(self) -> GlyphSpec:
         exp1 = MathTex("1 \\over 3r+\\theta")
         exp2 = MathTex("\\left( 3r+\\theta \\right) ^ {-1}").move_to(exp1)
         return (
@@ -644,7 +636,7 @@ class GlyphMapTransform(Slide):
             {"introduce_individually": True},
         )
 
-    def _glyph_specs_6(self):
+    def _glyph_specs_6(self) -> GlyphSpec:
         exp1 = MathTex("4x^2 - x^2 + 5x + 3x - 7")
         exp2 = MathTex("3x^2 + 8x - 7")
         VGroup(exp1, exp2).arrange(DOWN, buff=0.35)
@@ -660,7 +652,7 @@ class GlyphMapTransform(Slide):
             {"from_copy": True},
         )
 
-    def _glyph_specs_7(self):
+    def _glyph_specs_7(self) -> GlyphSpec:
         exp1 = MathTex("1 \\over x")
         exp2 = MathTex("{ { 1 \\over x } - { 1 \\over x } } + 10").move_to(exp1)
         return (
@@ -673,7 +665,7 @@ class GlyphMapTransform(Slide):
             {"default_introducer": Write, "auto_fade": True},
         )
 
-    def _glyph_specs_8(self):
+    def _glyph_specs_8(self) -> GlyphSpec:
         exp1 = MathTex("\\sin(\\arctan(x))")
         exp2 = MathTex("{ {x} \\over {\\sqrt{1+x^2}} }").move_to(exp1)
         return (
@@ -736,7 +728,9 @@ class TrackingHelpers(Slide):
         # `~vt` reads it; `vt @ x` returns an animate.set_value builder for play().
 
         self.play(
-            *(Write(mob) for mob in (self.canvas["showcase_title"], hand, readout)),
+            Write(cast(Any, self.canvas["showcase_title"])),
+            Write(cast(Any, hand)),
+            Write(cast(Any, readout)),
             Create(ticks),
             GrowFromCenter(face),
         )
@@ -761,10 +755,11 @@ class ShapeAndDebug(Slide):
         # 6x4 grid of dots; group three subsets and surround each with a single
         # merged polygon (the rectangles for adjacent dots union together).
         rows, cols = 4, 6
-        grid = VGroup(Dot(radius=0.15, color=GOLD) for _ in range(rows * cols))
+        dot_radius = 0.15
+        grid = VGroup(Dot(radius=dot_radius, color=GOLD) for _ in range(rows * cols))
         grid.arrange_in_grid(rows=rows, cols=cols, buff=0.8)
         region_a, region_b, region_c = self.region.split_regions(RIGHT, 3)
-        region_b.scale_and_place(grid, ORIGIN, buff=MED_LARGE_BUFF)
+        region_b.scale_and_place(grid)
 
         groups = (
             ([0, 1, 6, 7], RED),
@@ -775,8 +770,8 @@ class ShapeAndDebug(Slide):
             *(
                 SurroundingRectangleUnion(
                     *(grid[i] for i in indices),
-                    buff=grid[0].radius * 1.2,
-                    unbuff=grid[0].radius * 0.8,
+                    buff=dot_radius * 1.2,
+                    unbuff=dot_radius * 0.3,
                     corner_radius=0.12,
                     stroke_color=color,
                 )
@@ -789,7 +784,7 @@ class ShapeAndDebug(Slide):
 
         # Multi-color index labels for a multi-string MathTex.
         eq = MathTex(r"\sin\!\left(", r"{a^2 + b^2}", r"\over", r"{3n + 1}", r"\right)")
-        region_a.scale_and_place(eq, ORIGIN, buff=MED_LARGE_BUFF)
+        region_a.scale_and_place(eq)
         labels = indexx_labels(eq)
         self.play(Write(eq), FadeIn(labels))
         self.next_slide()
@@ -831,8 +826,8 @@ class ScalingHelpers(Slide):
         left, right = self.region.split_regions(RIGHT, 2)
 
         eq = MathTex(r"\int_{-\infty}^{\infty} e^{-x^{2}}\,dx = \sqrt{\pi}")
-        left.scale_and_place(eq, ORIGIN, buff=MED_LARGE_BUFF).scale(0.5)
-        original_caption = Caption(r"Region.scale\_and\_place(...).scale(0.5)")
+        left.scale_and_place(eq, buff=LARGE_BUFF)
+        original_caption = Caption(r"Region.scale\_and\_place(...)")
         original_caption.next_to(eq, DOWN, buff=0.4)
         self.play(Write(self.canvas["showcase_title"]), Write(eq), Write(original_caption))
 
@@ -850,7 +845,7 @@ class ScalingHelpers(Slide):
         # so we can fit a copy of eq inside the bounding box of an existing
         # mobject (here, the original ``eq`` on the left).
         boxed = MathTex(r"\sum_{k=1}^{\infty} \frac{1}{k^{2}} = \frac{\pi^{2}}{6}")
-        scale_to_fit_mobject(boxed, eq, buff=MED_SMALL_BUFF)
+        scale_to_fit_mobject(boxed, eq)
         rect_surround = SurroundingRectangle(boxed, buff=0)
         VGroup(boxed, rect_surround).move_to(eq.get_center())
         self.play(Write(boxed), Create(rect_surround))
