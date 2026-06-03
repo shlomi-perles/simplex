@@ -355,7 +355,7 @@ class RegionAnchors(Slide):
 
         self.play(*(Unwrite(label) for label in labels))
         points = self.region.linspace(RIGHT, 3)
-        dots = VGroup(*(Dot(p, radius=0.08, color=GOLD) for p in points))
+        dots = VGroup(*(Dot(p, color=GOLD) for p in points))
         caption = Caption("linspace(RIGHT, 3) keeps equal margins")
         self.region.place(caption, DOWN, buff=0.35)
         self.play(FadeIn(dots), Write(caption))

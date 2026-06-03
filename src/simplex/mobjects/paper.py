@@ -284,7 +284,6 @@ class Paper(Group, metaclass=ConvertToOpenGL):
                     stroke_color=border_color,
                     stroke_width=border_stroke_width,
                     stroke_opacity=0.6,
-                    fill_opacity=0,
                 )
                 border_rect.move_to(img.get_center())
                 parts.append(border_rect)

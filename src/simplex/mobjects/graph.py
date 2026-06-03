@@ -1,8 +1,8 @@
 """Graph mobjects (``Node``, ``Edge``) ported from Simplex.
 
-These are vanilla ``VMobject`` subclasses; they pull colors / strokes
-from the active Simplex theme at construction time and register a
-``ShrinkToCenter`` exit animation so ``ExitAnim(node)`` looks natural.
+These are vanilla ``VMobject`` subclasses; they use Simplex's active theme
+and Manim defaults, and register a ``ShrinkToCenter`` exit animation so
+``ExitAnim(node)`` looks natural.
 """
 
 from typing import Any
@@ -43,15 +43,9 @@ class Edge(Line):
         weight: str | None = None,
         **kwargs: Any,
     ) -> None:
-        theme = get_active_theme()
-        super().__init__(
-            start,
-            end,
-            color=theme.palette.edge,
-            stroke_width=theme.spacing.edge_stroke_width,
-            **kwargs,
-        )
+        super().__init__(start, end, **kwargs)
         if weight is not None:
+            theme = get_active_theme()
             label = MathTex(weight, color=theme.palette.weight).scale(0.4)
             label.move_to(self.get_center())
             self.add(label)

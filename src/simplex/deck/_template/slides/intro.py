@@ -27,7 +27,7 @@ class KeyIdea(Slide):
     def construct(self) -> None:
         theme = get_active_theme()
         title_mob = Tex(self.title, font_size=theme.typography.h2, color=theme.palette.accent)
-        body_mob = Tex(self.body, font_size=theme.typography.body)
+        body_mob = Tex(self.body)
         group = VGroup(title_mob, body_mob).arrange(DOWN, buff=0.45)
         self.region.place(group, ORIGIN)
 
