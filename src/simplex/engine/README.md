@@ -4,7 +4,7 @@ Small additive helpers that augment vanilla Manim. **Never wrap Manim's construc
 
 ## Public surface
 
-- `apply_theme_defaults(theme)` -- calls `Mobject.set_default(...)` for Tex / MathTex / Text / Line / Dot / Arrow / Rectangle / Square (invoked by `simplex.plugin:activate`)
+- `apply_theme_defaults(theme)` -- calls `Mobject.set_default(...)` for Tex / MathTex / Text / Line / Dot / Rectangle / Code (invoked by `simplex.plugin:activate`; Arrow and Square inherit the Line / Rectangle defaults)
 - `Region` -- transparent Manim `Rectangle` subclass used as a mutable drawing area; default lives on `Slide.region`; `always_place(mob, ...)` keeps a mobject attached to a region anchor without overriding Manim's native `Mobject.always`
 - `ExitAnim(mob, **kw)` -- exit animation lookup; dispatches through `exit_for(mob)` (named `ExitAnim` so it never collides with Manim's `Add` Animation pair)
 - `exit_for(mob, **kw)` -- per-instance override (WeakKeyDictionary) -> MRO match in defaults -> `FadeOut`

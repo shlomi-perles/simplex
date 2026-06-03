@@ -43,9 +43,11 @@ class Edge(Line):
         weight: str | None = None,
         **kwargs: Any,
     ) -> None:
+        theme = get_active_theme()
+        kwargs.setdefault("color", theme.palette.edge)
+        kwargs.setdefault("stroke_width", theme.spacing.edge_stroke_width)
         super().__init__(start, end, **kwargs)
         if weight is not None:
-            theme = get_active_theme()
             label = MathTex(weight, color=theme.palette.weight).scale(0.4)
             label.move_to(self.get_center())
             self.add(label)

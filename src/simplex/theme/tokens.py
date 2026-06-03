@@ -8,6 +8,12 @@ from pygments.style import Style
 
 
 class Palette(BaseModel):
+    """Semantic video colors.
+
+    ``edge`` is reserved for the graph ``Edge`` mobject; ordinary Manim
+    strokes use the theme foreground color through ``font``.
+    """
+
     model_config = ConfigDict(frozen=True)
     background: str
     font: str
@@ -37,6 +43,7 @@ class Spacing(BaseModel):
     The ``*_buff`` fields are the inward gap between a chrome mobject (header,
     footer) and the corresponding edge of the slide region — i.e. the ``buff``
     argument forwarded to :meth:`Region.place`. Themes override per slide-deck.
+    ``edge_stroke_width`` is reserved for the graph ``Edge`` mobject.
     """
 
     model_config = ConfigDict(frozen=True)

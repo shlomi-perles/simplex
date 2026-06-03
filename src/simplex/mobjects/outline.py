@@ -59,7 +59,7 @@ class OutlineProgressBar(VGroup, metaclass=ConvertToOpenGL):
         self.dot_points = [np.array(point, dtype=float) for point in points]
         self.dot_color = dot_color or theme.palette.vertex
         self.accent_color = accent_color or theme.palette.accent
-        self.track_color = track_color or theme.palette.edge
+        self.track_color = track_color or theme.palette.font
 
         self.dots = VGroup(
             *(

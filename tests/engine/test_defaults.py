@@ -4,10 +4,23 @@ import pytest
 
 pytest.importorskip("manim")
 
-from manim import DecimalNumber, Integer, MarkupText, Mobject, Paragraph, Variable
+from manim import (
+    DEFAULT_STROKE_WIDTH,
+    Arrow,
+    DecimalNumber,
+    Integer,
+    Line,
+    MarkupText,
+    Mobject,
+    Paragraph,
+    Rectangle,
+    Square,
+    Variable,
+    VMobject,
+)
 from manim.utils.color import ManimColor
 
-from simplex.engine.defaults import apply_theme_defaults
+from simplex.engine.defaults import apply_theme_defaults, code_theme_defaults
 from simplex.engine.dynamics import DN
 from simplex.theme.presets import SIMPLEX_DARK, SIMPLEX_LIGHT
 
@@ -18,6 +31,12 @@ def _drawn_colors(mob: Mobject) -> set[str]:
         for submob in mob.get_family()
         if not submob.submobjects and submob.get_all_points().size
     }
+
+
+def _stroke_color_hex(mob: VMobject) -> str:
+    color = mob.get_stroke_color()
+    assert color is not None
+    return color.to_hex()
 
 
 def test_apply_theme_defaults_updates_number_mobjects() -> None:
@@ -58,3 +77,36 @@ def test_apply_theme_defaults_updates_non_text_subclasses() -> None:
         assert _drawn_colors(paragraph) == {expected}
     finally:
         apply_theme_defaults(SIMPLEX_DARK)
+
+
+def test_apply_theme_defaults_keeps_vanilla_shape_strokes_on_theme_foreground() -> None:
+    expected = ManimColor(SIMPLEX_LIGHT.palette.font).to_hex()
+
+    try:
+        apply_theme_defaults(SIMPLEX_LIGHT)
+        line = Line()
+        arrow = Arrow()
+        rectangle = Rectangle()
+        square = Square()
+
+        assert _stroke_color_hex(line) == expected
+        assert _stroke_color_hex(arrow) == expected
+        assert _stroke_color_hex(rectangle) == expected
+        assert _stroke_color_hex(square) == expected
+        assert line.get_stroke_width() == pytest.approx(DEFAULT_STROKE_WIDTH)
+    finally:
+        apply_theme_defaults(SIMPLEX_DARK)
+
+
+def test_code_background_uses_theme_foreground_not_graph_edge() -> None:
+    theme = SIMPLEX_LIGHT.model_copy(
+        update={
+            "palette": SIMPLEX_LIGHT.palette.model_copy(
+                update={"font": "#101010", "edge": "#FF00FF"}
+            )
+        }
+    )
+
+    _, _, background_config = code_theme_defaults(theme)
+
+    assert background_config["stroke_color"] == "#101010"

@@ -8,6 +8,8 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from simplex.mobjects.graph import Edge, Node
+from simplex.theme.context import active_theme
+from simplex.theme.presets import SIMPLEX_DARK
 
 
 def test_node_constructs_with_label() -> None:
@@ -33,6 +35,23 @@ def test_edge_between_points_has_a_line() -> None:
     assert isinstance(e, Line)
     assert_allclose(e.get_start(), np.array([0.0, 0.0, 0.0]))
     assert_allclose(e.get_end(), np.array([1.0, 0.0, 0.0]))
+
+
+def test_edge_uses_graph_edge_theme_defaults() -> None:
+    theme = SIMPLEX_DARK.model_copy(
+        update={
+            "palette": SIMPLEX_DARK.palette.model_copy(update={"edge": "#123456"}),
+            "spacing": SIMPLEX_DARK.spacing.model_copy(update={"edge_stroke_width": 9.0}),
+        }
+    )
+
+    with active_theme(theme):
+        e = Edge(np.array([0.0, 0.0, 0.0]), np.array([1.0, 0.0, 0.0]))
+
+    stroke_color = e.get_stroke_color()
+    assert stroke_color is not None
+    assert stroke_color.to_hex() == "#123456"
+    assert e.get_stroke_width() == pytest.approx(9.0)
 
 
 def test_edge_between_mobjects_uses_boundary_points() -> None:
