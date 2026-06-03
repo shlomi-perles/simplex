@@ -4,7 +4,7 @@ Demonstrates ``simplex.mobjects.Paper`` with the "Attention Is All You Need"
 paper from ArXiv. Shows the full lifecycle: intro -> pick -> dismiss.
 """
 
-from manim import DL, MED_LARGE_BUFF, UP, Tex, Write
+from manim import UP, Tex, Write
 
 from simplex.mobjects.paper import DismissPaper, Paper, PickPage, ShowPaper
 from simplex.slides import Slide
@@ -32,13 +32,8 @@ class PaperShowcase(Slide):
         self.play(Write(self.canvas["showcase_title"]), Write(paper_title))
 
         # Directions are vanilla Manim vectors (DL, RIGHT, DOWN, ...).
-        paper = Paper(
-            "https://arxiv.org/abs/1706.03762",
-            shadow=True,
-            shadow_direction=DL,
-            stack_direction=DL,
-        )
-        self.region.scale_and_place(paper, buff=MED_LARGE_BUFF)
+        paper = Paper("https://arxiv.org/abs/1706.03762")
+        self.region.scale_and_place(paper)
 
         self.play(ShowPaper(paper))
         self.next_slide()
