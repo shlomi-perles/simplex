@@ -177,6 +177,10 @@ def test_setup_chrome_adds_canvas_and_updates_region() -> None:
     assert stub.region.bottom > Region.full_frame().bottom
 
 
+def test_simplex_slides_skip_reverse_video_generation() -> None:
+    assert Slide.skip_reversing is True
+
+
 def test_next_slide_pads_current_slide_before_forwarding() -> None:
     stub = _ForwardingSlide(current_animation=2, start_animation=1)
 

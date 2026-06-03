@@ -119,6 +119,23 @@ def test_render_forces_utf8_subprocess_env(tmp_path: Path, captured: list[dict[s
     assert captured[0]["cwd"] == deck.path.resolve()
 
 
+def test_render_drops_interpreter_steering_env_vars(
+    tmp_path: Path,
+    captured: list[dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PYTHONPATH", "foreign")
+    monkeypatch.setenv("PYTHONHOME", "foreign")
+    monkeypatch.setenv("VIRTUAL_ENV", "foreign")
+
+    runner.render(_deck(tmp_path), output_dir=tmp_path / "out")
+
+    env = captured[0]["env"]
+    assert "PYTHONPATH" not in env
+    assert "PYTHONHOME" not in env
+    assert "VIRTUAL_ENV" not in env
+
+
 def test_render_filters_pydub_syntax_warning(
     tmp_path: Path,
     captured: list[dict[str, Any]],

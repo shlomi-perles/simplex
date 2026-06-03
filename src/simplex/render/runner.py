@@ -60,19 +60,40 @@ def _filter_groups(
     return tuple(filtered)
 
 
-def _manim_slides_command() -> list[str]:
-    """Return an executable command for the active environment's manim-slides."""
-    found = shutil.which("manim-slides")
-    if found:
-        return [found]
+# Environment variables that can redirect a child interpreter at (or before)
+# import time to a *different* Python environment than the one running Simplex.
+# We drop them from render subprocesses so each manim render is hermetic and
+# resolves packages only from Simplex's own venv -- otherwise an activated conda
+# base or foreign virtualenv in the caller's shell (e.g. a stray
+# ``PYTHONPATH=...\miniforge3`` that ``uv run`` forwards unchanged) can shadow
+# the venv's manim/numpy/PIL and cause cross-environment import failures.
+_ENV_OVERRIDE_KEYS = ("PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV")
 
+
+def _manim_slides_command() -> list[str]:
+    """Return an executable command for *this* environment's manim-slides.
+
+    Anchored to ``sys.executable`` first: the manim-slides we spawn must come
+    from the same venv as the Simplex interpreter that's running, so a foreign
+    ``manim-slides`` earlier on ``PATH`` cannot be picked up. Falls back to
+    ``PATH`` and finally to ``python -m manim_slides``.
+    """
     scripts_dir = Path(sys.executable).resolve().parent
     executable_name = "manim-slides.exe" if os.name == "nt" else "manim-slides"
     sibling = scripts_dir / executable_name
     if sibling.exists():
         return [str(sibling)]
 
+    found = shutil.which("manim-slides")
+    if found:
+        return [found]
+
     return [sys.executable, "-m", "manim_slides"]
+
+
+def _hermetic_env() -> dict[str, str]:
+    """``os.environ`` minus interpreter-steering vars (see ``_ENV_OVERRIDE_KEYS``)."""
+    return {k: v for k, v in os.environ.items() if k not in _ENV_OVERRIDE_KEYS}
 
 
 def render(
@@ -122,7 +143,7 @@ def render(
     # manim plugin in the child interpreter reads ``SIMPLEX_THEME`` to pick
     # the preset whose background/typography it pushes onto ``manim.config``.
     env = {
-        **os.environ,
+        **_hermetic_env(),
         "PYTHONIOENCODING": "utf-8",
         "PYTHONUTF8": "1",
         "PYTHONWARNINGS": append_pythonwarnings_filter(os.environ.get("PYTHONWARNINGS")),

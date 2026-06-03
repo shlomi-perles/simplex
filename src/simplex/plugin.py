@@ -64,6 +64,13 @@ def activate() -> None:
     from simplex.theme.context import set_default_theme
     from simplex.theme.pygments_style import register_all_builtin_styles
 
+    # Make manim-slides' slide concatenation deterministic (see module). Safe
+    # no-op when manim-slides isn't in use or its internals don't match.
+    with suppress(Exception):
+        from simplex.render._manim_slides_patch import install as _install_ms_patch
+
+        _install_ms_patch()
+
     theme = _resolve_theme()
     set_default_theme(theme)
     apply_theme_defaults(theme)

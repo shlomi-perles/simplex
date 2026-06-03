@@ -14,6 +14,8 @@ Theme and Manim defaults are wired in ``simplex.plugin:activate`` (the
   always wins.
 - ``wait_time_between_slides`` defaults to a small final-frame hold so the
   encoded slide segment includes the completed state of the last animation.
+- reverse-video generation is skipped; Simplex's web/PDF/PPTX pipeline consumes
+  the forward slide media and Manim's native section videos.
 
 The chosen ``SimplexSectionType.value`` round-trips into Manim's native
 section JSON (``Section(type_=...) -> JSON "type"``), which the reconciler
@@ -66,6 +68,7 @@ class _SimplexSlideMixin:
     header: ChromeContent = None
     footer: ChromeContent = None
     chrome_kwargs: Mapping[str, Any] = {}
+    skip_reversing = True
     slide_boundary_wait_time: float = DEFAULT_SLIDE_BOUNDARY_WAIT_TIME
     _current_main: str | None
 
