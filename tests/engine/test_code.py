@@ -143,13 +143,34 @@ def test_code_with_math_returns_a_manim_code() -> None:
     assert len(block.code_lines) == 1
 
 
-def test_default_tex_template_includes_algorithm2e() -> None:
+def test_default_tex_template_does_not_require_algorithm2e() -> None:
     from simplex.theme.presets import SIMPLEX_DARK
 
     template = SIMPLEX_DARK.latex.as_tex_template()
 
-    assert "algorithm2e" in template.body
-    assert r"\SetKwProg{Fn}{Function}{:}{end}" in template.body
+    assert "algorithm2e" not in template.body
+
+
+def test_pseudocode_renderer_adds_algorithm2e_to_its_template(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from simplex.engine import code as code_mod
+
+    captured: dict[str, str] = {}
+
+    class FakeTex:
+        pass
+
+    def fake_tex(_source: str, **kwargs: object) -> FakeTex:
+        template = kwargs["tex_template"]
+        captured["body"] = template.body  # type: ignore[attr-defined]
+        return FakeTex()
+
+    monkeypatch.setattr(code_mod, "Tex", fake_tex)
+
+    assert isinstance(code_mod._render_algorithm_tex("", tex_config=None), FakeTex)
+    assert "algorithm2e" in captured["body"]
+    assert r"\SetKwProg{Fn}{Function}{:}{end}" in captured["body"]
 
 
 def test_pseudocode_block_returns_code_indexed_by_numbered_algorithm_rows() -> None:

@@ -9,18 +9,6 @@ from pygments.style import Style
 from simplex.theme.palettes import MANIM_DEFAULT, web_palette_for
 
 _DEFAULT_WEB_COLORS = web_palette_for(MANIM_DEFAULT)
-_DEFAULT_ALGORITHM2E_PREAMBLE = r"""
-\usepackage[ruled,linesnumbered,commentsnumbered]{algorithm2e}
-
-% Algorithm styling
-\SetKwComment{Comment}{$\triangleright$\ }{}
-\SetKwProg{Fn}{Function}{:}{end}
-\SetKwProg{Proc}{Procedure}{:}{end}
-
-% Empty line command for algorithms
-\let\oldnl\nl
-\newcommand{\nonl}{\renewcommand{\nl}{\let\nl\oldnl}}
-"""
 
 
 class Palette(BaseModel):
@@ -89,7 +77,6 @@ class LatexProfile(BaseModel):
         from manim import TexTemplate
 
         tmpl = TexTemplate(tex_compiler=self.tex_compiler)
-        tmpl.add_to_preamble(_DEFAULT_ALGORITHM2E_PREAMBLE)
         for pkg in self.extra_packages:
             tmpl.add_to_preamble(rf"\usepackage{{{pkg}}}")
         if self.preamble:

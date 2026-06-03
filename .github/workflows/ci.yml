@@ -16,7 +16,7 @@ jobs:
     - name: Install system deps
       run: |
         sudo apt-get update
-        sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended \
+        sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended texlive-science \
                                 ffmpeg libcairo2-dev libpango1.0-dev
     - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b   # v8.1.0
       with:

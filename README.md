@@ -32,7 +32,7 @@ depend on `manim-simplex`.
 Typical system packages:
 
 ```bash
-sudo apt-get install texlive-latex-extra texlive-fonts-recommended ffmpeg \
+sudo apt-get install texlive-latex-extra texlive-fonts-recommended texlive-science ffmpeg \
                      libcairo2-dev libpango1.0-dev
 ```
 
@@ -235,7 +235,7 @@ Simplex TeX template and returns a `Code` instance. Its `code_lines` are the
 rendered, algorithm2e-numbered rows, so `highlight_code_lines(algorithm, [2])`
 and `code_explain(...)` target the visible algorithm line numbers. Use
 `code_block(..., pseudocode=True)` for the same renderer when you prefer one
-factory.
+factory. On TeX Live systems, install `texlive-science` for `algorithm2e.sty`.
 
 ## Themes And Palettes
 

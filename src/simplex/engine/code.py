@@ -68,6 +68,18 @@ _MIN_ROW_GROUPING_THRESHOLD = 0.12
 _LINE_NUMBER_GUTTER_TOLERANCE = 0.16
 _LINE_NUMBER_PREFIX_MAX_WIDTH = 0.45
 _LINE_NUMBER_GAP_MIN = 0.12
+_ALGORITHM2E_PREAMBLE = r"""
+\usepackage[ruled,linesnumbered,commentsnumbered]{algorithm2e}
+
+% Algorithm styling
+\SetKwComment{Comment}{$\triangleright$\ }{}
+\SetKwProg{Fn}{Function}{:}{end}
+\SetKwProg{Proc}{Procedure}{:}{end}
+
+% Empty line command for algorithms
+\let\oldnl\nl
+\newcommand{\nonl}{\renewcommand{\nl}{\let\nl\oldnl}}
+"""
 
 
 @dataclass(frozen=True)
@@ -228,13 +240,16 @@ def _render_algorithm_tex(
 ) -> Tex:
     """Compile one full algorithm2e environment as a Manim ``Tex`` mobject."""
     theme = get_active_theme()
+    user_tex_config = dict(tex_config or {})
+    tex_template = user_tex_config.pop("tex_template", theme.latex.as_tex_template())
+    tex_template.add_to_preamble(_ALGORITHM2E_PREAMBLE)
     tex_kwargs: dict[str, Any] = {
         "tex_environment": None,
-        "tex_template": theme.latex.as_tex_template(),
+        "tex_template": tex_template,
         "color": theme.palette.font,
         "font_size": theme.typography.body,
     }
-    tex_kwargs.update(tex_config or {})
+    tex_kwargs.update(user_tex_config)
     return Tex(algorithm_source, **tex_kwargs)
 
 
