@@ -10,6 +10,7 @@ from simplex.mobjects.array import Array, ArrayCell, ArrayEntry, ArrayMob, Array
 from simplex.mobjects.graph import Edge, Node
 from simplex.mobjects.outline import OutlineProgressBar
 from simplex.mobjects.paper import DismissPaper, Paper, PickPage, ShowPaper
+from simplex.mobjects.sphere import OpenGLSphere, Sphere
 from simplex.mobjects.surface import ColorBar, ScalarFieldSurface, colorize_surface
 
 __all__ = [
@@ -22,10 +23,12 @@ __all__ = [
     "DismissPaper",
     "Edge",
     "Node",
+    "OpenGLSphere",
     "OutlineProgressBar",
     "Paper",
     "PickPage",
     "ScalarFieldSurface",
     "ShowPaper",
+    "Sphere",
     "colorize_surface",
 ]

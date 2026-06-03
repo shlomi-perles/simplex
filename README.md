@@ -120,7 +120,7 @@ uv run simplex serve
 | `simplex.plugin` | `activate()` entry point used by Manim. |
 | `simplex.slides` | `Slide`, `ThreeDSlide`, `OutlineScene`, `OutlinePart`, `Chrome`, `make_chrome`. |
 | `simplex.engine` | `Region`, `ExitAnim`, `clear_scene`, `exit_for`, `register_exit`, `set_exit_animation`, `HighlightResult`, `apply_theme_defaults`. |
-| `simplex.mobjects` | `Node`, `Edge`, `ArrayMob`, `ArrayEntry`, `ArrayPointer`, `OutlineProgressBar`, `Paper`, `ShowPaper`, `DismissPaper`, `PickPage`. |
+| `simplex.mobjects` | `Node`, `Edge`, `ArrayMob`, `ArrayEntry`, `ArrayPointer`, `OutlineProgressBar`, `Paper`, `ShowPaper`, `DismissPaper`, `PickPage`, `Sphere`, `OpenGLSphere`, `ScalarFieldSurface`, `ColorBar`. |
 | `simplex.theme` | `Theme`, `Palette`, `Typography`, `Spacing`, `Motion`, `LatexProfile`, `WebPalette`, `active_theme`, `get_active_theme`, `presets`, `resolve_palette`, `available_palette_names`, `render_web_css`. |
 | `simplex.manifest` | `DeckManifest`, `MainSlide`, `Subsection`, the manifest schema written by the render pipeline. |
 | `simplex.deck` | `DeckConfig`, `discover`, `scaffold`, section metadata, bundled deck template. |

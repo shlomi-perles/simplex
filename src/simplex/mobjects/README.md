@@ -16,13 +16,19 @@ namespace convention.
 - `ArrayPointer` -- arrow pointing at a cell, with `animate_to(new_i)`.
 - `OutlineProgressBar` -- linspace-driven dot progress bar used by
   `simplex.slides.OutlineScene`.
+- `Paper`, `PickPage`, `ShowPaper`, `DismissPaper` -- PDF-like page display
+  and page-selection helpers.
+- `Sphere` -- renderer-aware sphere; Cairo uses Manim's stock class, while
+  OpenGL renders use an explicit `OpenGLSurface` sphere.
+- `ScalarFieldSurface`, `ColorBar`, `colorize_surface` -- OpenGL scalar-field
+  surfaces, color-bar legends, and surface colorization helpers.
 
 ## Conventions
 
 - All mobjects pull colors / strokes / fonts from
   `simplex.theme.context.get_active_theme()` at construction time.
-- All mobjects are vanilla `VMobject` subclasses; they work in any
-  `Scene`, not just `Slide`.
+- Mobjects work in any `Scene`, not just `Slide`; use Manim's OpenGL base
+  classes directly for renderer-specific 3D geometry.
 - Exit animations are registered via
   `simplex.engine.animations.set_exit_animation` (no monkey-patching).
 

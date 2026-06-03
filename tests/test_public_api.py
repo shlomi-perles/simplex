@@ -10,6 +10,7 @@ from simplex import (
     Paper,
     ShowPaper,
     Slide,
+    Sphere,
     ThreeDSlide,
     make_chrome,
     presets,
@@ -30,6 +31,7 @@ def test_top_level_authoring_imports() -> None:
     assert Caption.__name__ == "Caption"
     assert Paper.__name__ == "Paper"
     assert ShowPaper.__name__ == "ShowPaper"
+    assert Sphere.__name__ == "Sphere"
     assert SIMPLEX_DARK is presets.SIMPLEX_DARK
     assert SIMPLEX_LIGHT is presets.SIMPLEX_LIGHT
     assert callable(make_chrome)

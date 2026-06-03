@@ -67,6 +67,10 @@ def activate() -> None:
     theme = _resolve_theme()
     set_default_theme(theme)
     apply_theme_defaults(theme)
+    if manim.config.renderer == manim.RendererType.OPENGL:
+        from simplex.mobjects.sphere import install_opengl_sphere
+
+        install_opengl_sphere()
     manim.config.tex_template = theme.latex.as_tex_template()
     manim.config.background_color = theme.palette.background
     manim.config.save_sections = True

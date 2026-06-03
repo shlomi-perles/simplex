@@ -1,6 +1,7 @@
 # engine/
 
-Small additive helpers that augment vanilla Manim. **Never wrap Manim's constructors.**
+Small additive helpers that augment vanilla Manim. Constructor-level mobject
+adaptations belong in `simplex.mobjects`, not in engine helpers.
 
 ## Public surface
 
