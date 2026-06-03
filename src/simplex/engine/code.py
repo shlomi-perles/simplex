@@ -25,16 +25,20 @@ from manim import (
     Animation,
     AnimationGroup,
     Brace,
+    BraceLabel,
+    BraceText,
     Code,
+    FadeIn,
+    Group,
     GrowFromCenter,
     Indicate,
     MathTex,
+    Mobject,
     SurroundingRectangle,
-    Text,
     TransformMatchingShapes,
     VGroup,
-    Write,
 )
+from manim.utils.color import ParsableManimColor
 
 from simplex.engine.defaults import code_theme_defaults
 from simplex.engine.opengl_compat import is_vmobject
@@ -148,29 +152,67 @@ def highlight_code_lines(
 def code_explain(
     code: Code,
     lines: list[int],
-    explanation: str,
+    explanation: str | Mobject,
     *,
     off_opacity: float = 0.5,
     buff: float = SMALL_BUFF,
-    color: str | None = None,
+    color: ParsableManimColor | None = None,
     scale: float = 1.0,
+    tex_label: bool = False,
     **kwargs: Any,
-) -> tuple[VGroup, AnimationGroup]:
+) -> tuple[Mobject, AnimationGroup]:
     """Brace + explanation text for a (contiguous) range of lines.
+
+    ``explanation`` can be a string, which produces a Manim ``BraceText``
+    (or ``BraceLabel`` when ``tex_label=True``), or a pre-built mobject such
+    as ``MathTex``. Custom mobjects are positioned with ``Brace.put_at_tip``.
 
     Returns ``(mobject, animation)``. Add the mobject to the scene before
     playing -- this lets callers position / restyle it first.
     """
     theme = get_active_theme()
-    color = color or theme.palette.accent
+    explicit_color = color is not None
+    resolved_color = color or theme.palette.accent
     code_lines = code.code_lines
     # ``lines`` are 1-based and ``code_explain``'s docstring promises a
     # contiguous range, so slice the underlying ``VGroup`` directly --
     # Manim's ``Code.code_lines`` is a ``VGroup`` and supports list-style
     # slicing without rebuilding the group from a generator expression.
     target = code_lines[lines[0] - 1 : lines[-1]]
-    brace = Brace(target, RIGHT, buff=buff, color=color)
-    label = Text(explanation, color=color).scale(scale).next_to(brace, RIGHT, buff=buff)
+    label_mobject: Mobject
+    label_creation: Animation
+
+    if isinstance(explanation, str):
+        brace_config = {"color": resolved_color}
+        label_mobject = (
+            BraceLabel(
+                target,
+                explanation,
+                brace_direction=RIGHT,
+                buff=buff,
+                brace_config=brace_config,
+            )
+            if tex_label
+            else BraceText(
+                target,
+                explanation,
+                brace_direction=RIGHT,
+                buff=buff,
+                brace_config=brace_config,
+            )
+        )
+        label_mobject.label.set_color(resolved_color)
+        label_mobject.label.scale(scale)
+        label_mobject.brace.put_at_tip(label_mobject.label)
+        label_creation = label_mobject.creation_anim()
+    else:
+        brace = Brace(target, RIGHT, buff=buff, color=resolved_color)
+        if explicit_color:
+            explanation.set_color(resolved_color)
+        explanation.scale(scale)
+        brace.put_at_tip(explanation, buff=buff)
+        label_mobject = Group(brace, explanation)
+        label_creation = AnimationGroup(GrowFromCenter(brace), FadeIn(explanation))
 
     highlight = highlight_code_lines(
         code,
@@ -178,10 +220,9 @@ def code_explain(
         off_opacity=off_opacity,
         indicate=False,
     )
-    return VGroup(brace, label), AnimationGroup(
+    return label_mobject, AnimationGroup(
         highlight.fade,
-        GrowFromCenter(brace),
-        Write(label),
+        label_creation,
         lag_ratio=kwargs.pop("lag_ratio", 1.0),
         **kwargs,
     )

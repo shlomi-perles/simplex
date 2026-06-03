@@ -20,6 +20,7 @@ from typing import Any, ClassVar, cast
 
 import numpy as np
 from manim import DEFAULT_FONT_SIZE, LARGE_BUFF, MathTex, Tex, TransformMatchingShapes, VMobject
+from manim.utils.color import ParsableManimColor
 
 from simplex.engine.region import Region
 from simplex.theme.context import get_active_theme
@@ -254,7 +255,7 @@ def _build_probe(tex_class: type[Tex], substring: str) -> Tex:
 
 def color_tex(
     equation: Tex | MathTex,
-    t2c: Mapping[str, str],
+    t2c: Mapping[str, ParsableManimColor],
     *,
     tex_class: type[Tex] = Tex,
 ) -> Tex | MathTex:

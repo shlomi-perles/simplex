@@ -298,3 +298,35 @@ def test_code_with_math_bold_wraps_with_boldsymbol() -> None:
 
     block = code_with_math("x = $a + b$", language="python", bold_math=True)
     assert len(block.code_lines) == 1
+
+
+def test_code_explain_string_uses_brace_text_creation_anim() -> None:
+    pytest.importorskip("manim")
+    from manim import AnimationGroup, BraceText
+
+    from simplex.engine.code import code_block, code_explain
+
+    block = code_block("x = 1\ny = 2")
+    mob, anim = code_explain(block, lines=[1], explanation="first line")
+
+    assert isinstance(mob, BraceText)
+    assert isinstance(anim.animations[1], AnimationGroup)
+    creation = anim.animations[1]
+    assert creation.animations[0].mobject is mob.brace
+    assert creation.animations[1].mobject is mob.label
+
+
+def test_code_explain_accepts_mobject_explanation() -> None:
+    pytest.importorskip("manim")
+    from manim import RED, Circle, Group
+
+    from simplex.engine.code import code_block, code_explain
+
+    block = code_block("x = 1\ny = 2")
+    label = Circle(radius=0.1, color=RED)
+    mob, _ = code_explain(block, lines=[1], explanation=label)
+
+    assert isinstance(mob, Group)
+    assert mob[1] is label
+    assert label.get_color().to_hex() == RED.to_hex()
+    assert label.get_center()[0] > mob[0].get_center()[0]

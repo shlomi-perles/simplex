@@ -33,7 +33,7 @@ class Node(VMobject, metaclass=ConvertToOpenGL):
         set_exit_animation(self, ShrinkToCenter)
 
 
-class Edge(VMobject, metaclass=ConvertToOpenGL):
+class Edge(Line):
     """Line between two anchors, with an optional weight label at the midpoint."""
 
     def __init__(
@@ -43,18 +43,15 @@ class Edge(VMobject, metaclass=ConvertToOpenGL):
         weight: str | None = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(**kwargs)
         theme = get_active_theme()
-        a = start.get_center() if hasattr(start, "get_center") else start
-        b = end.get_center() if hasattr(end, "get_center") else end
-        line = Line(
-            a,
-            b,
+        super().__init__(
+            start,
+            end,
             color=theme.palette.edge,
             stroke_width=theme.spacing.edge_stroke_width,
+            **kwargs,
         )
-        self.add(line)
         if weight is not None:
             label = MathTex(weight, color=theme.palette.weight).scale(0.4)
-            label.move_to(line.get_center())
+            label.move_to(self.get_center())
             self.add(label)
