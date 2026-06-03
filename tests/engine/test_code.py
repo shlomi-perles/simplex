@@ -172,6 +172,8 @@ def test_code_block_uses_active_dark_theme_background() -> None:
 
 
 def test_code_block_passes_theme_font_and_background(monkeypatch: pytest.MonkeyPatch) -> None:
+    from manim.utils.color import ManimColor
+
     from simplex.engine import code as code_mod
     from simplex.engine.code import code_block
     from simplex.theme.context import active_theme
@@ -192,16 +194,17 @@ def test_code_block_passes_theme_font_and_background(monkeypatch: pytest.MonkeyP
 
     assert calls[0]["formatter_style"] == "simplex_solarized_light"
     assert calls[0]["paragraph_config"] == {"font": "JetBrains Mono"}
-    assert calls[0]["background_config"] == {
-        "fill_color": "#fffce4",
-        "stroke_color": "#3C313F",
-        "fill_opacity": 1,
-    }
+    light_background = calls[0]["background_config"]
+    assert isinstance(light_background, dict)
+    assert light_background["fill_color"] == "#fffce4"
+    assert light_background["fill_opacity"] == 1
+    stroke_color = light_background["stroke_color"]
+    assert isinstance(stroke_color, ManimColor)
+    assert stroke_color.to_hex() == "#3C313F"
     assert calls[1]["formatter_style"] == "simplex_pycharm"
     assert calls[1]["paragraph_config"] == {"font": "JetBrains Mono"}
     assert calls[1]["background_config"] == {
         "fill_color": "#1A1A1A",
-        "stroke_color": "#FFFFFF",
         "fill_opacity": 1,
     }
 

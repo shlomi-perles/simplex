@@ -24,6 +24,7 @@ from manim import (
     VGroup,
 )
 from manim.mobject.opengl.opengl_compatibility import ConvertToOpenGL
+from manim.utils.color import ParsableManimColor
 
 from simplex.engine.region import Region
 from simplex.theme.context import get_active_theme
@@ -45,9 +46,9 @@ class OutlineProgressBar(VGroup, metaclass=ConvertToOpenGL):
         dot_radius: float = DEFAULT_DOT_RADIUS,
         moving_dot_scale: float = 2.5,
         line_stroke_width: float = 10.0,
-        dot_color: str | None = None,
-        accent_color: str | None = None,
-        track_color: str | None = None,
+        dot_color: ParsableManimColor | None = None,
+        accent_color: ParsableManimColor | None = None,
+        track_color: ParsableManimColor | None = None,
         track_opacity: float = 0.35,
         **kwargs: Any,
     ) -> None:
@@ -55,11 +56,13 @@ class OutlineProgressBar(VGroup, metaclass=ConvertToOpenGL):
         if len(points) < 1:
             raise ValueError("OutlineProgressBar needs at least one point")
 
+        from manim import WHITE
+
         theme = get_active_theme()
         self.dot_points = [np.array(point, dtype=float) for point in points]
         self.dot_color = dot_color or theme.palette.vertex
         self.accent_color = accent_color or theme.palette.accent
-        self.track_color = track_color or theme.palette.font
+        self.track_color = track_color or WHITE
 
         self.dots = VGroup(
             *(

@@ -5,13 +5,16 @@ import pytest
 
 pytest.importorskip("manim")
 
+import manim
 from manim import RIGHT
+from manim.utils.color import ManimColor
 
+from simplex.engine.defaults import apply_theme_defaults
 from simplex.engine.region import Region
 from simplex.mobjects.outline import OutlineProgressBar
 from simplex.slides.outline import OutlineScene
 from simplex.theme.context import active_theme
-from simplex.theme.presets import SIMPLEX_DARK
+from simplex.theme.presets import SIMPLEX_DARK, SIMPLEX_LIGHT
 
 
 def test_progress_bar_from_region_uses_linspace_defaults() -> None:
@@ -45,23 +48,28 @@ def test_progress_bar_set_index_moves_active_dot() -> None:
     assert bar.completed_track.get_stroke_opacity() == pytest.approx(1.0)
 
 
-def test_progress_bar_track_uses_theme_foreground_not_graph_edge() -> None:
-    theme = SIMPLEX_DARK.model_copy(
+def test_progress_bar_track_uses_theme_white_not_font_or_graph_edge() -> None:
+    theme = SIMPLEX_LIGHT.model_copy(
         update={
-            "palette": SIMPLEX_DARK.palette.model_copy(
+            "palette": SIMPLEX_LIGHT.palette.model_copy(
                 update={"font": "#101010", "edge": "#FF00FF"}
             )
         }
     )
     region = Region(top=2.0, bottom=0.0, left=0.0, right=4.0)
 
-    with active_theme(theme):
-        bar = OutlineProgressBar.from_region(region, 3)
+    try:
+        apply_theme_defaults(theme)
+        with active_theme(theme):
+            bar = OutlineProgressBar.from_region(region, 3)
+        expected = manim.WHITE.to_hex()
+    finally:
+        apply_theme_defaults(SIMPLEX_DARK)
 
-    assert bar.track_color == "#101010"
+    assert ManimColor(bar.track_color).to_hex() == expected
     stroke_color = bar.track.get_stroke_color()
     assert stroke_color is not None
-    assert stroke_color.to_hex() == "#101010"
+    assert stroke_color.to_hex() == expected
 
 
 class _MiniOutline:

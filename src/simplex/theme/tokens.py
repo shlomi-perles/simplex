@@ -6,12 +6,16 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pygments.style import Style
 
+from simplex.theme.palettes import MANIM_DEFAULT, web_palette_for
+
+_DEFAULT_WEB_COLORS = web_palette_for(MANIM_DEFAULT)
+
 
 class Palette(BaseModel):
     """Semantic video colors.
 
     ``edge`` is reserved for the graph ``Edge`` mobject; ordinary Manim
-    strokes use the theme foreground color through ``font``.
+    strokes use Manim's ``WHITE`` constant after the theme palette is applied.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -90,12 +94,12 @@ class WebPalette(BaseModel):
     """
 
     model_config = ConfigDict(frozen=True)
-    accent: str = "#FFD700"
+    accent: str = _DEFAULT_WEB_COLORS["accent"]
     background: str = "#2b2b2b"
     surface: str = "#2D2D2D"
-    text_primary: str = "#FFFFFF"
+    text_primary: str = _DEFAULT_WEB_COLORS["text_primary"]
     text_muted: str = "#A0A0A0"
-    link: str = "#58C4DD"
+    link: str = _DEFAULT_WEB_COLORS["link"]
     font_family_sans: str = "system-ui, sans-serif"
     font_family_mono: str = "'JetBrains Mono', monospace"
     font_size_base: str = "1rem"

@@ -22,7 +22,6 @@ from manim import (
     DL,
     DOWN,
     RIGHT,
-    WHITE,
     Animation,
     AnimationGroup,
     FadeIn,
@@ -49,13 +48,11 @@ _DEFAULT_DPI = 150
 _DEFAULT_PAGES = 3
 _DEFAULT_TIMEOUT = 30
 _SHADOW_OPACITY = 0.22
-_SHADOW_COLOR = "#000000"
 _SHADOW_OFFSET_FACTOR = 0.025
 _SHADOW_BLUR = 12.0
 _SHADOW_SCALE = 1.04
 _STACK_OFFSET_FACTOR = 0.05
 _PAGE_HEIGHT = 5.5
-_BORDER_COLOR = WHITE
 _BORDER_STROKE_WIDTH = 1.5
 
 _ARXIV_ABS_RE = re.compile(r"arxiv\.org/abs/(.+?)(?:\?|$)")
@@ -231,14 +228,18 @@ class Paper(Group, metaclass=ConvertToOpenGL):
         shadow_blur: float = _SHADOW_BLUR,
         shadow_scale: float = _SHADOW_SCALE,
         border: bool = False,
-        border_color: ParsableManimColor = _BORDER_COLOR,
+        border_color: ParsableManimColor | None = None,
         border_stroke_width: float = _BORDER_STROKE_WIDTH,
         stack_direction: np.ndarray = DL,
         stack_offset: float | None = None,
         timeout: int = _DEFAULT_TIMEOUT,
         **kwargs: Any,
     ) -> None:
+        from manim import BLACK, WHITE
+
         self._shadow_enabled = shadow
+        if border_color is None:
+            border_color = WHITE
 
         pdf_path = self._resolve_source(source, timeout=timeout)
         image_paths = _render_pages(pdf_path, pages=pages, dpi=dpi)
@@ -261,7 +262,7 @@ class Paper(Group, metaclass=ConvertToOpenGL):
                     width=img.width,
                     height=img.height,
                     corner_radius=0.04,
-                    fill_color=_SHADOW_COLOR,
+                    fill_color=BLACK,
                     fill_opacity=shadow_opacity,
                     stroke_width=0,
                 )

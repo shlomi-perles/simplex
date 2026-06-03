@@ -13,6 +13,25 @@ from pygments.token import (
     Text,
 )
 
+_TEXT = "#A9B7C6"
+_ERROR = "#960050"
+_COMMENT = "#808080"
+_KEYWORD = "#CC7832"
+_NAME = "#C8D1DA"
+_ATTRIBUTE = "#BABABA"
+_BUILTIN = "#8888C6"
+_PSEUDO = "#9876AA"
+_CLASS = "#FFC66D"
+_DECORATOR = "#BBB529"
+_ENTITY = "#6D9CBE"
+_OTHER = "#88BE05"
+_TAG = "#E8BF6A"
+_NUMBER = "#6897BB"
+_STRING = "#6A8759"
+_DOC_STRING = "#629755"
+_DELETED = "#BC3F3C"
+_INSERTED = "#A5C261"
+
 
 class SimplexPycharm(Style):
     """Dark Pygments scheme inspired by PyCharm's Darcula palette."""
@@ -21,55 +40,55 @@ class SimplexPycharm(Style):
     highlight_color = "#333333"
 
     styles = {  # noqa: RUF012 -- Pygments declares `styles` as a class attribute
-        Text: "#A9B7C6",
-        Error: "#960050",
-        Comment: "#808080",
-        Comment.Multiline: "#808080",
-        Comment.Preproc: "#808080",
-        Comment.Single: "#808080",
-        Comment.Special: "#808080",
-        Keyword: "#CC7832",
-        Keyword.Constant: "#CC7832",
-        Keyword.Declaration: "#CC7832",
-        Keyword.Namespace: "#CC7832",
-        Keyword.Pseudo: "#CC7832",
-        Keyword.Reserved: "#CC7832",
-        Keyword.Type: "#CC7832",
-        Operator: "#A9B7C6",
-        Operator.Word: "#CC7832",
-        Punctuation: "#A9B7C6",
-        Name: "#C8D1DA",
-        Name.Attribute: "#BABABA",
-        Name.Builtin: "#8888C6",
-        Name.Builtin.Pseudo: "#9876AA",
-        Name.Class: "#FFC66D",
-        Name.Constant: "#9876AA",
-        Name.Decorator: "#BBB529",
-        Name.Entity: "#6D9CBE",
-        Name.Exception: "#FFC66D",
-        Name.Function: "#FFC66D",
-        Name.Label: "#C8D1DA",
-        Name.Namespace: "#C8D1DA",
-        Name.Other: "#88BE05",
-        Name.Tag: "#E8BF6A",
-        Name.Variable: "#C8D1DA",
-        Name.Variable.Class: "#9876AA",
-        Name.Variable.Global: "#9876AA",
-        Name.Variable.Instance: "#9876AA",
-        Literal: "#6897BB",
-        Literal.Date: "#6A8759",
-        Literal.Number: "#6897BB",
-        Literal.String: "#6A8759",
-        Literal.String.Doc: "#629755",
-        Literal.String.Escape: "#6897BB",
-        Generic: "#808080",
-        Generic.Deleted: "#BC3F3C",
-        Generic.Emph: "italic #A9B7C6",
-        Generic.Heading: "#A9B7C6",
-        Generic.Inserted: "#A5C261",
-        Generic.Output: "#A9B7C6",
-        Generic.Prompt: "#808080",
-        Generic.Strong: "bold #A9B7C6",
-        Generic.Subheading: "#A9B7C6",
-        Generic.Traceback: "#BC3F3C",
+        Text: _TEXT,
+        Error: _ERROR,
+        Comment: _COMMENT,
+        Comment.Multiline: _COMMENT,
+        Comment.Preproc: _COMMENT,
+        Comment.Single: _COMMENT,
+        Comment.Special: _COMMENT,
+        Keyword: _KEYWORD,
+        Keyword.Constant: _KEYWORD,
+        Keyword.Declaration: _KEYWORD,
+        Keyword.Namespace: _KEYWORD,
+        Keyword.Pseudo: _KEYWORD,
+        Keyword.Reserved: _KEYWORD,
+        Keyword.Type: _KEYWORD,
+        Operator: _TEXT,
+        Operator.Word: _KEYWORD,
+        Punctuation: _TEXT,
+        Name: _NAME,
+        Name.Attribute: _ATTRIBUTE,
+        Name.Builtin: _BUILTIN,
+        Name.Builtin.Pseudo: _PSEUDO,
+        Name.Class: _CLASS,
+        Name.Constant: _PSEUDO,
+        Name.Decorator: _DECORATOR,
+        Name.Entity: _ENTITY,
+        Name.Exception: _CLASS,
+        Name.Function: _CLASS,
+        Name.Label: _NAME,
+        Name.Namespace: _NAME,
+        Name.Other: _OTHER,
+        Name.Tag: _TAG,
+        Name.Variable: _NAME,
+        Name.Variable.Class: _PSEUDO,
+        Name.Variable.Global: _PSEUDO,
+        Name.Variable.Instance: _PSEUDO,
+        Literal: _NUMBER,
+        Literal.Date: _STRING,
+        Literal.Number: _NUMBER,
+        Literal.String: _STRING,
+        Literal.String.Doc: _DOC_STRING,
+        Literal.String.Escape: _NUMBER,
+        Generic: _COMMENT,
+        Generic.Deleted: _DELETED,
+        Generic.Emph: f"italic {_TEXT}",
+        Generic.Heading: _TEXT,
+        Generic.Inserted: _INSERTED,
+        Generic.Output: _TEXT,
+        Generic.Prompt: _COMMENT,
+        Generic.Strong: f"bold {_TEXT}",
+        Generic.Subheading: _TEXT,
+        Generic.Traceback: _DELETED,
     }

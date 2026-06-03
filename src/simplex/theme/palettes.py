@@ -57,67 +57,52 @@ _SHADE_TRANSFORMS = {
     "D": ("darker", 0.1),
     "E": ("darker", 0.2),
 }
-_DEFAULT_MANIM_COLORS: dict[str, str] = {
+_DEFAULT_MANIM_COLOR_SEEDS: dict[str, str] = {
     "BLUE_A": "#C7E9F1",
     "BLUE_B": "#9CDCEB",
     "BLUE_C": "#58C4DD",
     "BLUE_D": "#29ABCA",
     "BLUE_E": "#236B8E",
-    "BLUE": "#58C4DD",
     "TEAL_A": "#ACEAD7",
     "TEAL_B": "#76DDC0",
     "TEAL_C": "#5CD0B3",
     "TEAL_D": "#55C1A7",
     "TEAL_E": "#49A88F",
-    "TEAL": "#5CD0B3",
     "GREEN_A": "#C9E2AE",
     "GREEN_B": "#A6CF8C",
     "GREEN_C": "#83C167",
     "GREEN_D": "#77B05D",
     "GREEN_E": "#699C52",
-    "GREEN": "#83C167",
     "YELLOW_A": "#FFF1B6",
     "YELLOW_B": "#FFEA94",
     "YELLOW_C": "#F7D96F",
     "YELLOW_D": "#F4D345",
     "YELLOW_E": "#E8C11C",
-    "YELLOW": "#F7D96F",
     "GOLD_A": "#F7C797",
     "GOLD_B": "#F9B775",
     "GOLD_C": "#F0AC5F",
     "GOLD_D": "#E1A158",
     "GOLD_E": "#C78D46",
-    "GOLD": "#F0AC5F",
     "RED_A": "#F7A1A3",
     "RED_B": "#FF8080",
     "RED_C": "#FC6255",
     "RED_D": "#E65A4C",
     "RED_E": "#CF5044",
-    "RED": "#FC6255",
     "MAROON_A": "#ECABC1",
     "MAROON_B": "#EC92AB",
     "MAROON_C": "#C55F73",
     "MAROON_D": "#A24D61",
     "MAROON_E": "#94424F",
-    "MAROON": "#C55F73",
     "PURPLE_A": "#CAA3E8",
     "PURPLE_B": "#B189C6",
     "PURPLE_C": "#9A72AC",
     "PURPLE_D": "#715582",
     "PURPLE_E": "#644172",
-    "PURPLE": "#9A72AC",
     "GRAY_A": "#DDDDDD",
     "GRAY_B": "#BBBBBB",
     "GRAY_C": "#888888",
     "GRAY_D": "#444444",
     "GRAY_E": "#222222",
-    "GREY_A": "#DDDDDD",
-    "GREY_B": "#BBBBBB",
-    "GREY_C": "#888888",
-    "GREY_D": "#444444",
-    "GREY_E": "#222222",
-    "GRAY": "#888888",
-    "GREY": "#888888",
     "WHITE": "#FFFFFF",
     "BLACK": "#000000",
     "PINK": "#D147BD",
@@ -126,9 +111,8 @@ _DEFAULT_MANIM_COLORS: dict[str, str] = {
     "LIGHT_BROWN": "#CD853F",
     "DARK_BROWN": "#8B4513",
     "GRAY_BROWN": "#736357",
-    "GREY_BROWN": "#736357",
-    "DARK_BLUE": "#236B8E",
 }
+_DEFAULT_MANIM_COLORS: dict[str, str] = dict(_DEFAULT_MANIM_COLOR_SEEDS)
 
 
 @dataclass(frozen=True)
@@ -172,7 +156,11 @@ def resolve_palette(name: str, *, repo_root: Path | None = None) -> ManimPalette
     if name == SIMPLEX_LIGHT:
         return _palette_from_export(SIMPLEX_LIGHT, _load_simplex_light_export())
     if name == MANIM_DEFAULT:
-        return ManimPalette(MANIM_DEFAULT, "#000000", dict(_DEFAULT_MANIM_COLORS))
+        return ManimPalette(
+            MANIM_DEFAULT,
+            _palette_color(_DEFAULT_MANIM_COLORS, "BLACK"),
+            dict(_DEFAULT_MANIM_COLORS),
+        )
     if name in custom_ansi:
         return _palette_from_iterm(name, custom_ansi[name])
 
@@ -200,16 +188,31 @@ def semantic_palette_for(name: str, *, repo_root: Path | None = None) -> dict[st
     colors = palette.colors
     return {
         "background": palette.background,
-        "font": colors.get("WHITE", "#FFFFFF"),
-        "accent": colors.get("GOLD", colors.get("BLUE", "#58C4DD")),
-        "vertex": colors.get("BLUE_E", colors.get("BLUE", "#236B8E")),
-        "vertex_stroke": colors.get("BLUE", "#58C4DD"),
-        "edge": colors.get("WHITE", "#FFFFFF"),
-        "weight": colors.get("YELLOW", "#F7D96F"),
-        "visited": colors.get("GREEN", "#83C167"),
-        "label": colors.get("WHITE", "#FFFFFF"),
-        "distance": colors.get("ORANGE", "#FF862F"),
+        "font": _palette_color(colors, "WHITE"),
+        "accent": _palette_color(colors, "GOLD", "BLUE"),
+        "vertex": _palette_color(colors, "BLUE_E", "BLUE", "DARK_BLUE"),
+        "vertex_stroke": _palette_color(colors, "BLUE"),
+        "edge": _palette_color(colors, "WHITE"),
+        "weight": _palette_color(colors, "YELLOW"),
+        "visited": _palette_color(colors, "GREEN"),
+        "label": _palette_color(colors, "WHITE"),
+        "distance": _palette_color(colors, "ORANGE"),
     }
+
+
+def apply_manim_palette(manim_module: Any, theme: Any) -> None:
+    """Patch Manim's public color constants from a Simplex theme."""
+    from manim.utils import color as color_module
+    from manim.utils.color import manim_colors
+    from manim.utils.color.core import ManimColor
+
+    palette_name = str(getattr(theme, "manim_palette", None) or MANIM_DEFAULT)
+    palette = resolve_palette(palette_name)
+    for name, value in palette.colors.items():
+        color = ManimColor(value)
+        setattr(manim_colors, name, color)
+        setattr(color_module, name, color)
+        setattr(manim_module, name, color)
 
 
 def web_palette_for(name: str, *, repo_root: Path | None = None) -> dict[str, str]:
@@ -217,12 +220,12 @@ def web_palette_for(name: str, *, repo_root: Path | None = None) -> dict[str, st
     palette = resolve_palette(name, repo_root=repo_root)
     colors = palette.colors
     return {
-        "accent": colors.get("GOLD", colors.get("BLUE", "#58C4DD")),
+        "accent": _palette_color(colors, "GOLD", "BLUE"),
         "background": palette.background,
         "surface": colors.get("GRAY_A", palette.background),
-        "text_primary": colors.get("WHITE", "#FFFFFF"),
-        "text_muted": colors.get("GRAY_C", "#888888"),
-        "link": colors.get("BLUE", "#58C4DD"),
+        "text_primary": _palette_color(colors, "WHITE"),
+        "text_muted": _palette_color(colors, "GRAY_C", "GREY_C", "GRAY", "GREY"),
+        "link": _palette_color(colors, "BLUE"),
     }
 
 
@@ -233,7 +236,10 @@ def studio_palette_data(*, repo_root: Path | None = None) -> dict[str, object]:
     palette_colors.update(custom_ansi)
 
     direct = {
-        MANIM_DEFAULT: _colors_to_swatches(_DEFAULT_MANIM_COLORS, "#000000"),
+        MANIM_DEFAULT: _colors_to_swatches(
+            _DEFAULT_MANIM_COLORS,
+            _palette_color(_DEFAULT_MANIM_COLORS, "BLACK"),
+        ),
         SIMPLEX_LIGHT: _json_palette_to_swatches(_load_simplex_light_export()),
     }
     direct.update(
@@ -322,7 +328,9 @@ def _palette_from_export(name: str, data: Mapping[str, Any]) -> ManimPalette:
         raw_colors = {}
     colors = {str(key): _normalize_hex(str(value)) for key, value in raw_colors.items()}
     _add_color_aliases(colors)
-    background = _normalize_hex(str(data.get("background_color") or colors.get("BLACK", "#000000")))
+    background = _normalize_hex(
+        str(data.get("background_color") or colors.get("BLACK", _palette_color(colors, "BLACK")))
+    )
     return ManimPalette(name, background, colors)
 
 
@@ -351,7 +359,9 @@ def _palette_from_iterm(name: str, data: Mapping[str, str]) -> ManimPalette:
     colors["GRAY_BROWN"] = _mix(colors["LIGHT_BROWN"], _ansi(data, 8), 0.5)
     colors["GREY_BROWN"] = colors["GRAY_BROWN"]
     colors["DARK_BLUE"] = colors.get("BLUE_E", colors["BLUE"])
-    background = _normalize_hex(data.get("Background Color", "#000000"))
+    background = _normalize_hex(
+        data.get("Background Color", _palette_color(_DEFAULT_MANIM_COLORS, "BLACK"))
+    )
     return ManimPalette(name, background, colors)
 
 
@@ -411,8 +421,23 @@ def _add_color_aliases(colors: dict[str, str]) -> None:
         colors.setdefault("DARK_BLUE", colors["BLUE_E"])
 
 
+_add_color_aliases(_DEFAULT_MANIM_COLORS)
+
+
+def _palette_color(colors: Mapping[str, str], *keys: str) -> str:
+    for key in keys:
+        if value := colors.get(key):
+            return value
+        if value := _DEFAULT_MANIM_COLORS.get(key):
+            return value
+    joined = ", ".join(keys)
+    raise KeyError(f"no fallback color registered for {joined}")
+
+
 def _ansi(data: Mapping[str, str], index: int) -> str:
-    return _normalize_hex(data.get(f"Ansi {index} Color", "#000000"))
+    return _normalize_hex(
+        data.get(f"Ansi {index} Color", _palette_color(_DEFAULT_MANIM_COLORS, "BLACK"))
+    )
 
 
 def _transform(hex_color: str, kind: str, amount: float) -> str:
@@ -424,11 +449,11 @@ def _transform(hex_color: str, kind: str, amount: float) -> str:
 
 
 def _lighter(hex_color: str, amount: float) -> str:
-    return _mix(hex_color, "#FFFFFF", amount)
+    return _mix(hex_color, _palette_color(_DEFAULT_MANIM_COLORS, "WHITE"), amount)
 
 
 def _darker(hex_color: str, amount: float) -> str:
-    return _mix(hex_color, "#000000", amount)
+    return _mix(hex_color, _palette_color(_DEFAULT_MANIM_COLORS, "BLACK"), amount)
 
 
 def _mix(a: str, b: str, amount: float) -> str:

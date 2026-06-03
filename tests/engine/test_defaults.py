@@ -4,6 +4,7 @@ import pytest
 
 pytest.importorskip("manim")
 
+import manim
 from manim import (
     DEFAULT_STROKE_WIDTH,
     Arrow,
@@ -79,11 +80,18 @@ def test_apply_theme_defaults_updates_non_text_subclasses() -> None:
         apply_theme_defaults(SIMPLEX_DARK)
 
 
-def test_apply_theme_defaults_keeps_vanilla_shape_strokes_on_theme_foreground() -> None:
-    expected = ManimColor(SIMPLEX_LIGHT.palette.font).to_hex()
+def test_apply_theme_defaults_keeps_vanilla_shape_strokes_on_theme_white() -> None:
+    theme = SIMPLEX_LIGHT.model_copy(
+        update={
+            "palette": SIMPLEX_LIGHT.palette.model_copy(
+                update={"font": "#101010", "edge": "#FF00FF"}
+            )
+        }
+    )
 
     try:
-        apply_theme_defaults(SIMPLEX_LIGHT)
+        apply_theme_defaults(theme)
+        expected = manim.WHITE.to_hex()
         line = Line()
         arrow = Arrow()
         rectangle = Rectangle()
@@ -98,7 +106,17 @@ def test_apply_theme_defaults_keeps_vanilla_shape_strokes_on_theme_foreground() 
         apply_theme_defaults(SIMPLEX_DARK)
 
 
-def test_code_background_uses_theme_foreground_not_graph_edge() -> None:
+def test_apply_theme_defaults_omits_shape_overrides_for_builtin_white() -> None:
+    try:
+        apply_theme_defaults(SIMPLEX_LIGHT)
+        apply_theme_defaults(SIMPLEX_DARK)
+        assert _stroke_color_hex(Line()) == "#FFFFFF"
+        assert _stroke_color_hex(Rectangle()) == "#FFFFFF"
+    finally:
+        apply_theme_defaults(SIMPLEX_DARK)
+
+
+def test_code_background_uses_theme_white_not_font_or_graph_edge() -> None:
     theme = SIMPLEX_LIGHT.model_copy(
         update={
             "palette": SIMPLEX_LIGHT.palette.model_copy(
@@ -109,4 +127,12 @@ def test_code_background_uses_theme_foreground_not_graph_edge() -> None:
 
     _, _, background_config = code_theme_defaults(theme)
 
-    assert background_config["stroke_color"] == "#101010"
+    stroke_color = background_config["stroke_color"]
+    assert isinstance(stroke_color, ManimColor)
+    assert stroke_color.to_hex() == manim.WHITE.to_hex()
+
+
+def test_code_background_omits_stroke_color_for_builtin_white() -> None:
+    _, _, background_config = code_theme_defaults(SIMPLEX_DARK)
+
+    assert "stroke_color" not in background_config

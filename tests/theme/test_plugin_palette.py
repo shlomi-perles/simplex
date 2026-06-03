@@ -9,17 +9,18 @@ import pytest
 
 from simplex import plugin
 from simplex.theme import presets
+from simplex.theme.palettes import apply_manim_palette
 
 
 def test_apply_manim_palette_patches_public_and_source_modules() -> None:
     try:
-        plugin._apply_manim_palette(manim, presets.SIMPLEX_LIGHT)
+        apply_manim_palette(manim, presets.SIMPLEX_LIGHT)
 
         assert manim.BLUE.to_hex().upper() == "#426A79"
         assert manim.BLUE_A.to_hex().upper() == "#688894"
         assert manim_colors.BLUE.to_hex().upper() == "#426A79"
     finally:
-        plugin._apply_manim_palette(manim, presets.SIMPLEX_DARK)
+        apply_manim_palette(manim, presets.SIMPLEX_DARK)
 
 
 def test_activate_sets_background_from_resolved_theme(monkeypatch: pytest.MonkeyPatch) -> None:

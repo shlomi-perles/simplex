@@ -54,9 +54,11 @@ def f(x):
     return x * x
 """
 
+_DEFAULT_FG = "#D4D4D4"
+
 DEFAULT_COLORS = {
     "--bg": "#1E1E1E",
-    "--fg": "#D4D4D4",
+    "--fg": _DEFAULT_FG,
     "--comment": "#6A9955",
     "--keyword": "#C586C0",
     "--string": "#CE9178",
@@ -65,7 +67,7 @@ DEFAULT_COLORS = {
     "--function": "#1F6FE4",
     "--class": "#8A46CE",
     "--builtin": "#1C6BBB",
-    "--operator": "#D4D4D4",
+    "--operator": _DEFAULT_FG,
 }
 
 

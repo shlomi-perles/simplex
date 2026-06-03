@@ -2,9 +2,10 @@
 
 import json
 
+from simplex.theme.palettes import MANIM_DEFAULT, web_palette_for
 from simplex.theme.styles.simplex_pycharm import SimplexPycharm
 from simplex.theme.styles.simplex_solarized_light import SimplexSolarizedLight
-from simplex.theme.tokens import LatexProfile, Palette, Theme, Typography, WebPalette
+from simplex.theme.tokens import LatexProfile, Theme, Typography
 
 _COMPACT_DISPLAY_PREAMBLE = (
     r"\setlength{\abovedisplayskip}{0pt}"
@@ -19,32 +20,25 @@ _COMPACT_DISPLAY_PREAMBLE = (
 
 SIMPLEX_DARK: Theme = Theme(
     name="simplex_dark",
-    manim_palette="manim_default",
-    palette=Palette(
-        background="#242424",
-        font="#FFFFFF",
-        accent="#FFD700",
-        vertex="#236B8E",
-        vertex_stroke="#58C4DD",
-        edge="#FFFFFF",
-        weight="#F4D345",
-        visited="#00FF00",
-        label="#FFFFFF",
-        distance="#FF8000",
-    ),
+    manim_palette=MANIM_DEFAULT,
+    palette={
+        "background": "#242424",
+        "accent": "#FFD700",
+        "weight": "#F4D345",
+        "visited": "#00FF00",
+        "distance": "#FF8000",
+    },
     typography=Typography(mono_family="JetBrains Mono"),
     latex=LatexProfile(preamble=_COMPACT_DISPLAY_PREAMBLE),
-    web_palette=WebPalette(
-        accent="#FFD700",
-        background="#2b2b2b",
-        surface="#2D2D2D",
-        text_primary="#FFFFFF",
-        text_muted="#A0A0A0",
-        link="#58C4DD",
-        font_family_sans="system-ui, -apple-system, sans-serif",
-        font_family_mono="'JetBrains Mono', 'Fira Code', monospace",
-        font_size_base="1rem",
-    ),
+    web_palette={
+        "background": "#2b2b2b",
+        "surface": "#2D2D2D",
+        "text_muted": "#A0A0A0",
+        "link": web_palette_for(MANIM_DEFAULT)["link"],
+        "font_family_sans": "system-ui, -apple-system, sans-serif",
+        "font_family_mono": "'JetBrains Mono', 'Fira Code', monospace",
+        "font_size_base": "1rem",
+    },
     code_style=SimplexPycharm,
 )
 

@@ -6,9 +6,11 @@ import pytest
 
 pytest.importorskip("manim")
 
+import manim
 import numpy as np
 from manim import DL, DOWN, RIGHT, UP, ImageMobject, config
 
+from simplex.engine.defaults import apply_theme_defaults
 from simplex.mobjects.paper import (
     DismissPaper,
     Paper,
@@ -17,6 +19,7 @@ from simplex.mobjects.paper import (
     _render_pages,
     _url_to_pdf_url,
 )
+from simplex.theme.presets import SIMPLEX_DARK, SIMPLEX_LIGHT
 
 
 @pytest.fixture
@@ -164,6 +167,16 @@ def test_paper_with_border_no_shadow(sample_pdf: Path) -> None:
     assert paper.page_count == 2
     for pg in paper.page_groups:
         assert len(pg.submobjects) == 2
+
+
+def test_paper_default_border_uses_active_manim_white(sample_pdf: Path) -> None:
+    try:
+        apply_theme_defaults(SIMPLEX_LIGHT)
+        paper = Paper(sample_pdf, pages=1, dpi=72, page_height=3.0, shadow=False, border=True)
+        border = paper.get_top_page().submobjects[-1]
+        assert border.get_stroke_color().to_hex() == manim.WHITE.to_hex()
+    finally:
+        apply_theme_defaults(SIMPLEX_DARK)
 
 
 def test_paper_with_shadow_and_border(sample_pdf: Path) -> None:
