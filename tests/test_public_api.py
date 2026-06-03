@@ -13,6 +13,7 @@ from simplex import (
     ThreeDSlide,
     make_chrome,
     presets,
+    pseudocode_block,
 )
 from simplex.slides import BaseSlide as BaseSlideFromSlides
 from simplex.slides import Slide as SlideFromSlides
@@ -32,3 +33,4 @@ def test_top_level_authoring_imports() -> None:
     assert SIMPLEX_DARK is presets.SIMPLEX_DARK
     assert SIMPLEX_LIGHT is presets.SIMPLEX_LIGHT
     assert callable(make_chrome)
+    assert callable(pseudocode_block)

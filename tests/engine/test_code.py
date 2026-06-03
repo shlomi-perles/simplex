@@ -143,6 +143,74 @@ def test_code_with_math_returns_a_manim_code() -> None:
     assert len(block.code_lines) == 1
 
 
+def test_default_tex_template_includes_algorithm2e() -> None:
+    from simplex.theme.presets import SIMPLEX_DARK
+
+    template = SIMPLEX_DARK.latex.as_tex_template()
+
+    assert "algorithm2e" in template.body
+    assert r"\SetKwProg{Fn}{Function}{:}{end}" in template.body
+
+
+def test_pseudocode_block_returns_code_indexed_by_numbered_algorithm_rows() -> None:
+    pytest.importorskip("manim")
+    from manim import Code
+
+    from simplex.engine.code import highlight_code_lines, pseudocode_block
+
+    block = pseudocode_block(
+        r"""
+\SetKwInput{Input}{Input}
+\Input{Value $n$}
+Initialize $s\leftarrow 0$\;
+Return $s$\;
+""",
+        caption=r"\textbf{Sum}",
+    )
+    result = highlight_code_lines(block, lines=[2], indicate=False)
+
+    assert isinstance(block, Code)
+    assert len(block.code_lines) == 2
+    assert len(result.fade.animations) == 2
+
+
+def test_pseudocode_block_can_index_every_visible_row() -> None:
+    pytest.importorskip("manim")
+    from simplex.engine.code import pseudocode_block
+
+    block = pseudocode_block(
+        r"""
+\SetKwInput{Input}{Input}
+\Input{Value $n$}
+Initialize $s\leftarrow 0$\;
+Return $s$\;
+""",
+        caption=r"\textbf{Sum}",
+        line_index="visible",
+    )
+
+    assert len(block.code_lines) == 4
+
+
+def test_code_block_pseudocode_option_uses_pseudocode_renderer() -> None:
+    pytest.importorskip("manim")
+    from manim import Code
+
+    from simplex.engine.code import code_block
+
+    block = code_block(
+        r"""
+Initialize $s\leftarrow 0$\;
+Return $s$\;
+""",
+        pseudocode=True,
+        caption=r"\textbf{Sum}",
+    )
+
+    assert isinstance(block, Code)
+    assert len(block.code_lines) == 2
+
+
 def test_code_block_uses_active_light_theme_style() -> None:
     pytest.importorskip("manim")
     from simplex.engine.code import code_block

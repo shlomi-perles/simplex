@@ -75,6 +75,7 @@ _EXPORTS: dict[str, str] = {
     "minipage_cm_for_page_width": "simplex.engine.text",
     "munits_per_cm": "simplex.engine.text",
     "presets": "simplex.theme",
+    "pseudocode_block": "simplex.engine.code",
     "register_exit": "simplex.engine",
     "resolve_palette": "simplex.theme",
     "scale_to_fit": "simplex.engine.scaling",
@@ -118,6 +119,7 @@ if TYPE_CHECKING:
         code_explain,
         code_with_math,
         highlight_code_lines,
+        pseudocode_block,
     )
     from simplex.engine.debug import bounding_box, debug_glyph, debug_glyphs, indexx_labels
     from simplex.engine.dynamics import DN, VT, keep_orientation, maintain_apparent_stroke_width

@@ -15,19 +15,21 @@ import functools
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import numpy as np
 from manim import (
     LEFT,
     RIGHT,
     SMALL_BUFF,
+    UP,
     Animation,
     AnimationGroup,
     Brace,
     BraceLabel,
     BraceText,
     Code,
+    Dot,
     FadeIn,
     Group,
     GrowFromCenter,
@@ -35,8 +37,10 @@ from manim import (
     MathTex,
     Mobject,
     SurroundingRectangle,
+    Tex,
     TransformMatchingShapes,
     VGroup,
+    VMobject,
 )
 from manim.utils.color import ParsableManimColor
 
@@ -45,9 +49,25 @@ from simplex.engine.opengl_compat import is_vmobject
 from simplex.theme.context import get_active_theme
 from simplex.theme.pygments_style import register_style, style_name_for_class
 
-__all__ = ["HighlightResult"]
+__all__ = [
+    "HighlightResult",
+    "code_block",
+    "code_explain",
+    "code_with_math",
+    "highlight_code_lines",
+    "inline_math_in_code",
+    "pseudocode_block",
+    "transform_code_lines",
+]
 
 _INLINE_MATH_PATTERN = re.compile(r"\$([^$\n]+)\$")
+_HORIZONTAL_RULE_MAX_HEIGHT = 0.05
+_HORIZONTAL_RULE_MIN_WIDTH_RATIO = 0.7
+_ROW_GAP_SCALE = 0.75
+_MIN_ROW_GROUPING_THRESHOLD = 0.12
+_LINE_NUMBER_GUTTER_TOLERANCE = 0.16
+_LINE_NUMBER_PREFIX_MAX_WIDTH = 0.45
+_LINE_NUMBER_GAP_MIN = 0.12
 
 
 @dataclass(frozen=True)
@@ -86,14 +106,27 @@ def code_block(
     formatter_style: str | None = None,
     paragraph_config: dict[str, Any] | None = None,
     background_config: dict[str, Any] | None = None,
+    pseudocode: bool = False,
     **kwargs: Any,
 ) -> Code:
     """Build a ``manim.Code`` with the active theme's code style and mono font.
 
     Authors get vanilla ``manim.Code`` back -- everything Manim does to
     that class still works (``.code_lines``, ``.background``,
-    ``.scale_to_fit_width``).
+    ``.scale_to_fit_width``). Set ``pseudocode=True`` when ``code`` is a
+    LaTeX ``algorithm2e`` body or full ``algorithm`` environment; the result
+    is still a ``Code`` object, but its ``code_lines`` are rendered TeX rows.
     """
+    if pseudocode:
+        return pseudocode_block(
+            code,
+            background=background,
+            formatter_style=formatter_style,
+            paragraph_config=paragraph_config,
+            background_config=background_config,
+            **kwargs,
+        )
+
     resolved = _resolve_formatter_style(formatter_style)
     theme = get_active_theme()
     _, paragraph_kwargs, background_kwargs = code_theme_defaults(theme)
@@ -108,6 +141,263 @@ def code_block(
         background_config=background_kwargs,
         **kwargs,
     )
+
+
+def pseudocode_block(
+    code: str,
+    *,
+    caption: str | None = None,
+    algorithm_options: str = "H",
+    line_index: Literal["numbered", "visible"] = "numbered",
+    background: str = "window",
+    formatter_style: str | None = None,
+    paragraph_config: dict[str, Any] | None = None,
+    background_config: dict[str, Any] | None = None,
+    tex_config: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> Code:
+    """Render ``algorithm2e`` pseudocode while preserving the ``Code`` API.
+
+    ``code`` can be either a complete ``\\begin{algorithm}...`` environment
+    or just the body, in which case Simplex wraps it in
+    ``\\begin{algorithm}[H]`` and adds ``caption`` when supplied.
+
+    By default ``code_lines`` contains the rows that algorithm2e visibly
+    numbers, so ``highlight_code_lines(block, [3])`` targets rendered line 3.
+    Set ``line_index="visible"`` to index every visible row, including
+    captions and unnumbered input/output rows.
+    """
+    if line_index not in {"numbered", "visible"}:
+        raise ValueError('line_index must be either "numbered" or "visible".')
+
+    if kwargs:
+        tex_config = dict(tex_config or {})
+        tex_config.update(kwargs)
+
+    algorithm_source = _algorithm_environment_source(
+        code,
+        caption=caption,
+        algorithm_options=algorithm_options,
+    )
+    rendered = _render_algorithm_tex(algorithm_source, tex_config=tex_config)
+    all_lines, rules = _algorithm_rows(rendered)
+    if len(all_lines) == 0:
+        raise ValueError("algorithm2e source rendered no visible pseudocode rows.")
+
+    numbered_lines = _numbered_algorithm_rows(all_lines)
+    indexed_lines = (
+        all_lines if line_index == "visible" or len(numbered_lines) == 0 else numbered_lines
+    )
+    return _code_from_algorithm_rows(
+        indexed_lines=indexed_lines,
+        rendered_lines=all_lines,
+        rules=rules,
+        background=background,
+        formatter_style=formatter_style,
+        paragraph_config=paragraph_config,
+        background_config=background_config,
+    )
+
+
+def _algorithm_environment_source(
+    code: str,
+    *,
+    caption: str | None,
+    algorithm_options: str,
+) -> str:
+    """Return a full ``algorithm2e`` environment for ``code``."""
+    if r"\begin{algorithm" in code:
+        return code
+
+    caption_line = "" if caption is None else rf"\caption{{{caption}}}" + "\n"
+    body = code.strip("\n")
+    return (
+        rf"\begin{{algorithm}}[{algorithm_options}]"
+        "\n"
+        f"{caption_line}"
+        f"{body}"
+        "\n"
+        r"\end{algorithm}"
+    )
+
+
+def _render_algorithm_tex(
+    algorithm_source: str,
+    *,
+    tex_config: dict[str, Any] | None,
+) -> Tex:
+    """Compile one full algorithm2e environment as a Manim ``Tex`` mobject."""
+    theme = get_active_theme()
+    tex_kwargs: dict[str, Any] = {
+        "tex_environment": None,
+        "tex_template": theme.latex.as_tex_template(),
+        "color": theme.palette.font,
+        "font_size": theme.typography.body,
+    }
+    tex_kwargs.update(tex_config or {})
+    return Tex(algorithm_source, **tex_kwargs)
+
+
+def _algorithm_rows(rendered: Tex) -> tuple[VGroup, VGroup]:
+    """Split rendered algorithm glyphs into visible rows plus rule mobjects."""
+    leaves = list(_leaf_mobjects(rendered))
+    rule_mobjects = [
+        mob for mob in leaves if _is_horizontal_rule(mob, rendered_width=rendered.width)
+    ]
+    glyphs = [mob for mob in leaves if mob not in rule_mobjects]
+    if not glyphs:
+        return VGroup(), VGroup(*rule_mobjects)
+
+    positive_heights = [mob.height for mob in glyphs if mob.height > 0]
+    median_height = float(np.median(positive_heights)) if positive_heights else 0.0
+    threshold = max(median_height * _ROW_GAP_SCALE, _MIN_ROW_GROUPING_THRESHOLD)
+
+    row_buckets: list[list[VMobject]] = []
+    row_centers: list[float] = []
+    for glyph in sorted(glyphs, key=lambda mob: mob.get_center()[1], reverse=True):
+        glyph_y = float(glyph.get_center()[1])
+        closest_idx: int | None = None
+        closest_distance = float("inf")
+        for idx, row_y in enumerate(row_centers):
+            distance = abs(row_y - glyph_y)
+            if distance < closest_distance:
+                closest_idx = idx
+                closest_distance = distance
+        if closest_idx is None or closest_distance > threshold:
+            row_buckets.append([glyph])
+            row_centers.append(glyph_y)
+            continue
+
+        bucket = row_buckets[closest_idx]
+        bucket.append(glyph)
+        row_centers[closest_idx] = float(np.mean([mob.get_center()[1] for mob in bucket]))
+
+    rows = [
+        VGroup(*sorted(bucket, key=lambda mob: mob.get_left()[0]))
+        for _, bucket in sorted(
+            zip(row_centers, row_buckets, strict=True),
+            key=lambda item: item[0],
+            reverse=True,
+        )
+    ]
+    return VGroup(*rows), VGroup(*rule_mobjects)
+
+
+def _leaf_mobjects(mob: Mobject) -> Iterator[VMobject]:
+    """Yield drawable leaves under ``mob`` without returning wrapper groups."""
+    if len(mob.submobjects) == 0:
+        if len(getattr(mob, "points", ())) > 0:
+            yield cast(VMobject, mob)
+        return
+    for child in mob.submobjects:
+        yield from _leaf_mobjects(child)
+
+
+def _is_horizontal_rule(mob: Mobject, *, rendered_width: float) -> bool:
+    """Return whether ``mob`` is an algorithm2e horizontal rule."""
+    if rendered_width <= 0:
+        return False
+    return (
+        mob.height <= _HORIZONTAL_RULE_MAX_HEIGHT
+        and mob.width >= rendered_width * _HORIZONTAL_RULE_MIN_WIDTH_RATIO
+    )
+
+
+def _numbered_algorithm_rows(rows: VGroup) -> VGroup:
+    """Return rows that include algorithm2e's printed line-number gutter."""
+    if len(rows) == 0:
+        return VGroup()
+
+    global_left = min(row.get_left()[0] for row in rows)
+    numbered = [row for row in rows if _row_has_line_number(row, global_left=float(global_left))]
+    return VGroup(*numbered)
+
+
+def _row_has_line_number(row: VGroup, *, global_left: float) -> bool:
+    """Detect algorithm2e's left-gutter line number in one rendered row."""
+    glyphs = sorted(row, key=lambda mob: mob.get_left()[0])
+    if len(glyphs) < 2:
+        return False
+    row_left = float(glyphs[0].get_left()[0])
+    if row_left > global_left + _LINE_NUMBER_GUTTER_TOLERANCE:
+        return False
+
+    for idx in range(min(len(glyphs) - 1, 4)):
+        prefix_width = float(glyphs[idx].get_right()[0] - glyphs[0].get_left()[0])
+        gap = float(glyphs[idx + 1].get_left()[0] - glyphs[idx].get_right()[0])
+        if prefix_width <= _LINE_NUMBER_PREFIX_MAX_WIDTH and gap >= _LINE_NUMBER_GAP_MIN:
+            return True
+    return False
+
+
+def _code_from_algorithm_rows(
+    *,
+    indexed_lines: VGroup,
+    rendered_lines: VGroup,
+    rules: VGroup,
+    background: str,
+    formatter_style: str | None,
+    paragraph_config: dict[str, Any] | None,
+    background_config: dict[str, Any] | None,
+) -> Code:
+    """Build a ``Code`` shell around rendered algorithm rows."""
+    resolved = _resolve_formatter_style(formatter_style)
+    theme = get_active_theme()
+    _, paragraph_kwargs, background_kwargs = code_theme_defaults(theme)
+    paragraph_kwargs.update(paragraph_config or {})
+    background_kwargs.update(background_config or {})
+
+    shell = Code(
+        code_string="x",
+        language="text",
+        formatter_style=resolved,
+        background="rectangle",
+        add_line_numbers=False,
+        paragraph_config=paragraph_kwargs,
+        background_config=background_kwargs,
+    )
+    shell.remove(*shell.submobjects)
+    shell_any = cast(Any, shell)
+    shell_any.code_lines = indexed_lines
+    shell_any.line_numbers = VGroup()
+    shell.add(rendered_lines)
+    if len(rules) > 0:
+        shell.add(rules)
+
+    shell_any.background = _algorithm_background(
+        VGroup(rendered_lines, rules),
+        background=background,
+        background_config=background_kwargs,
+    )
+    shell.add_to_back(shell_any.background)
+    return shell
+
+
+def _algorithm_background(
+    content: VMobject,
+    *,
+    background: str,
+    background_config: dict[str, Any],
+) -> SurroundingRectangle:
+    """Create a Manim ``Code``-style background around algorithm content."""
+    background_config_base = Code.default_background_config.copy()
+    background_config_base.update(background_config)
+    if background == "rectangle":
+        return SurroundingRectangle(content, **background_config_base)
+    if background == "window":
+        buttons = VGroup(
+            Dot(radius=0.1, stroke_width=0, color=button_color)
+            for button_color in ["#ff5f56", "#ffbd2e", "#27c93f"]
+        ).arrange(RIGHT, buff=0.1)
+        buttons.next_to(content, UP, buff=0.1).align_to(content, LEFT).shift(LEFT * 0.1)
+        background_mob = SurroundingRectangle(
+            VGroup(content, buttons),
+            **background_config_base,
+        )
+        buttons.shift(UP * 0.1 + LEFT * 0.1)
+        background_mob.add(buttons)
+        return background_mob
+    raise ValueError(f"Unknown background type: {background}")
 
 
 def highlight_code_lines(

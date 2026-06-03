@@ -210,6 +210,33 @@ uv run simplex render hash-tables --slide-theme light
 uv run simplex test --slide-theme dark
 ```
 
+## Code And Pseudocode
+
+Simplex keeps Manim's native `Code` object as the authoring surface and adds a
+few factories in `simplex.engine.code`:
+
+```python
+from simplex import code_block, code_with_math, highlight_code_lines, pseudocode_block
+
+code = code_block("def f(x):\n    return x + 1")
+algorithm = pseudocode_block(
+    r"""
+\SetKwInput{Input}{Input}
+\Input{Value $n$}
+Initialize $s\leftarrow 0$\;
+Return $s$\;
+""",
+    caption=r"\textbf{Running Sum}",
+)
+```
+
+`pseudocode_block(...)` compiles an `algorithm2e` algorithm with the shared
+Simplex TeX template and returns a `Code` instance. Its `code_lines` are the
+rendered, algorithm2e-numbered rows, so `highlight_code_lines(algorithm, [2])`
+and `code_explain(...)` target the visible algorithm line numbers. Use
+`code_block(..., pseudocode=True)` for the same renderer when you prefer one
+factory.
+
 ## Themes And Palettes
 
 Theme names come from built-ins (`simplex_dark`, `simplex_light`) or JSON files

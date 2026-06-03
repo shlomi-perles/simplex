@@ -3,6 +3,7 @@ entrypoints = [
   "slides.scenes:TextHelpers",
   "slides.scenes:CodeHelpers",
   "slides.scenes:CodeWithMath",
+  "slides.scenes:PseudocodeBlock",
   "slides.scenes:GraphAndArray",
   "slides.scenes:RegionAnchors",
   "slides.scenes:OutlineHelpers",

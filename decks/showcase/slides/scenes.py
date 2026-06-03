@@ -62,6 +62,7 @@ from simplex.engine.code import (
     code_explain,
     code_with_math,
     highlight_code_lines,
+    pseudocode_block,
     transform_code_lines,
 )
 from simplex.engine.debug import bounding_box, indexx_labels
@@ -248,6 +249,57 @@ class CodeWithMath(Slide):
         scale_to_fit(styled, len_x=self.region.width * 0.5, len_y=self.region.height * 0.2)
         styled.next_to(pseudo, DOWN, buff=0.4)
         self.play(Write(styled))
+        self.next_slide()
+        self.clear_scene()
+
+
+class PseudocodeBlock(Slide):
+    def setup(self) -> None:
+        super().setup()
+        setup_showcase_chrome(
+            self,
+            "engine/code.py -- pseudocode_block (algorithm2e + Code API)",
+        )
+
+    def construct(self) -> None:
+        # ``pseudocode_block`` compiles algorithm2e LaTeX, then exposes
+        # the rendered numbered rows as ``Code.code_lines``. That means
+        # highlight/explain helpers target the visible algorithm numbers.
+        algorithm = pseudocode_block(
+            r"""
+\SetArgSty{}
+\SetKwInput{Input}{Input}
+\SetKwInput{Output}{Output}
+\Input{Adjacency matrix $A$ for $G=(V,E)$}
+\Output{$M=VV^\top\in\mathbb{F}_2^{n\times n}$}
+Build $\overline{G}=(V,\overline{E})$\;
+Compute degeneracy ordering $v_1,\dots,v_n$ of $\overline{G}$\;
+Set $r\leftarrow\delta^*(\overline{G})+3$ and initialize $V$\;
+\For{$i\leftarrow n$ \KwTo $1$}{
+  $S_i\leftarrow\{j>i:(v_i,v_j)\in\overline{E}\}$\;
+  Choose $x_i\in\mathbb{F}_2^r$ solving $B_i x_i=b_i$\;
+}
+Return $M\leftarrow VV^\top$ over $\mathbb{F}_2$\;
+""",
+            caption=r"\textbf{Degeneracy-Guided Assignment}",
+        )
+        scale_to_fit(algorithm, len_x=self.region.width * 0.76, len_y=self.region.height * 0.72)
+        self.region.place(algorithm)
+        self.play(Write(self.canvas["showcase_title"]), FadeIn(algorithm))
+
+        result = highlight_code_lines(algorithm, lines=[4, 5, 6, 7])
+        self.play(result.fade)
+        if result.indicate is not None:
+            self.play(result.indicate)
+        self.next_slide()
+
+        mob, anim = code_explain(
+            algorithm,
+            lines=[4, 5, 6],
+            explanation="Reverse-order\nassignment",
+        )
+        self.add(mob)
+        self.play(anim)
         self.next_slide()
         self.clear_scene()
 

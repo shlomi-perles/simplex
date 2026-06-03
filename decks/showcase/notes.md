@@ -11,6 +11,7 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 | `TextHelpers` | `engine.text` | `Tex` body defaults, `Caption`, `TexPage` (`page_width`, `buff`, `math_spacing`, `equation(n)`), `color_tex` |
 | `CodeHelpers` | `engine.code` | `code_block`, `highlight_code_lines`, `code_explain`, `transform_code_lines` |
 | `CodeWithMath` | `engine.code` | `code_with_math` -- inline LaTeX (`$...$`) in pseudocode, with `bold_math` + `math_color` styling |
+| `PseudocodeBlock` | `engine.code` | `pseudocode_block` -- algorithm2e LaTeX rendered as a `Code` object with numbered `code_lines` |
 | `GraphAndArray` | `mobjects.graph` + `mobjects.array` | `Node`, `Edge`, `Array`, `ArrayPointer` |
 | `RegionAnchors` | `engine.region` | direction anchors (`UL`/`UR`/`DL`/`DR`/`ORIGIN`), `shrink`, `reset`, `split_regions(axis, k)` |
 | `ExitAnimations` | `engine.animations` | `set_exit_animation`, `register_exit`, `clear_scene(exclude=...)` |
@@ -25,6 +26,7 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 - For convex hulls, use Manim's built-in `ConvexHull` (QuickHull-based, no SciPy). Simplex no longer wraps it -- `from manim import ConvexHull`.
 - `code_block` registers the Darcula Pygments style on first use; subsequent calls are a no-op.
 - `code_with_math(src, ...)` replaces every `$...$` region in `src` with a `MathTex` glyph scaled to the surrounding code font (calibrated against a cached `Mq` reference, so `\infty` and `\bigcup_{i=1}^n` both land at the right size). Lines reflow so the rendered math width drives the layout, and the background is refit only when at least one substitution happens. Pass `bold_math=True` to wrap each match in `\boldsymbol{...}` and `math_color="..."` to recolour the math.
+- `pseudocode_block(src, ...)` compiles a full `algorithm2e` algorithm (or wraps a body in `\begin{algorithm}[H]...\end{algorithm}`), then exposes the rendered numbered rows through `Code.code_lines`. That keeps `highlight_code_lines` and `code_explain` aligned with the visible algorithm line numbers. Pass `line_index="visible"` when caption/input/output rows should also be indexable.
 - `TexPage` is the encapsulated prose helper (was `Definition`). Its default page width is the current full frame, with `LARGE_BUFF` removed from both sides before Simplex converts Manim units to LaTeX minipage centimeters. Pass `page_width=` as a number or `Region`, tune `buff=`, use `math_spacing=` for display-skip lengths, and call `equation(n)` to target a displayed `\[...\]` equation directly.
 - Body-sized prose uses plain `manim.Tex`. The plugin's `apply_theme_defaults` sets the body `font_size` and `color` so `Tex(...)` already matches what the old `BodyText` produced.
 - `region.place(mob, anchor, buff=...)` accepts a Manim direction vector (`UP`, `DR`, `ORIGIN`, ...) -- string anchors raise `ValueError`.
