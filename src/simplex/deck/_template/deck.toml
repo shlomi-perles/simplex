@@ -1,7 +1,6 @@
 created_at = "__CREATED_AT__"
 entrypoints = ["slides.intro:Intro", "slides.intro:KeyIdea"]
 order = 1000
-quality = "high_quality"
 slug = "__SLUG__"
 summary = "Replace with a one-line description."
 tags = []

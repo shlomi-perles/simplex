@@ -20,8 +20,10 @@ section JSON (``Section(type_=...) -> JSON "type"``), which the reconciler
 in ``simplex.render.reconcile`` reads back to build the main/sub tree.
 """
 
+import os
 import re
 from collections.abc import Iterable, Mapping
+from pathlib import Path
 from typing import Any, cast
 
 from manim_slides.slide import Slide as ManimSlide
@@ -39,6 +41,11 @@ from simplex.theme.context import get_active_theme
 _CAMEL_TAIL = re.compile(r"([A-Z]+)([A-Z][a-z])")
 _CAMEL_LOWER = re.compile(r"([a-z\d])([A-Z])")
 DEFAULT_SLIDE_BOUNDARY_WAIT_TIME = 0.1
+
+
+def _simplex_slides_output_folder() -> Path | None:
+    raw = os.environ.get("SIMPLEX_SLIDES_DIR")
+    return Path(raw) if raw else None
 
 
 def _pretty_class_name(name: str) -> str:
@@ -61,6 +68,12 @@ class _SimplexSlideMixin:
     chrome_kwargs: Mapping[str, Any] = {}
     slide_boundary_wait_time: float = DEFAULT_SLIDE_BOUNDARY_WAIT_TIME
     _current_main: str | None
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        output_folder = _simplex_slides_output_folder()
+        if output_folder is not None:
+            kwargs.setdefault("output_folder", output_folder)
+        cast(Any, super()).__init__(*args, **kwargs)
 
     def setup(self) -> None:
         cast(Any, super()).setup()

@@ -131,6 +131,7 @@ def _maybe_render(
     media_dir: Path,
     *,
     render: bool,
+    manim_args: tuple[str, ...] = (),
     scenes: tuple[str, ...] = (),
     write_last_frame: bool = False,
 ) -> None:
@@ -139,7 +140,13 @@ def _maybe_render(
     deck_scenes = tuple(s for s in scenes if s in deck.scene_class_names)
     if scenes and not deck_scenes:
         return
-    runner.render(deck, output_dir=media_dir, scenes=deck_scenes, write_last_frame=write_last_frame)
+    runner.render(
+        deck,
+        output_dir=media_dir,
+        manim_args=manim_args,
+        scenes=deck_scenes,
+        write_last_frame=write_last_frame,
+    )
     with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError, ImportError):
         pdf.export(deck, output_dir=media_dir)
 
@@ -152,12 +159,13 @@ def _build_variant_output(
     cache_dir: Path,
     site_cfg: SiteConfig,
     render: bool,
+    manim_args: tuple[str, ...],
     scenes: tuple[str, ...],
     watch: bool,
     theme_name: str | None = None,
 ) -> _BuiltVariant:
     output_dir.mkdir(parents=True, exist_ok=True)
-    _maybe_render(deck, output_dir, render=render, scenes=scenes)
+    _maybe_render(deck, output_dir, render=render, manim_args=manim_args, scenes=scenes)
 
     manifest = reconcile.build_manifest(deck, media_dir=output_dir)
     thumbs = thumbnail.generate(deck, manifest, site_deck_dir=output_dir, cache_dir=cache_dir)
@@ -480,6 +488,7 @@ def _build_deck(
     site_cfg: SiteConfig,
     env: Environment,
     render: bool,
+    manim_args: tuple[str, ...] = (),
     scenes: tuple[str, ...] = (),
     theme_selection: SlideThemeSelection = "all",
     watch: bool = False,
@@ -508,6 +517,7 @@ def _build_deck(
                 cache_dir=deck_out,
                 site_cfg=site_cfg,
                 render=render,
+                manim_args=manim_args,
                 scenes=scenes,
                 theme_name=themed_deck.theme,
                 watch=watch,
@@ -552,6 +562,7 @@ def _build_deck(
             cache_dir=deck_out,
             site_cfg=site_cfg,
             render=render,
+            manim_args=manim_args,
             scenes=scenes,
             watch=watch,
         )
@@ -713,6 +724,7 @@ def build(
     render: bool = True,
     site_cfg: SiteConfig | None = None,
     only: tuple[str, ...] = (),
+    manim_args: tuple[str, ...] = (),
     scenes: tuple[str, ...] = (),
     theme_selection: SlideThemeSelection = "all",
     watch: bool = False,
@@ -740,6 +752,7 @@ def build(
                 site_cfg=site_cfg,
                 env=env,
                 render=render,
+                manim_args=manim_args,
                 scenes=scenes,
                 theme_selection=theme_selection,
                 watch=watch,

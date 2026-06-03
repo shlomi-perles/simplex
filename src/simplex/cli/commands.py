@@ -29,6 +29,10 @@ _DECKS = Path("decks")
 _SITE = Path("site")
 _SLIDE_THEME_HELP = "True-theme variants to render: all, dark, or light."
 _SlideThemeOption = Literal["all", "dark", "light"]
+_MANIM_ARGS_CONTEXT = {
+    "allow_extra_args": True,
+    "ignore_unknown_options": True,
+}
 
 # Reload signaling for `simplex serve --watch`.
 _RELOAD_EVENT = threading.Event()
@@ -105,6 +109,7 @@ def _runner_render(
     deck: DeckConfig,
     *,
     output_dir: Path,
+    manim_args: tuple[str, ...],
     scenes: tuple[str, ...],
     skip_renderers: tuple[str, ...],
     write_last_frame: bool,
@@ -113,12 +118,19 @@ def _runner_render(
         runner.render(
             deck,
             output_dir=output_dir,
+            manim_args=manim_args,
             scenes=scenes,
             skip_renderers=skip_renderers,
             write_last_frame=write_last_frame,
         )
         return
-    runner.render(deck, output_dir=output_dir, scenes=scenes, write_last_frame=write_last_frame)
+    runner.render(
+        deck,
+        output_dir=output_dir,
+        manim_args=manim_args,
+        scenes=scenes,
+        write_last_frame=write_last_frame,
+    )
 
 
 def _copy_slides_pdf(deck: DeckConfig, source_dir: Path, deck_out: Path) -> None:
@@ -136,6 +148,7 @@ def _render_deck_outputs(
     deck_out: Path,
     site_cfg: SiteConfig,
     *,
+    manim_args: tuple[str, ...] = (),
     scenes: tuple[str, ...] = (),
     skip_renderers: tuple[str, ...] = (),
     slide_theme: _SlideThemeOption = "all",
@@ -155,6 +168,7 @@ def _render_deck_outputs(
             _runner_render(
                 themed_deck,
                 output_dir=out,
+                manim_args=manim_args,
                 scenes=scenes,
                 skip_renderers=skip_renderers,
                 write_last_frame=write_last_frame,
@@ -173,6 +187,7 @@ def _render_deck_outputs(
     _runner_render(
         deck,
         output_dir=deck_out,
+        manim_args=manim_args,
         scenes=scenes,
         skip_renderers=skip_renderers,
         write_last_frame=write_last_frame,
@@ -182,8 +197,9 @@ def _render_deck_outputs(
             pdf.export(deck, output_dir=deck_out)
 
 
-@app.command()
+@app.command(context_settings=_MANIM_ARGS_CONTEXT)
 def render(
+    ctx: typer.Context,
     target: str,
     scene: Annotated[
         list[str] | None,
@@ -205,6 +221,7 @@ def render(
     - ``slug::SceneClass``           one scene (alias for ``--scene SceneClass``)
     - ``slug::SceneClass::MainName`` reserved; for now renders the whole scene
     """
+    manim_args = tuple(ctx.args)
     slug, _, scene_spec = target.partition("::")
     site_cfg = SiteConfig.load()
     registry = discover(_DECKS, default_section_order=site_cfg.default_section_order)
@@ -225,6 +242,7 @@ def render(
             deck,
             out,
             site_cfg,
+            manim_args=manim_args,
             scenes=scene_filter,
             slide_theme=slide_theme,
             export_pdf=True,
@@ -235,8 +253,9 @@ def render(
     console.print(f"[green]Rendered[/green] {deck.slug} -> {out}")
 
 
-@app.command()
+@app.command(context_settings=_MANIM_ARGS_CONTEXT)
 def build(
+    ctx: typer.Context,
     only: Annotated[
         list[str] | None,
         typer.Option("--only", help="Only build this deck slug. Repeatable."),
@@ -258,10 +277,14 @@ def build(
     ] = "all",
 ) -> None:
     """Build the full static portal under ``site/``."""
+    manim_args = tuple(ctx.args)
+    if no_render and manim_args:
+        raise typer.BadParameter("Manim render flags cannot be used with --no-render")
     build_site(
         _DECKS,
         _SITE,
         render=not no_render,
+        manim_args=manim_args,
         only=tuple(only or ()),
         scenes=tuple(scene or ()),
         theme_selection=slide_theme,

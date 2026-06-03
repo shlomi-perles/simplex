@@ -5,9 +5,9 @@ extraction, PDF / PowerPoint export, notes PDF export, HTML viewer emission.
 
 ## Public surface
 
-- `runner.render(deck, output_dir, scenes=(), write_last_frame=False)` --
-  spawns `manim-slides render` with `--save_sections` (and
-  `--disable_caching` when `deck.caching = False`).
+- `runner.render(deck, output_dir, manim_args=(), scenes=(), write_last_frame=False)` --
+  spawns `manim-slides render`, forwards caller-provided Manim args, and
+  appends Simplex invariants such as `--media_dir` and `--save_sections`.
 - `pdf.export(deck, output_dir)` -- in-process via
   `manim_slides.convert.PDF`, writing `<title>-slides.pdf`.
 - `pptx.export(deck, output_dir)` -- in-process via

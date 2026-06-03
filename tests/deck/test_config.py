@@ -22,7 +22,6 @@ def test_load_minimal(tmp_path: Path) -> None:
     assert cfg.slug == "demo"
     assert cfg.title == "Demo"
     assert cfg.theme == "simplex_dark"
-    assert cfg.quality == "high_quality"
     resolved = cfg.slide_themes.resolve()
     assert resolved.enabled is True
     assert resolved.dark == "simplex_dark"

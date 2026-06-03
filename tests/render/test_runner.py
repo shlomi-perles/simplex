@@ -1,5 +1,7 @@
-"""runner.render: subprocess invocation, --save_sections flag, scene filtering."""
+"""runner.render: subprocess invocation, passthrough flags, scene filtering."""
 
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +19,6 @@ def _deck(tmp_path: Path) -> DeckConfig:
         'slug = "demo"\n'
         'title = "Demo"\n'
         'theme = "simplex_light"\n'
-        'quality = "low_quality"\n'
         'entrypoints = ["slides.scenes:Foo", "slides.scenes:Bar"]\n',
         encoding="utf-8",
     )
@@ -32,10 +33,7 @@ def _opengl_deck(tmp_path: Path) -> DeckConfig:
     deck_dir = tmp_path / "demo"
     deck_dir.mkdir()
     (deck_dir / "deck.toml").write_text(
-        'slug = "demo"\n'
-        'title = "Demo"\n'
-        'quality = "low_quality"\n'
-        'entrypoints = ["slides.surface:Surface@opengl"]\n',
+        'slug = "demo"\ntitle = "Demo"\nentrypoints = ["slides.surface:Surface@opengl"]\n',
         encoding="utf-8",
     )
     slides_pkg = deck_dir / "slides"
@@ -67,6 +65,24 @@ def test_render_passes_save_sections(tmp_path: Path, captured: list[dict[str, An
     assert len(captured) == 1
     args = captured[0]["args"]
     assert "--save_sections" in args
+    assert "--media_dir" in args
+    assert args[args.index("--media_dir") + 1] == str((tmp_path / "out").resolve())
+
+
+def test_runner_module_does_not_import_manim() -> None:
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; "
+                "import simplex.render.runner; "
+                "assert 'manim' not in sys.modules; "
+                "assert 'manim.constants' not in sys.modules"
+            ),
+        ],
+        check=True,
+    )
 
 
 def test_render_finds_manim_slides_next_to_python(
@@ -97,8 +113,10 @@ def test_render_forces_utf8_subprocess_env(tmp_path: Path, captured: list[dict[s
     env = captured[0]["env"]
     assert env["SIMPLEX_THEME"] == "simplex_light"
     assert env["SIMPLEX_PROJECT_ROOT"] == str(Path.cwd().resolve())
+    assert env["SIMPLEX_SLIDES_DIR"] == str((tmp_path / "out" / "slides").resolve())
     assert env["PYTHONIOENCODING"] == "utf-8"
     assert env["PYTHONUTF8"] == "1"
+    assert captured[0]["cwd"] == deck.path.resolve()
 
 
 def test_render_filters_pydub_syntax_warning(
@@ -160,11 +178,20 @@ def test_render_write_last_frame_adds_flag(tmp_path: Path, captured: list[dict[s
     assert "--save_last_frame" not in args
 
 
-def test_render_caching_disabled_adds_flag(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
-    deck = _deck(tmp_path).model_copy(update={"caching": False})
-    runner.render(deck, output_dir=tmp_path / "out")
+def test_render_forwards_manim_args_before_simplex_invariants(
+    tmp_path: Path,
+    captured: list[dict[str, Any]],
+) -> None:
+    deck = _deck(tmp_path)
+    runner.render(
+        deck, output_dir=tmp_path / "out", manim_args=("--disable_caching", "--fps", "60")
+    )
     args = captured[0]["args"]
     assert "--disable_caching" in args
+    assert args[args.index("--fps") + 1] == "60"
+    assert args.index("--disable_caching") < args.index("--media_dir")
+    assert args.index("--fps") < args.index("--media_dir")
+    assert args.index("--save_sections") > args.index("--media_dir")
 
 
 def test_render_opengl_entrypoint_adds_renderer_and_movie_flags(
@@ -172,9 +199,10 @@ def test_render_opengl_entrypoint_adds_renderer_and_movie_flags(
     captured: list[dict[str, Any]],
 ) -> None:
     deck = _opengl_deck(tmp_path)
-    runner.render(deck, output_dir=tmp_path / "out")
+    runner.render(deck, output_dir=tmp_path / "out", manim_args=("--renderer=cairo",))
     args = captured[0]["args"]
 
+    assert args.index("--renderer=cairo") < args.index("--renderer=opengl")
     assert "--renderer=opengl" in args
     assert "--write_to_movie" in args
     assert args[-1] == "Surface"

@@ -46,6 +46,7 @@ def stub_render(
         deck: Any,
         *,
         output_dir: Path,
+        manim_args: tuple[str, ...] = (),
         scenes: tuple[str, ...] = (),
         write_last_frame: bool = False,
     ) -> None:
@@ -54,6 +55,7 @@ def stub_render(
                 "deck": deck.slug,
                 "theme": deck.theme,
                 "output_dir": output_dir,
+                "manim_args": manim_args,
                 "scenes": scenes,
                 "write_last_frame": write_last_frame,
             }
@@ -95,6 +97,21 @@ def test_render_scene_filter(
     assert stub_pdf_export == []
 
 
+def test_render_forwards_unknown_manim_flags(
+    project: Path,
+    stub_render: list[dict[str, Any]],
+    stub_pdf_export: list[dict[str, Any]],
+) -> None:
+    result = CliRunner().invoke(
+        app,
+        ["render", "demo", "--scene", "Foo", "--disable_caching", "--fps", "60"],
+    )
+    assert result.exit_code == 0, result.stdout
+    assert {call["scenes"] for call in stub_render} == {("Foo",)}
+    assert {call["manim_args"] for call in stub_render} == {("--disable_caching", "--fps", "60")}
+    assert stub_pdf_export == []
+
+
 def test_render_triple_syntax_scene(
     project: Path,
     stub_render: list[dict[str, Any]],
@@ -121,7 +138,12 @@ def test_render_can_limit_true_theme_variant(
 
 def test_render_unknown_scene_fails(project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def boom(
-        deck: Any, *, output_dir: Path, scenes: tuple[str, ...] = (), write_last_frame: bool = False
+        deck: Any,
+        *,
+        output_dir: Path,
+        manim_args: tuple[str, ...] = (),
+        scenes: tuple[str, ...] = (),
+        write_last_frame: bool = False,
     ) -> None:
         raise ValueError("unknown scene name(s): ['Ghost']")
 
@@ -129,6 +151,72 @@ def test_render_unknown_scene_fails(project: Path, monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(commands.pdf, "export", lambda deck, *, output_dir: output_dir / "noop.pdf")
     result = CliRunner().invoke(app, ["render", "demo", "--scene", "Ghost"])
     assert result.exit_code != 0
+
+
+def test_build_forwards_unknown_manim_flags(
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, Any]] = []
+
+    def fake_build(
+        decks_dir: Path,
+        site_dir: Path,
+        *,
+        render: bool = True,
+        site_cfg: Any = None,
+        only: tuple[str, ...] = (),
+        manim_args: tuple[str, ...] = (),
+        scenes: tuple[str, ...] = (),
+        theme_selection: Any = "all",
+        watch: bool = False,
+    ) -> None:
+        calls.append(
+            {
+                "decks_dir": decks_dir,
+                "site_dir": site_dir,
+                "render": render,
+                "only": only,
+                "manim_args": manim_args,
+                "scenes": scenes,
+                "theme_selection": theme_selection,
+                "watch": watch,
+            }
+        )
+
+    monkeypatch.setattr(commands, "build_site", fake_build)
+    result = CliRunner().invoke(
+        app,
+        ["build", "--only", "demo", "--disable_caching", "--fps", "60"],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert calls == [
+        {
+            "decks_dir": Path("decks"),
+            "site_dir": Path("site"),
+            "render": True,
+            "only": ("demo",),
+            "manim_args": ("--disable_caching", "--fps", "60"),
+            "scenes": (),
+            "theme_selection": "all",
+            "watch": False,
+        }
+    ]
+
+
+def test_build_no_render_rejects_manim_flags(
+    project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[object] = []
+    monkeypatch.setattr(commands, "build_site", lambda *args, **kwargs: calls.append(args))
+
+    result = CliRunner().invoke(app, ["build", "--no-render", "--disable_caching"])
+
+    assert result.exit_code != 0
+    assert "Manim render flags cannot be used with --no-render" in result.output
+    assert calls == []
 
 
 def test_clean_deck_removes_only_that_slug(

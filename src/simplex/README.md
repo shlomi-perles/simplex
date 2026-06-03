@@ -29,7 +29,8 @@ eagerly import Manim.
   dependency.
 - Don't wrap Manim constructors. Authors write vanilla Manim; the framework
   configures defaults underneath via `Mobject.set_default(...)`.
-- Don't add a custom quality enum. Use `manim.constants.QUALITIES` keys
-  directly.
+- Don't import Manim from CLI/web parent paths just to interpret render
+  settings. Keep defaults in `manim.cfg` and pass one-off overrides through
+  Manim's own CLI parser.
 - Don't bypass the plugin entry point by setting `manim.config` from scenes.
   The plugin runs once at import time; that is the correct integration point.

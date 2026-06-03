@@ -68,6 +68,7 @@ Enable the plugin in the `manim.cfg` next to your scenes or deck:
 ```ini
 [CLI]
 plugins = simplex
+quality = high_quality
 save_sections = True
 ```
 
@@ -137,7 +138,9 @@ uv run simplex serve
 | `simplex render <slug>` | Render one deck into `site/decks/<slug>/`. |
 | `simplex render <slug>::<Scene>` | Render one scene from a deck. |
 | `simplex render <slug> --slide-theme light` | Render only one true slide theme for a deck. |
+| `simplex render <slug> --disable_caching` | Forward Manim render flags to `manim-slides render`. |
 | `simplex build` | Render decks and build the static portal under `site/`. |
+| `simplex build --disable_caching` | Forward Manim render flags to every deck render. |
 | `simplex build --no-render` | Rebuild portal HTML from existing render output. |
 | `simplex build --slide-theme dark` | Build only one true slide theme (`dark` or `light`) for faster tests. |
 | `simplex serve [--watch]` | Serve `site/` locally, optionally with live reload. |
@@ -168,7 +171,6 @@ The important fields in `deck.toml` are:
 slug = "hash-tables"
 title = "Hash Tables"
 summary = "A one-line deck summary."
-quality = "high_quality"
 entrypoints = ["slides.intro:Intro", "slides.intro:KeyIdea"]
 
 [slide_themes]
@@ -180,6 +182,11 @@ default = "dark"
 [slides."Key Idea"]
 notes_anchor = "key-idea"
 ```
+
+Default Manim render settings live in the deck-local `manim.cfg`; one-off
+render overrides can be passed through `simplex render` or `simplex build`.
+`simplex build --no-render` rejects Manim render flags because there is no
+render subprocess to receive them.
 
 `[slide_themes] enabled = true` renders real dark and light slide videos,
 thumbnail images, and slide HTML into isolated `themes/dark/` and

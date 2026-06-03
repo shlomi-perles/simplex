@@ -16,7 +16,6 @@ entrypoints = [
   "slides.surface_showcase:SurfaceColoring@opengl",
 ]
 order = 0
-quality = "medium_quality"
 slug = "showcase"
 summary = "Demonstrates every helper Simplex adds on top of vanilla Manim."
 tags = ["reference", "showcase"]

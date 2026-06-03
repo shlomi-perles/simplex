@@ -1,27 +1,26 @@
 """Invoke ``manim-slides render`` via subprocess.
 
-The theme/quality used to flow in via ``SIMPLEX_THEME`` / ``SIMPLEX_QUALITY``
-env vars consumed by a per-scene shim in the slide base class. As of
-v0.2.0 each deck declares ``plugins = simplex`` in its ``manim.cfg``; the
-plugin entry-point applies theme defaults and ``save_sections = True`` at
-``import manim`` time. The runner re-introduces the ``SIMPLEX_THEME`` env
-var purely to *select* which preset the plugin activates -- Python's
-``ContextVar`` doesn't traverse the ``subprocess`` boundary, so without
-the env var every render falls back to ``SIMPLEX_DARK`` regardless of
-what the deck's ``deck.toml`` declares.
+Each deck declares ``plugins = simplex`` in its deck-local ``manim.cfg``.
+The plugin entry-point applies theme defaults at ``import manim`` time,
+while Manim's own CLI/config parser owns render flags such as quality,
+caching, frame size, and preview options. Simplex forwards user Manim args
+unchanged and appends only the invariants needed for generated-site layout
+and section reconciliation.
+
+The runner re-introduces the ``SIMPLEX_THEME`` env var purely to *select*
+which preset the plugin activates -- Python's ``ContextVar`` doesn't
+traverse the ``subprocess`` boundary, so without the env var every render
+falls back to ``SIMPLEX_DARK`` regardless of what the deck's ``deck.toml``
+declares.
 
 We still spawn a subprocess (not in-process) for three reasons: clean
-SIGINT, OOM isolation, and per-deck ``manim.config`` isolation (different
-decks may use different themes or qualities).
+SIGINT, OOM isolation, and per-deck ``manim.config`` isolation.
 
-We run with ``cwd=output_dir`` so manim-slides writes its per-scene
-``slides/<Scene>.json`` (PresentationConfig) to the build tree; manim's
-section + video output goes to ``<output_dir>/videos/<src_stem>/<q>/...``
-via ``--media_dir``.
-
-Quality keys (``low_quality``, ``medium_quality``, ...) come from
-``manim.constants.QUALITIES`` -- the same dict Manim's own CLI reads. No
-Simplex-side enum redeclares them; see :func:`_quality_flag`.
+We run with ``cwd=deck.path`` so deck-local ``manim.cfg`` and relative scene
+assets behave like a normal Manim project. ``SIMPLEX_SLIDES_DIR`` points
+Simplex slide classes at ``<output_dir>/slides`` for manim-slides
+PresentationConfig output; manim's section + video output goes to
+``<output_dir>/videos/<src_stem>/<q>/...`` via forced ``--media_dir``.
 """
 
 import os
@@ -30,29 +29,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from manim.constants import QUALITIES
-
 from simplex.deck.config import DeckConfig, ResolvedSceneGroup
 from simplex.render._warnings import append_pythonwarnings_filter
-
-
-def _quality_flag(quality_key: str) -> str:
-    """Look up the ``-q`` CLI letter (``l``/``m``/``h``/``p``/``k``) for a quality key.
-
-    Reads ``manim.constants.QUALITIES`` directly so Simplex picks up any new
-    preset Manim adds without a code change. ``example_quality`` has
-    ``flag=None`` in Manim and isn't selectable from the CLI, so we reject it
-    explicitly with the same error shape as an unknown key.
-    """
-    try:
-        flag = QUALITIES[quality_key]["flag"]
-    except KeyError:
-        known = ", ".join(sorted(k for k, v in QUALITIES.items() if v["flag"] is not None))
-        raise ValueError(f"unknown quality {quality_key!r}; known: {known}") from None
-    if flag is None:
-        known = ", ".join(sorted(k for k, v in QUALITIES.items() if v["flag"] is not None))
-        raise ValueError(f"quality {quality_key!r} has no CLI flag; known: {known}")
-    return flag
 
 
 def _filter_groups(
@@ -101,6 +79,7 @@ def render(
     deck: DeckConfig,
     *,
     output_dir: Path,
+    manim_args: tuple[str, ...] = (),
     scenes: tuple[str, ...] = (),
     skip_renderers: tuple[str, ...] = (),
     write_last_frame: bool = False,
@@ -123,19 +102,16 @@ def render(
             return
     output_dir.mkdir(parents=True, exist_ok=True)
     media_dir = output_dir.resolve()
-    quality = _quality_flag(deck.quality)
+    slides_dir = media_dir / "slides"
 
     base_args: list[str] = [
         *_manim_slides_command(),
         "render",
-        "--quality",
-        quality,
+        *manim_args,
         "--media_dir",
         str(media_dir),
         "--save_sections",
     ]
-    if not deck.caching:
-        base_args.append("--disable_caching")
     if write_last_frame:
         # ``--save_last_frame`` conflicts with ``save_sections``: Manim tries
         # to stitch section videos from image-only output. Rendering one
@@ -151,6 +127,7 @@ def render(
         "PYTHONUTF8": "1",
         "PYTHONWARNINGS": append_pythonwarnings_filter(os.environ.get("PYTHONWARNINGS")),
         "SIMPLEX_PROJECT_ROOT": str(Path.cwd().resolve()),
+        "SIMPLEX_SLIDES_DIR": str(slides_dir.resolve()),
         "SIMPLEX_THEME": deck.theme,
     }
 
@@ -166,4 +143,4 @@ def render(
                 *group.scene_names,
             ]
         )
-        subprocess.run(args, check=True, cwd=media_dir, env=env)
+        subprocess.run(args, check=True, cwd=deck.path.resolve(), env=env)

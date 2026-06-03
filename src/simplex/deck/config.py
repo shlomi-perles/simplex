@@ -200,7 +200,7 @@ class SlideThemeConfig(BaseModel):
 
 
 class DeckConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
     slug: str
     title: str
     summary: str = ""
@@ -208,7 +208,6 @@ class DeckConfig(BaseModel):
     theme: str = "simplex_dark"
     scenes: tuple[str, ...] = ()
     entrypoints: tuple[SceneEntrypoint, ...] = ()
-    quality: str = "high_quality"
     voiceover: bool = False
     category: str | None = None
     duration_minutes: int | None = None
@@ -218,10 +217,7 @@ class DeckConfig(BaseModel):
     section_slug: str = "featured"
 
     # v0.2 additions.
-    caching: bool = True
     self_test: bool = False
-    render_quality_dev: str = "low_quality"
-    render_quality_release: str = "high_quality"
     slides: dict[str, SlideOverride] = {}
     slide_order: tuple[str, ...] = ()
     web: WebOverride = WebOverride()
