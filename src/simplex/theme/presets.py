@@ -52,7 +52,7 @@ SIMPLEX_LIGHT: Theme = Theme(
     name="simplex_light",
     manim_palette="simplex_light",
     typography=Typography(mono_family="JetBrains Mono"),
-    latex=LatexProfile(),
+    latex=LatexProfile(preamble=_COMPACT_DISPLAY_PREAMBLE),
     code_style=SimplexSolarizedLight,
 )
 
