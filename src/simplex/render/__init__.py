@@ -1,4 +1,4 @@
-"""Render pipeline: manim-slides subprocess + reconcile + html/pdf/pptx/notes export."""
+"""Timeline render pipeline: Manim units, HLS/MP4 packaging, and exports."""
 
 from simplex.render import filenames
 

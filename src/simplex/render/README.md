@@ -1,58 +1,40 @@
 # render/
 
-Manim-slides subprocess invocation, native-section reconcile, thumbnail
-extraction, PDF / PowerPoint export, notes PDF export, HTML viewer emission.
+Timeline-native rendering and packaging.
 
-## Public surface
+## Public Surface
 
-- `runner.render(deck, output_dir, manim_args=(), scenes=(), write_last_frame=False)` --
-  spawns `manim-slides render`, forwards caller-provided Manim args, and
-  appends Simplex invariants such as `--media_dir` and `--save_sections`.
-- `pdf.export(deck, output_dir)` -- in-process via
-  `manim_slides.convert.PDF`, writing `<title>-slides.pdf`.
-- `pptx.export(deck, output_dir)` -- in-process via
-  `manim_slides.convert.PowerPoint`.
-- `notes_pdf.export(deck, notes_path, output_dir, slide_refs=None,
-  bibliography=None, note_date=None)` -- best-effort LaTeX PDF rendering for
-  `notes.md`, writing `<title>-note.pdf`. The exporter preserves `\label{}` /
-  `\autoref{}` and emits `amsthm` environments for theorem-style callouts.
-- `reconcile.build_manifest(deck, media_dir)` -> `DeckManifest`
-  (a tuple of `MainSlide`, each with its own `subsections`).
-- `thumbnail.generate(deck, manifest, site_deck_dir, cache_dir)` --
-  ffmpeg last-frame extraction (default rule: second-to-last subsection).
-- `html.render_html(deck, manifest, output_dir, static_prefix)` --
-  Jinja-renders `web/templates/revealjs.html.j2` with the main/sub tree.
+- `runner.render(deck, output_dir, manim_args=(), scenes=())` renders Manim
+  scene units directly and writes Simplex cue JSON under
+  `output_dir/simplex-cues/`.
+- `timeline.load_units(...)`, `timeline.rebase_cues(...)`, and
+  `timeline.package_theme(...)` compose scene units into one lecture timeline
+  per theme, then emit HLS/CMAF plus a progressive MP4 fallback.
+- `thumbnail.generate_cue_images(...)` extracts cue posters and thumbnails
+  from the composed lecture timeline.
+- `pdf.export(...)` and `pptx.export(...)` rebuild exports from cue poster
+  frames, so exports follow the same manifest as the web player.
+- `notes_pdf.export(...)` keeps rendering `notes.md` to a notes PDF.
 
-## Smart compilation
+## Policy
 
-The plugin sets `manim.config.save_sections = True`. Combined with manim's
-per-animation hash cache, re-editing one animation re-encodes only that
-animation; sections of only-cached animations are stitched from disk. No
-separate Simplex render cache -- run `uv run simplex clean --deck <slug>`
-to force a clean re-render.
+Simplex records cue timing from Manim `Scene.time` and does not enable
+`save_sections` for playback. Manim sections are only a user-requested debug
+artifact. The browser player navigates by seeking cue timestamps inside one
+active media timeline.
 
-## Manim config
+## Output
 
-`runner.render` resolves a project-root `manim.cfg` and an optional deck-local
-`manim.cfg`. When both exist, it writes a temporary merged file and passes it
-to Manim with `--config_file`: deck-local fields override matching global
-fields, and unrelated sections/options are kept. Caller-provided Manim CLI
-flags still have Manim's normal highest precedence.
+Public media is written under:
 
-## Reconcile
+```text
+site/decks/<deck>/
+  simplex-manifest.json
+  thumbs/
+  posters/<theme>/
+  media/<theme>/hls/master.m3u8
+  media/<theme>/lecture.mp4
+  exports/
+```
 
-`build_manifest` walks each scene's
-`media/videos/<src>/<q>/sections/<Scene>.json` (written by manim when
-`save_sections=True`): every `type.startswith("simplex.main")` (and the
-auto-created first `default.normal`) starts a new `MainSlide`; everything
-else attaches as a `Subsection` of the current main. The parallel
-`media/slides/<Scene>.json` is consumed only by the PDF / PPTX converters.
-
-## Don't
-
-- Don't shell-quote (`shell=True`); always pass arg lists.
-- Don't add a parallel cache stamp -- the manim per-animation cache is
-  already content-addressable.
-- Don't write outside `output_dir`.
-- Don't read manim-slides' `PresentationConfig` JSON for hierarchy info;
-  the section JSON is the source of truth.
+Intermediate Manim output stays in `.simplex_cache/`.

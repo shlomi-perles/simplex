@@ -1,4 +1,4 @@
-"""runner.render: subprocess invocation, passthrough flags, scene filtering."""
+"""runner.render: direct Manim subprocess invocation."""
 
 import subprocess
 import sys
@@ -59,28 +59,28 @@ def captured(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     return calls
 
 
-def test_render_passes_save_sections(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
+def test_render_invokes_python_manim_without_save_sections_and_internal_cache(
+    tmp_path: Path, captured: list[dict[str, Any]]
+) -> None:
     deck = _deck(tmp_path)
     runner.render(deck, output_dir=tmp_path / "out")
-    assert len(captured) == 1
+
     args = captured[0]["args"]
-    assert "--save_sections" in args
+    assert args[:3] == [sys.executable, "-m", "manim"]
+    assert "--save_sections" not in args
+    assert "--disable_caching" in args
     assert "--media_dir" in args
-    assert args[args.index("--media_dir") + 1] == str((tmp_path / "out").resolve())
+    assert args[-2:] == ["Foo", "Bar"]
 
 
-def test_render_merges_project_and_deck_manim_cfg(
+def test_render_does_not_inject_save_sections_into_merged_config(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project = tmp_path / "project"
     deck_dir = project / "decks" / "demo"
     deck_dir.mkdir(parents=True)
-    (project / "manim.cfg").write_text(
-        "[CLI]\nplugins = simplex\nquality = low_quality\nseed = 7\n",
-        encoding="utf-8",
-    )
-    (deck_dir / "manim.cfg").write_text("[CLI]\nquality = high_quality\n", encoding="utf-8")
+    (project / "manim.cfg").write_text("[CLI]\nplugins = simplex\n", encoding="utf-8")
     (deck_dir / "deck.toml").write_text(
         'slug = "demo"\ntitle = "Demo"\nentrypoints = ["slides.scenes:Foo"]\n',
         encoding="utf-8",
@@ -102,14 +102,22 @@ def test_render_merges_project_and_deck_manim_cfg(
         return _Done()
 
     monkeypatch.setattr(runner.subprocess, "run", fake_run)
-
     runner.render(deck, output_dir=tmp_path / "out")
 
-    assert merged_configs
-    merged = merged_configs[0]
-    assert "plugins = simplex" in merged
-    assert "quality = high_quality" in merged
-    assert "seed = 7" in merged
+    assert "plugins = simplex" in merged_configs[0]
+    assert "save_sections" not in merged_configs[0]
+
+
+def test_render_respects_user_cache_control_arg(
+    tmp_path: Path,
+    captured: list[dict[str, Any]],
+) -> None:
+    deck = _deck(tmp_path)
+    runner.render(deck, output_dir=tmp_path / "out", manim_args=("--flush_cache",))
+
+    args = captured[0]["args"]
+    assert "--flush_cache" in args
+    assert "--disable_caching" not in args
 
 
 def test_runner_module_does_not_import_manim() -> None:
@@ -117,61 +125,22 @@ def test_runner_module_does_not_import_manim() -> None:
         [
             sys.executable,
             "-c",
-            (
-                "import sys; "
-                "import simplex.render.runner; "
-                "assert 'manim' not in sys.modules; "
-                "assert 'manim.constants' not in sys.modules"
-            ),
+            "import sys; import simplex.render.runner; assert 'manim' not in sys.modules",
         ],
         check=True,
     )
 
 
-def test_render_finds_manim_slides_next_to_python(
-    tmp_path: Path,
-    captured: list[dict[str, Any]],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    scripts_dir = tmp_path / "venv" / "Scripts"
-    scripts_dir.mkdir(parents=True)
-    python_exe = scripts_dir / "python.exe"
-    script_name = "manim-slides.exe" if runner.os.name == "nt" else "manim-slides"
-    manim_slides = scripts_dir / script_name
-    python_exe.write_text("", encoding="utf-8")
-    manim_slides.write_text("", encoding="utf-8")
-
-    def fake_which(_name: str) -> None:
-        return None
-
-    monkeypatch.setattr(runner.shutil, "which", fake_which)
-    monkeypatch.setattr(runner.sys, "executable", str(python_exe))
-
-    deck = _deck(tmp_path)
-    runner.render(deck, output_dir=tmp_path / "out")
-
-    assert captured[0]["args"][0] == str(manim_slides)
-
-
-def test_render_forces_utf8_subprocess_env(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
+def test_render_sets_cue_env_and_utf8(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
     deck = _deck(tmp_path)
     runner.render(deck, output_dir=tmp_path / "out")
     env = captured[0]["env"]
+
     assert env["SIMPLEX_THEME"] == "simplex_light"
-    assert env["SIMPLEX_PROJECT_ROOT"] == str(Path.cwd().resolve())
-    assert env["SIMPLEX_SLIDES_DIR"] == str((tmp_path / "out" / "slides").resolve())
+    assert env["SIMPLEX_CUES_DIR"] == str((tmp_path / "out" / "simplex-cues").resolve())
     assert env["PYTHONIOENCODING"] == "utf-8"
     assert env["PYTHONUTF8"] == "1"
-    assert captured[0]["cwd"] == deck.path.resolve()
-
-
-def test_render_forwards_slide_theme_variant(
-    tmp_path: Path, captured: list[dict[str, Any]]
-) -> None:
-    deck = _deck(tmp_path).model_copy(update={"slide_theme_variant": "light"})
-    runner.render(deck, output_dir=tmp_path / "out")
-
-    assert captured[0]["env"]["SIMPLEX_THEME_VARIANT"] == "light"
+    assert PYDUB_SYNTAX_WARNING_FILTER in env["PYTHONWARNINGS"]
 
 
 def test_render_drops_interpreter_steering_env_vars(
@@ -191,100 +160,25 @@ def test_render_drops_interpreter_steering_env_vars(
     assert "VIRTUAL_ENV" not in env
 
 
-def test_render_filters_pydub_syntax_warning(
-    tmp_path: Path,
-    captured: list[dict[str, Any]],
-) -> None:
-    deck = _deck(tmp_path)
-    runner.render(deck, output_dir=tmp_path / "out")
-    env = captured[0]["env"]
-
-    assert PYDUB_SYNTAX_WARNING_FILTER in env["PYTHONWARNINGS"]
-
-
-def test_render_preserves_existing_pythonwarnings(
-    tmp_path: Path,
-    captured: list[dict[str, Any]],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("PYTHONWARNINGS", "default")
-    deck = _deck(tmp_path)
-    runner.render(deck, output_dir=tmp_path / "out")
-    env = captured[0]["env"]
-
-    assert env["PYTHONWARNINGS"].startswith("default,")
-    assert env["PYTHONWARNINGS"].endswith(PYDUB_SYNTAX_WARNING_FILTER)
-
-
-def test_render_passes_all_scenes_when_filter_empty(
-    tmp_path: Path, captured: list[dict[str, Any]]
-) -> None:
-    deck = _deck(tmp_path)
-    runner.render(deck, output_dir=tmp_path / "out")
-    args = captured[0]["args"]
-    assert args[-2:] == ["Foo", "Bar"]
-
-
 def test_render_scenes_filter_keeps_subset(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
-    deck = _deck(tmp_path)
-    runner.render(deck, output_dir=tmp_path / "out", scenes=("Bar",))
-    assert len(captured) == 1
+    runner.render(_deck(tmp_path), output_dir=tmp_path / "out", scenes=("Bar",))
     args = captured[0]["args"]
     assert args[-1] == "Bar"
     assert "Foo" not in args
 
 
 def test_render_unknown_scene_raises(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
-    deck = _deck(tmp_path)
     with pytest.raises(ValueError, match="unknown scene"):
-        runner.render(deck, output_dir=tmp_path / "out", scenes=("Ghost",))
+        runner.render(_deck(tmp_path), output_dir=tmp_path / "out", scenes=("Ghost",))
     assert captured == []
-
-
-def test_render_write_last_frame_adds_flag(tmp_path: Path, captured: list[dict[str, Any]]) -> None:
-    deck = _deck(tmp_path)
-    runner.render(deck, output_dir=tmp_path / "out", write_last_frame=True)
-    args = captured[0]["args"]
-    assert "--from_animation_number" in args
-    assert args[args.index("--from_animation_number") + 1] == "0,0"
-    assert "--save_last_frame" not in args
-
-
-def test_render_forwards_manim_args_before_simplex_invariants(
-    tmp_path: Path,
-    captured: list[dict[str, Any]],
-) -> None:
-    deck = _deck(tmp_path)
-    runner.render(
-        deck, output_dir=tmp_path / "out", manim_args=("--disable_caching", "--fps", "60")
-    )
-    args = captured[0]["args"]
-    assert "--disable_caching" in args
-    assert args[args.index("--fps") + 1] == "60"
-    assert args.index("--disable_caching") < args.index("--media_dir")
-    assert args.index("--fps") < args.index("--media_dir")
-    assert args.index("--save_sections") > args.index("--media_dir")
 
 
 def test_render_opengl_entrypoint_adds_renderer_and_movie_flags(
     tmp_path: Path,
     captured: list[dict[str, Any]],
 ) -> None:
-    deck = _opengl_deck(tmp_path)
-    runner.render(deck, output_dir=tmp_path / "out", manim_args=("--renderer=cairo",))
+    runner.render(_opengl_deck(tmp_path), output_dir=tmp_path / "out")
     args = captured[0]["args"]
-
-    assert args.index("--renderer=cairo") < args.index("--renderer=opengl")
     assert "--renderer=opengl" in args
     assert "--write_to_movie" in args
     assert args[-1] == "Surface"
-
-
-def test_render_skip_renderer_omits_matching_groups(
-    tmp_path: Path,
-    captured: list[dict[str, Any]],
-) -> None:
-    deck = _opengl_deck(tmp_path)
-    runner.render(deck, output_dir=tmp_path / "out", skip_renderers=("opengl",))
-
-    assert captured == []

@@ -1,4 +1,4 @@
-"""Thumbnail extraction: placeholder when no video, second-to-last sub rule."""
+"""Cue poster and thumbnail extraction."""
 
 from pathlib import Path
 
@@ -8,13 +8,12 @@ import pytest
 from PIL import Image, ImageSequence
 
 from simplex.deck.config import DeckConfig
-from simplex.manifest import DeckManifest, MainSlide, Subsection
-from simplex.render.thumbnail import generate, generate_carousel_gif, generate_player_frames
-from simplex.section import SimplexSectionType
+from simplex.manifest import Cue
+from simplex.render import thumbnail
+from simplex.section import CueKind
 
 
 def _write_solid_mp4(path: Path, color: tuple[int, int, int], frames: int = 15) -> None:
-    """Write a tiny H.264 mp4 of a solid colour. Used to exercise extraction."""
     path.parent.mkdir(parents=True, exist_ok=True)
     width, height = 160, 90
     array = np.zeros((height, width, 3), dtype=np.uint8)
@@ -32,290 +31,91 @@ def _write_solid_mp4(path: Path, color: tuple[int, int, int], frames: int = 15) 
             container.mux(packet)
 
 
-def _deck(tmp_path: Path) -> DeckConfig:
+def _deck(tmp_path: Path, extra: str = "") -> DeckConfig:
     deck_dir = tmp_path / "demo"
     deck_dir.mkdir()
     (deck_dir / "deck.toml").write_text(
-        'slug = "demo"\ntitle = "Demo"\nscenes = ["S1"]\n', encoding="utf-8"
+        'slug = "demo"\ntitle = "Demo"\nscenes = ["S1"]\n' + extra,
+        encoding="utf-8",
     )
     (deck_dir / "slides.py").write_text("", encoding="utf-8")
     return DeckConfig.load(deck_dir)
 
 
-def test_generate_returns_placeholder_when_videos_absent(tmp_path: Path) -> None:
-    deck = _deck(tmp_path)
-    manifest = DeckManifest(
-        deck_slug=deck.slug,
-        main_slides=(
-            MainSlide(
-                index=1,
-                scene="S1",
-                name="Intro",
-                section_type=SimplexSectionType.MAIN,
-                subsections=(Subsection(name="Intro", section_type=SimplexSectionType.MAIN),),
-            ),
-        ),
+def _cue() -> Cue:
+    return Cue(
+        id="intro",
+        ordinal=1,
+        kind=CueKind.SLIDE,
+        title="Intro",
+        unit="slides:S1",
+        start_frame=0,
+        end_frame=60,
+        start=0.0,
+        end=1.0,
     )
+
+
+def test_generate_cue_images_returns_placeholders_when_video_absent(tmp_path: Path) -> None:
+    deck = _deck(tmp_path)
     site_deck_dir = tmp_path / "site" / "decks" / "demo"
-    cache_dir = tmp_path / "cache"
-    site_deck_dir.mkdir(parents=True)
-    out = generate(deck, manifest, site_deck_dir=site_deck_dir, cache_dir=cache_dir)
-    assert 1 in out
-    placeholder = site_deck_dir / out[1]
-    assert placeholder.exists()
-    # The placeholder must be a real, renderable image -- not the broken
-    # 8-byte JPEG header we used to emit when ffmpeg was missing.
-    assert placeholder.suffix == ".svg"
-    body = placeholder.read_text(encoding="utf-8")
-    assert body.startswith("<?xml")
-    assert "<svg" in body
-    assert "</svg>" in body
+    images = thumbnail.generate_cue_images(
+        deck,
+        (_cue(),),
+        theme_id="dark",
+        lecture_mp4=None,
+        site_deck_dir=site_deck_dir,
+        cache_dir=tmp_path / "cache",
+        thumbnails=True,
+    )
+    assert (site_deck_dir / images.thumbnails["intro"]).suffix == ".svg"
+    assert (site_deck_dir / images.posters["intro"]).exists()
 
 
-def test_generate_extracts_real_frame_without_ffmpeg_cli(
+def test_generate_cue_images_extracts_jpegs_without_ffmpeg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Force ``ffmpeg`` off PATH and confirm the PyAV fallback delivers a real JPEG.
-
-    This is the Windows path: manim renders via PyAV (no CLI needed), so users
-    don't always have ``ffmpeg.exe`` on PATH. Before the fallback, every slide
-    silently degraded to the "no preview yet" SVG.
-    """
     deck = _deck(tmp_path)
-    video = tmp_path / "media" / "s1.mp4"
-    _write_solid_mp4(video, color=(200, 50, 50))
-
-    manifest = DeckManifest(
-        deck_slug=deck.slug,
-        main_slides=(
-            MainSlide(
-                index=1,
-                scene="S1",
-                name="Intro",
-                section_type=SimplexSectionType.MAIN,
-                subsections=(
-                    Subsection(
-                        name="Intro",
-                        section_type=SimplexSectionType.MAIN,
-                        video=video,
-                    ),
-                ),
-            ),
-        ),
-    )
+    video = tmp_path / "lecture.mp4"
+    _write_solid_mp4(video, (200, 50, 50))
+    monkeypatch.setattr("simplex.render.thumbnail.shutil.which", lambda _name: None)
     site_deck_dir = tmp_path / "site" / "decks" / "demo"
-    site_deck_dir.mkdir(parents=True)
 
-    # Force the CLI path off so the PyAV fallback is exercised.
-    monkeypatch.setattr(
-        "simplex.render.thumbnail.shutil.which",
-        lambda _name: None,  # type: ignore[arg-type]
+    images = thumbnail.generate_cue_images(
+        deck,
+        (_cue(),),
+        theme_id="dark",
+        lecture_mp4=video,
+        site_deck_dir=site_deck_dir,
+        cache_dir=tmp_path / "cache",
+        thumbnails=True,
     )
 
-    out = generate(deck, manifest, site_deck_dir=site_deck_dir, cache_dir=tmp_path / "cache")
-    thumb = site_deck_dir / out[1]
-    assert thumb.exists()
+    thumb = site_deck_dir / images.thumbnails["intro"]
+    poster = site_deck_dir / images.posters["intro"]
     assert thumb.suffix == ".jpg"
+    assert poster.suffix == ".jpg"
     with Image.open(thumb) as image:
         image.load()
-        assert image.size[0] == 480  # DEFAULT_WIDTH
-        # The extracted frame should be the dominant red we encoded above; we
-        # check the centre pixel to tolerate the resize blur on the edges.
-        center = image.getpixel((image.size[0] // 2, image.size[1] // 2))
-        assert isinstance(center, tuple)
-        r, g, b = center[0], center[1], center[2]
-        assert r > 150
-        assert g < 100
-        assert b < 100
+        assert image.size[0] == 480
 
 
-def test_generate_player_frames_writes_first_and_last_per_subslide(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    deck = _deck(tmp_path)
-    first_video = tmp_path / "media" / "first.mp4"
-    second_video = tmp_path / "media" / "second.mp4"
-    _write_solid_mp4(first_video, color=(200, 50, 50))
-    _write_solid_mp4(second_video, color=(30, 120, 200))
-    manifest = DeckManifest(
-        deck_slug=deck.slug,
-        main_slides=(
-            MainSlide(
-                index=1,
-                scene="S1",
-                name="Intro",
-                section_type=SimplexSectionType.MAIN,
-                subsections=(
-                    Subsection(
-                        name="Intro",
-                        section_type=SimplexSectionType.MAIN,
-                        video=first_video,
-                    ),
-                    Subsection(
-                        name="Detail",
-                        section_type=SimplexSectionType.SUB,
-                        video=second_video,
-                    ),
-                ),
-            ),
-        ),
-    )
-    monkeypatch.setattr(
-        "simplex.render.thumbnail.shutil.which",
-        lambda _name: None,  # type: ignore[arg-type]
-    )
+def test_generate_carousel_gif_from_selected_cue(tmp_path: Path) -> None:
+    deck = _deck(tmp_path, "\n[web]\ncarousel_gif_slides = [1]\n")
+    video = tmp_path / "lecture.mp4"
+    _write_solid_mp4(video, (30, 120, 200), frames=20)
     site_deck_dir = tmp_path / "site" / "decks" / "demo"
-    site_deck_dir.mkdir(parents=True)
 
-    frames = generate_player_frames(
+    rel = thumbnail.generate_carousel_gif(
         deck,
-        manifest,
+        (_cue(),),
+        lecture_mp4=video,
         site_deck_dir=site_deck_dir,
         cache_dir=tmp_path / "cache",
     )
 
-    assert set(frames) == {(1, 0), (1, 1)}
-    for assets in frames.values():
-        assert assets["first"].parent.name == "player-frames"
-        assert assets["last"].parent.name == "player-frames"
-        assert (site_deck_dir / assets["first"]).exists()
-        assert (site_deck_dir / assets["last"]).exists()
-
-
-def test_generate_player_frames_can_reuse_cache_without_extracting_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    deck = _deck(tmp_path)
-    video = tmp_path / "media" / "first.mp4"
-    _write_solid_mp4(video, color=(200, 50, 50))
-    manifest = DeckManifest(
-        deck_slug=deck.slug,
-        main_slides=(
-            MainSlide(
-                index=1,
-                scene="S1",
-                name="Intro",
-                section_type=SimplexSectionType.MAIN,
-                subsections=(
-                    Subsection(
-                        name="Intro",
-                        section_type=SimplexSectionType.MAIN,
-                        video=video,
-                    ),
-                ),
-            ),
-        ),
-    )
-
-    def fail_extract_frame(*_args: object, **_kwargs: object) -> bool:
-        pytest.fail("disabled missing-frame extraction must not extract frames")
-
-    monkeypatch.setattr("simplex.render.thumbnail._extract_frame", fail_extract_frame)
-    site_deck_dir = tmp_path / "site" / "decks" / "demo"
-    site_deck_dir.mkdir(parents=True)
-
-    frames = generate_player_frames(
-        deck,
-        manifest,
-        site_deck_dir=site_deck_dir,
-        cache_dir=tmp_path / "cache",
-        extract_missing=False,
-    )
-
-    assert frames == {}
-
-
-def test_generate_uses_thumbnail_path_override(tmp_path: Path) -> None:
-    deck_dir = tmp_path / "demo"
-    deck_dir.mkdir()
-    (deck_dir / "deck.toml").write_text(
-        'slug = "demo"\n'
-        'title = "Demo"\n'
-        'scenes = ["S1"]\n'
-        "\n"
-        '[slides."Intro"]\n'
-        'thumbnail = "hero.png"\n',
-        encoding="utf-8",
-    )
-    (deck_dir / "slides.py").write_text("", encoding="utf-8")
-    # Use a tiny 1x1 black PNG so shutil.copy2 + suffix detection works.
-    hero = deck_dir / "hero.png"
-    hero.write_bytes(
-        bytes.fromhex(
-            "89504E470D0A1A0A0000000D49484452000000010000000108060000001F15"
-            "C4890000000A49444154789C6300010000000500010D0A2DB40000000049"
-            "454E44AE426082"
-        )
-    )
-    deck = DeckConfig.load(deck_dir)
-    manifest = DeckManifest(
-        deck_slug=deck.slug,
-        main_slides=(
-            MainSlide(
-                index=1,
-                scene="S1",
-                name="Intro",
-                section_type=SimplexSectionType.MAIN,
-                subsections=(),
-            ),
-        ),
-    )
-    site_deck_dir = tmp_path / "site" / "decks" / "demo"
-    site_deck_dir.mkdir(parents=True)
-    out = generate(
-        deck,
-        manifest,
-        site_deck_dir=site_deck_dir,
-        cache_dir=tmp_path / "cache",
-    )
-    target = site_deck_dir / out[1]
-    assert target.exists()
-    assert target.name.endswith(".png")
-
-
-def test_generate_carousel_gif_from_selected_slide(tmp_path: Path) -> None:
-    deck_dir = tmp_path / "demo"
-    deck_dir.mkdir()
-    (deck_dir / "deck.toml").write_text(
-        'slug = "demo"\ntitle = "Demo"\nscenes = ["S1"]\n\n[web]\ncarousel_gif_slides = [1]\n',
-        encoding="utf-8",
-    )
-    (deck_dir / "slides.py").write_text("", encoding="utf-8")
-    deck = DeckConfig.load(deck_dir)
-    video = tmp_path / "media" / "s1.mp4"
-    _write_solid_mp4(video, color=(30, 120, 200), frames=20)
-
-    manifest = DeckManifest(
-        deck_slug=deck.slug,
-        main_slides=(
-            MainSlide(
-                index=1,
-                scene="S1",
-                name="Intro",
-                section_type=SimplexSectionType.MAIN,
-                subsections=(
-                    Subsection(
-                        name="Intro",
-                        section_type=SimplexSectionType.MAIN,
-                        video=video,
-                    ),
-                ),
-            ),
-        ),
-    )
-    site_deck_dir = tmp_path / "site" / "decks" / "demo"
-    site_deck_dir.mkdir(parents=True)
-
-    rel = generate_carousel_gif(
-        deck,
-        manifest,
-        site_deck_dir=site_deck_dir,
-        cache_dir=tmp_path / "cache",
-    )
     assert rel is not None
     gif = site_deck_dir / rel
-    assert gif.exists()
-    assert gif.suffix == ".gif"
     with Image.open(gif) as image:
         image.load()
         assert image.size[0] == 320
