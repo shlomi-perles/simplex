@@ -13,9 +13,7 @@ REQUIRED = (
     "katex/katex.min.js",
     "katex/auto-render.min.js",
     "katex/fonts/KaTeX_Main-Regular.woff2",
-    "reveal.js/reveal.js",
-    "reveal.js/reveal.css",
-    "reveal.js/reset.css",
+    "shaka/shaka-player.compiled.js",
     "fonts/lato/lato-latin-400-normal.woff2",
     "fonts/merriweather/merriweather-latin-400-normal.woff2",
 )

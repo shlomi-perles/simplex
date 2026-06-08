@@ -10,7 +10,7 @@ LIMIT: int = 100
 # `simplex.web.vendor.ensure`). They're gitignored and have no business
 # carrying a per-directory README; skipping them keeps the check honest
 # whether or not vendoring has run.
-_VENDORED_STATIC: frozenset[str] = frozenset({"katex", "reveal.js", "fonts"})
+_VENDORED_STATIC: frozenset[str] = frozenset({"katex", "shaka", "fonts", "lucide"})
 
 
 def _skipped(parts: tuple[str, ...]) -> bool:
