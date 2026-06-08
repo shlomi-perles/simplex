@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from simplex.deck.config import SlideThemeConfig
+from simplex.deck.config import HostingConfig, PackagingConfig, SlideThemeConfig
 
 
 class NavLink(BaseModel):
@@ -30,6 +30,8 @@ class SiteConfig(BaseModel):
     nav: tuple[NavLink, ...] = ()
     default_section_order: tuple[str, ...] = ()
     slide_themes: SlideThemeConfig = Field(default_factory=SlideThemeConfig)
+    hosting: HostingConfig = Field(default_factory=HostingConfig)
+    packaging: PackagingConfig = Field(default_factory=PackagingConfig)
 
     # Deployment-only fields (loaded from env, not committed).
     ga_tag: str = ""

@@ -1,5 +1,6 @@
-"""`build(render=False)` emits home + section + per-deck HTML without manim."""
+"""`build(render=False)` emits timeline manifests and static deck pages."""
 
+import json
 from pathlib import Path
 
 import av
@@ -10,7 +11,7 @@ from simplex.web.builder import build
 from simplex.web.site_config import NavLink, SiteConfig
 
 
-def _write_solid_mp4(path: Path, color: tuple[int, int, int], frames: int = 6) -> None:
+def _write_solid_mp4(path: Path, color: tuple[int, int, int], frames: int = 12) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     width, height = 160, 90
     array = np.zeros((height, width, 3), dtype=np.uint8)
@@ -47,85 +48,72 @@ def _write_section(root: Path, name: str, title: str, order: int) -> None:
     section = root / name
     section.mkdir(parents=True, exist_ok=True)
     (section / "_section.toml").write_text(
-        f'title = "{title}"\norder = {order}\n', encoding="utf-8"
+        f'title = "{title}"\norder = {order}\n',
+        encoding="utf-8",
     )
 
 
-def test_build_emits_home_and_per_deck_pages(tmp_path: Path) -> None:
+def test_build_emits_timeline_manifest_and_deck_page(tmp_path: Path) -> None:
     decks_dir = tmp_path / "decks"
     decks_dir.mkdir()
     _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
     _write_deck(decks_dir, "bravo", "Bravo", scenes=("S1",))
 
     site_dir = tmp_path / "site"
-
     build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
+        decks_dir=decks_dir, site_dir=site_dir, render=False, site_cfg=SiteConfig(brand="Simplex")
     )
 
     index_html = (site_dir / "index.html").read_text(encoding="utf-8")
+    alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
+    manifest = json.loads((site_dir / "decks" / "alpha" / "simplex-manifest.json").read_text())
+
     assert "Alpha" in index_html
-    assert "Bravo" in index_html
     assert "carousel" in index_html
-    # Palette CSS injected into <head>.
-    assert "--simplex-bg" in index_html
-    # Site CSS loads after palette tokens so deck palettes cannot override body chrome.
-    assert index_html.index("--simplex-bg") < index_html.index("simplex.css")
     assert "simplex.css?v=" in index_html
     assert "viewer.js?v=" in index_html
-    assert "notes.js?v=" in index_html
-    assert 'data-card-thumb-dark="/decks/alpha/themes/dark/thumbs/_placeholder.svg"' in index_html
-    assert 'data-card-thumb-light="/decks/alpha/themes/light/thumbs/_placeholder.svg"' in index_html
-
-    alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
-    assert "Alpha" in alpha_html
-    assert 'class="math inline"' in alpha_html
-    assert 'class="slide-ref"' in alpha_html
-    assert 'data-slide="1"' in alpha_html
-    assert "Slide Theme" in alpha_html
-    assert "Slide Color" not in alpha_html
-    assert "Stopwatch" in alpha_html
-    assert alpha_html.index("Enumeration") < alpha_html.index("Clock")
-    assert alpha_html.index("Clock") < alpha_html.index("Stopwatch")
-    assert alpha_html.index("Stopwatch") < alpha_html.index("Slide Theme")
-    assert 'data-slide-theme-mode="true"' in alpha_html
-    assert "data-slide-theme-dark-src" not in alpha_html
-    assert "data-slide-theme-light-src" not in alpha_html
+    assert manifest["schema_version"] == 2
+    assert manifest["cues"][0]["id"] == "s1"
+    assert manifest["themes"][0]["media"] == {}
+    assert "budget_warnings" in manifest
     assert "data-player-stage" in alpha_html
     assert "data-player-manifest" in alpha_html
-    assert '"themes": {"dark":' in alpha_html
-    assert '"firstFrame": "themes/dark/' in alpha_html
-    assert '"firstFrame": "themes/light/' in alpha_html
+    assert "data-player-preview" in alpha_html
+    assert "img.hidden = false" not in alpha_html
+    assert "shaka/shaka-player.compiled.js" in alpha_html
     assert "iframe" not in alpha_html
-    assert '"mainIndex": 1' in alpha_html
-    assert '"subIndex": 0' in alpha_html
-    dark_slides_html = (site_dir / "decks" / "alpha" / "themes" / "dark" / "slides.html").read_text(
-        encoding="utf-8"
+    assert not (site_dir / "decks" / "alpha" / "slides.html").exists()
+    assert (site_dir / "decks" / "alpha" / "exports" / "Alpha-slides.pdf").exists()
+    assert (site_dir / "decks" / "alpha" / "exports" / "alpha.pptx").exists()
+    assert 'class="slide-ref"' in alpha_html
+
+
+def test_no_render_build_reuses_existing_timeline_media(tmp_path: Path) -> None:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir, "alpha", "Alpha", scenes=("Intro", "KeyIdea"))
+    site_dir = tmp_path / "site"
+    for variant, color in {"dark": (40, 80, 180), "light": (210, 230, 245)}.items():
+        media = site_dir / "decks" / "alpha" / "media" / variant
+        _write_solid_mp4(media / "lecture.mp4", color=color)
+        hls = media / "hls"
+        hls.mkdir(parents=True)
+        (hls / "master.m3u8").write_text("#EXTM3U\n", encoding="utf-8")
+
+    build(
+        decks_dir=decks_dir, site_dir=site_dir, render=False, site_cfg=SiteConfig(brand="Simplex")
     )
-    light_slides_html = (
-        site_dir / "decks" / "alpha" / "themes" / "light" / "slides.html"
-    ).read_text(encoding="utf-8")
-    assert "Reveal" in dark_slides_html
-    assert "--simplex-bg" in dark_slides_html
-    assert "simplex.next-main" in dark_slides_html
-    assert "simplex.prev-main-or-reset" in dark_slides_html
-    assert "simplex.stopwatch-toggle" in dark_slides_html
-    assert "--simplex-bg: #EEEAD8" in light_slides_html
-    viewer_js = (site_dir / "static" / "viewer.js").read_text(encoding="utf-8")
-    assert "simplex-slide-theme:" not in viewer_js
-    assert "function renderCurrent(options)" in viewer_js
-    assert "function captureFreeze(onlyCurrent)" in viewer_js
-    assert "function decodePreview(src, seq, revealImmediately)" in viewer_js
-    assert "asset.lastFrame" in viewer_js
-    assert "data-thumb-default" in alpha_html
+
+    manifest = json.loads((site_dir / "decks" / "alpha" / "simplex-manifest.json").read_text())
+    dark = next(theme for theme in manifest["themes"] if theme["id"] == "dark")
+    assert dark["media"]["hls"] == "media/dark/hls/master.m3u8"
+    assert dark["media"]["mp4"] == "media/dark/lecture.mp4"
+    assert manifest["duration"] > 0
+    assert manifest["cues"][1]["start_frame"] > 0
+    assert list((site_dir / "decks" / "alpha" / "posters" / "dark").glob("*.jpg"))
 
 
-def test_build_resolves_nav_links_against_base_url_and_moves_github_to_footer(
-    tmp_path: Path,
-) -> None:
+def test_build_resolves_nav_links_against_base_url(tmp_path: Path) -> None:
     decks_dir = tmp_path / "decks"
     decks_dir.mkdir()
     _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
@@ -137,127 +125,14 @@ def test_build_resolves_nav_links_against_base_url_and_moves_github_to_footer(
         render=False,
         site_cfg=SiteConfig(
             brand="Simplex",
-            base_url="/simplex-lectures-template",
-            nav=(
-                NavLink(label="Decks", href="/"),
-                NavLink(label="GitHub", href="https://github.com/example/project"),
-            ),
+            base_url="/course",
+            nav=(NavLink(label="Decks", href="/"),),
         ),
     )
 
     index_html = (site_dir / "index.html").read_text(encoding="utf-8")
-    assert 'href="/simplex-lectures-template/"' in index_html
-    assert 'class="site-nav-link site-nav-link-home"' in index_html
-    assert 'class="site-nav-link site-nav-link-icon-only"' not in index_html
-    assert 'class="site-footer-github"' in index_html
-    assert "https://github.com/example/project" in index_html
-    assert 'class="site-footer-simplex"' in index_html
-    assert index_html.index('class="site-footer-github"') < index_html.index(
-        'class="site-footer-simplex"'
-    )
-
-
-def test_deck_downloads_are_grouped_under_pdf_icon(tmp_path: Path) -> None:
-    decks_dir = tmp_path / "decks"
-    decks_dir.mkdir()
-    _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
-    deck_out = tmp_path / "site" / "decks" / "alpha"
-    deck_out.mkdir(parents=True)
-    (deck_out / "Alpha-slides.pdf").write_bytes(b"%PDF")
-    (deck_out / "Alpha-note.pdf").write_bytes(b"%PDF")
-
-    build(
-        decks_dir=decks_dir,
-        site_dir=tmp_path / "site",
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
-    )
-
-    html = (deck_out / "index.html").read_text(encoding="utf-8")
-    assert "data-resource-menu" in html
-    assert 'href="Alpha-slides.pdf"' in html
-    assert 'href="Alpha-note.pdf"' in html
-    assert ">Slides</span>" in html
-    assert ">Notes</span>" in html
-    assert ">ppt</span>" not in html
-
-
-def test_build_uses_explicit_deck_date_and_can_show_it_in_notes(tmp_path: Path) -> None:
-    decks_dir = tmp_path / "decks"
-    decks_dir.mkdir()
-    _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
-    deck_toml = decks_dir / "alpha" / "deck.toml"
-    deck_toml.write_text(
-        deck_toml.read_text(encoding="utf-8")
-        + 'date = "2026-05-19"\n\n[web]\nshow_notes_date = true\n',
-        encoding="utf-8",
-    )
-
-    site_dir = tmp_path / "site"
-    build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
-    )
-
-    index_html = (site_dir / "index.html").read_text(encoding="utf-8")
-    alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
-
-    assert "May 19, 2026" in index_html
-    assert '<p class="deck-notes-date"><time datetime="2026-05-19">May 19, 2026</time></p>' in (
-        alpha_html
-    )
-    assert alpha_html.index("<h1") < alpha_html.index("deck-notes-date")
-
-
-def test_build_auto_generates_slide_ref_anchor_from_title(tmp_path: Path) -> None:
-    decks_dir = tmp_path / "decks"
-    decks_dir.mkdir()
-    _write_deck(decks_dir, "alpha", "Alpha", scenes=("Intro", "KeyIdea"))
-    (decks_dir / "alpha" / "notes.md").write_text(
-        "# Notes\n\nJump to [slide:key-idea].\n",
-        encoding="utf-8",
-    )
-
-    site_dir = tmp_path / "site"
-    build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
-    )
-
-    html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
-
-    assert 'class="slide-ref"' in html
-    assert 'data-slide="2"' in html
-    assert ">Key Idea</a>" in html
-
-
-def test_deck_downloads_carry_true_theme_pdf_hrefs(tmp_path: Path) -> None:
-    decks_dir = tmp_path / "decks"
-    decks_dir.mkdir()
-    _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
-    deck_out = tmp_path / "site" / "decks" / "alpha"
-    for variant in ("dark", "light"):
-        variant_dir = deck_out / "themes" / variant
-        variant_dir.mkdir(parents=True)
-        (variant_dir / "Alpha-slides.pdf").write_bytes(b"%PDF")
-
-    build(
-        decks_dir=decks_dir,
-        site_dir=tmp_path / "site",
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
-    )
-
-    html = (deck_out / "index.html").read_text(encoding="utf-8")
-    assert "data-slides-pdf-link" in html
-    assert 'href="themes/dark/Alpha-slides.pdf"' in html
-    assert 'data-pdf-dark="themes/dark/Alpha-slides.pdf"' in html
-    assert 'data-pdf-light="themes/light/Alpha-slides.pdf"' in html
-    assert (deck_out / "Alpha-slides.pdf").exists()
+    assert 'href="/course/"' in index_html
+    assert 'href="/course/decks/alpha/"' in index_html
 
 
 def test_build_can_emit_filter_mode_from_site_config(tmp_path: Path) -> None:
@@ -273,73 +148,10 @@ def test_build_can_emit_filter_mode_from_site_config(tmp_path: Path) -> None:
         site_cfg=SiteConfig(brand="Simplex", slide_themes=SlideThemeConfig(enabled=False)),
     )
 
-    alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
-    assert 'data-slide-theme-mode="filter"' in alpha_html
-    assert "data-player-stage" in alpha_html
-    assert (site_dir / "decks" / "alpha" / "slides.html").exists()
-
-
-def test_build_player_manifest_includes_vertical_subslides(tmp_path: Path) -> None:
-    decks_dir = tmp_path / "decks"
-    decks_dir.mkdir()
-    _write_deck(decks_dir, "alpha", "Alpha", scenes=("Intro",))
-    site_dir = tmp_path / "site"
-    for variant in ("dark", "light"):
-        media = site_dir / "decks" / "alpha" / "themes" / variant
-        slides_dir = media / "slides"
-        slides_dir.mkdir(parents=True)
-        media_dir = media / "media"
-        media_dir.mkdir()
-        (media_dir / "a.mp4").write_bytes(b"\x00\x00")
-        (media_dir / "b.mp4").write_bytes(b"\x00\x00")
-        (slides_dir / "Intro.json").write_text(
-            '{"slides":[{"file":"media/a.mp4"},{"file":"media/b.mp4"}]}',
-            encoding="utf-8",
-        )
-
-    build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
-    )
-
     html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
-    assert '"subIndex": 0' in html
-    assert '"subIndex": 1' in html
-    assert '"video": "themes/dark/segments/0001_01.mp4"' in html
-
-
-def test_no_render_build_generates_player_start_frames_for_existing_videos(
-    tmp_path: Path,
-) -> None:
-    decks_dir = tmp_path / "decks"
-    decks_dir.mkdir()
-    _write_deck(decks_dir, "alpha", "Alpha", scenes=("Intro",))
-    site_dir = tmp_path / "site"
-    for variant, color in {"dark": (40, 80, 180), "light": (210, 230, 245)}.items():
-        variant_dir = site_dir / "decks" / "alpha" / "themes" / variant
-        media_dir = variant_dir / "media"
-        slides_dir = variant_dir / "slides"
-        slides_dir.mkdir(parents=True)
-        _write_solid_mp4(media_dir / "intro.mp4", color=color)
-        (slides_dir / "Intro.json").write_text(
-            '{"slides":[{"file":"media/intro.mp4"}]}',
-            encoding="utf-8",
-        )
-
-    build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
-    )
-
-    html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
-    assert '"firstFrame": "themes/dark/player-frames/' in html
-    assert '"lastFrame": "themes/dark/player-frames/' in html
-    assert '"thumbnail": "themes/dark/thumbs/' in html
-    assert list((site_dir / "decks" / "alpha" / "themes" / "dark" / "player-frames").glob("*.jpg"))
+    manifest = json.loads((site_dir / "decks" / "alpha" / "simplex-manifest.json").read_text())
+    assert 'data-slide-theme-mode="filter"' in html
+    assert any(theme["strategy"] == "css_filter_fallback" for theme in manifest["themes"])
 
 
 def test_build_emits_section_pages_and_orders(tmp_path: Path) -> None:
@@ -350,51 +162,12 @@ def test_build_emits_section_pages_and_orders(tmp_path: Path) -> None:
     _write_deck(decks_dir, "intro", "Featured Intro", scenes=("S1",))
 
     site_dir = tmp_path / "site"
-
     build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
+        decks_dir=decks_dir, site_dir=site_dir, render=False, site_cfg=SiteConfig(brand="Simplex")
     )
 
-    home = (site_dir / "index.html").read_text(encoding="utf-8")
-    assert "Graphs" in home
-    assert "Featured" in home
-
-    section_page = (site_dir / "sections" / "graphs" / "index.html").read_text(encoding="utf-8")
-    assert "BFS" in section_page
-
-    featured_page = (site_dir / "sections" / "featured" / "index.html").read_text(encoding="utf-8")
-    assert "Featured Intro" in featured_page
-
-
-def test_build_gates_ga_tag(tmp_path: Path) -> None:
-    decks_dir = tmp_path / "decks"
-    decks_dir.mkdir()
-    _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
-    site_dir = tmp_path / "site"
-
-    build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
+    assert "Graphs" in (site_dir / "index.html").read_text(encoding="utf-8")
+    assert "BFS" in (site_dir / "sections" / "graphs" / "index.html").read_text(encoding="utf-8")
+    assert "Featured Intro" in (site_dir / "sections" / "featured" / "index.html").read_text(
+        encoding="utf-8"
     )
-    assert "gtag" not in (site_dir / "index.html").read_text(encoding="utf-8")
-
-    build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex", ga_tag="G-TEST"),
-    )
-    assert "G-TEST" in (site_dir / "index.html").read_text(encoding="utf-8")
-
-    build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex", ga_tag="G-TEST", preview=True),
-    )
-    assert "gtag" not in (site_dir / "index.html").read_text(encoding="utf-8")

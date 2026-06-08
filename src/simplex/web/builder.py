@@ -1,40 +1,32 @@
-"""Build the full static portal under ``site/``.
+"""Build the Simplex static portal and timeline-native deck pages."""
 
-Pipeline (per deck):
-
-1. ``render.runner.render`` (subprocess, skipped when ``render=False``).
-2. ``render.pdf.export`` (best-effort).
-3. ``render.reconcile.build_manifest`` reads native section JSON +
-   manim-slides PresentationConfig -> main/sub tree.
-4. ``render.thumbnail.generate`` per main slide (default rule: second-to-last
-   subsection's last frame).
-5. ``render.html.render_html`` renders our custom RevealJS template with
-   the reconciled tree + palette CSS.
-6. ``web.notes.render`` runs ``notes.md`` through markdown-it.
-7. Write ``index.html`` for the deck page.
-
-No render cache. Manim's per-animation cache + ``save_sections=True``
-(applied by the plugin) gives slide-level incrementality for free.
-"""
+from __future__ import annotations
 
 import contextlib
 import datetime as dt
 import hashlib
 import html as html_lib
+import json
 import shutil
 import subprocess
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
-from simplex.deck.config import DeckConfig, SlideThemeSelection, SlideThemeVariant
+from simplex.deck.config import DeckConfig, PackagingConfig, SlideThemeSelection, SlideThemeVariant
 from simplex.deck.registry import Section, SectionedRegistry, discover
 from simplex.deck.section import SectionConfig
-from simplex.manifest import DeckManifest
-from simplex.render import filenames, html, notes_pdf, pdf, reconcile, runner, themes, thumbnail
+from simplex.manifest import (
+    DeckManifest,
+    ManifestCompat,
+    ManifestExports,
+    ThemeMedia,
+    ThemeTimeline,
+)
+from simplex.render import filenames, notes_pdf, pdf, pptx, runner, themes, thumbnail, timeline
+from simplex.render.timeline import PackagedTheme, RenderedUnit
 from simplex.theme.web_css import render_web_css
 from simplex.web import notes, vendor
 from simplex.web.bibliography import Bibliography
@@ -44,22 +36,12 @@ from simplex.web.site_config import SiteConfig
 @dataclass(frozen=True, slots=True)
 class _SlideView:
     index: int
+    cue_id: str
     scene: str
     name: str
     duration_s: float
     thumbnail: str | None
     theme_thumbnails: dict[str, str]
-
-
-@dataclass(frozen=True, slots=True)
-class _BuiltVariant:
-    variant: SlideThemeVariant
-    deck: DeckConfig
-    output_dir: Path
-    manifest: DeckManifest
-    thumbs: dict[int, Path]
-    player_frames: dict[tuple[int, int], dict[str, Path]]
-    slides_html: Path
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,12 +66,11 @@ def _static_source_dir() -> Path:
 
 
 def _file_version(path: Path) -> str:
-    """Short content hash for cache-busting generated asset URLs."""
     if not path.exists() or not path.is_file():
         return ""
     digest = hashlib.blake2s(digest_size=6)
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
 
@@ -121,7 +102,6 @@ def _jinja(site_cfg: SiteConfig) -> Environment:
 
 
 def _copy_static(site_dir: Path) -> None:
-    """Copy bundled static assets into ``site/static/``."""
     src = _static_source_dir()
     src.mkdir(parents=True, exist_ok=True)
     vendor.ensure(src)
@@ -137,106 +117,308 @@ def _copy_static(site_dir: Path) -> None:
             shutil.copy2(entry, target)
 
 
-def _maybe_render(
-    deck: DeckConfig,
-    media_dir: Path,
-    *,
-    render: bool,
-    manim_args: tuple[str, ...] = (),
-    scenes: tuple[str, ...] = (),
-    write_last_frame: bool = False,
-) -> None:
-    if not render:
-        return
-    deck_scenes = tuple(s for s in scenes if s in deck.scene_class_names)
-    if scenes and not deck_scenes:
-        return
-    runner.render(
-        deck,
-        output_dir=media_dir,
-        manim_args=manim_args,
-        scenes=deck_scenes,
-        write_last_frame=write_last_frame,
-    )
-    with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError, ImportError):
-        pdf.export(deck, output_dir=media_dir)
+def _theme_label(variant: str) -> str:
+    return variant[:1].upper() + variant[1:]
 
 
-def _build_variant_output(
+def _cache_dir(site_dir: Path, deck: DeckConfig, variant: str) -> Path:
+    return site_dir.parent / ".simplex_cache" / "decks" / deck.slug / variant
+
+
+def _render_variant(
     deck: DeckConfig,
     *,
     variant: SlideThemeVariant,
-    output_dir: Path,
-    cache_dir: Path,
-    site_cfg: SiteConfig,
+    site_dir: Path,
     render: bool,
     manim_args: tuple[str, ...],
     scenes: tuple[str, ...],
-    watch: bool,
-    theme_name: str | None = None,
-) -> _BuiltVariant:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    _maybe_render(deck, output_dir, render=render, manim_args=manim_args, scenes=scenes)
-
-    manifest = reconcile.build_manifest(deck, media_dir=output_dir)
-    thumbs = thumbnail.generate(deck, manifest, site_deck_dir=output_dir, cache_dir=cache_dir)
-    player_frames = thumbnail.generate_player_frames(
-        deck,
-        manifest,
-        site_deck_dir=output_dir,
-        cache_dir=cache_dir,
-        extract_missing=True,
-    )
-    enriched = tuple(
-        main.model_copy(update={"thumbnail": thumbs.get(main.index)})
-        for main in manifest.main_slides
-    )
-    slides_html = html.render_html(
-        deck,
-        manifest.model_copy(update={"main_slides": enriched}),
-        output_dir=output_dir,
-        static_prefix=site_cfg.url("static"),
-        theme_name=theme_name,
-        theme_variant=variant,
-        watch=watch,
-    )
-    return _BuiltVariant(
-        variant=variant,
-        deck=deck,
-        output_dir=output_dir,
-        manifest=manifest.model_copy(update={"main_slides": enriched}),
-        thumbs=thumbs,
-        player_frames=player_frames,
-        slides_html=slides_html,
-    )
-
-
-def _has_notes_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
-    return (deck_dir / filenames.pdf_name(deck, "note")).exists()
+    write_last_frame: bool = False,
+) -> tuple[Path, tuple[RenderedUnit, ...]]:
+    media_dir = _cache_dir(site_dir, deck, variant) / "intermediate"
+    if render:
+        if scenes:
+            unknown = tuple(scene for scene in scenes if scene not in deck.scene_class_names)
+            if unknown:
+                raise ValueError(f"unknown scene name(s): {list(unknown)!r}")
+            deck_scenes = tuple(scene for scene in scenes if scene in deck.scene_class_names)
+            render_scenes = deck_scenes
+        else:
+            deck_scenes = deck.scene_class_names
+            render_scenes = _changed_render_scenes(
+                deck,
+                variant=variant,
+                media_dir=media_dir,
+                manim_args=manim_args,
+                candidates=deck_scenes,
+            )
+        if render_scenes:
+            runner.render(
+                deck,
+                output_dir=media_dir,
+                manim_args=manim_args,
+                scenes=render_scenes,
+                write_last_frame=write_last_frame,
+            )
+            if not scenes:
+                _write_render_state(
+                    deck,
+                    variant=variant,
+                    media_dir=media_dir,
+                    manim_args=manim_args,
+                    scenes=deck_scenes,
+                )
+    return media_dir, timeline.load_units(deck, media_dir=media_dir)
 
 
-def _slide_ref_labels(
+def _changed_render_scenes(
     deck: DeckConfig,
-    slides: tuple[Any, ...],
-) -> dict[str, tuple[int, str]]:
-    """Return label -> ``(index, display label)`` for note slide refs."""
+    *,
+    variant: SlideThemeVariant,
+    media_dir: Path,
+    manim_args: tuple[str, ...],
+    candidates: tuple[str, ...],
+) -> tuple[str, ...]:
+    state = _load_render_state(media_dir)
+    fingerprints = _scene_fingerprints(deck, variant=variant, manim_args=manim_args)
+    existing = {unit.scene: unit for unit in timeline.load_units(deck, media_dir=media_dir)}
+    changed: list[str] = []
+    for scene in candidates:
+        unit = existing.get(scene)
+        if state.get(scene) != fingerprints.get(scene) or not _unit_is_reusable(unit):
+            changed.append(scene)
+    return tuple(changed)
+
+
+def _unit_is_reusable(unit: RenderedUnit | None) -> bool:
+    return bool(unit and unit.video is not None and unit.video.exists() and unit.cues)
+
+
+def _render_state_path(media_dir: Path) -> Path:
+    return media_dir.parent / "render-state.json"
+
+
+def _load_render_state(media_dir: Path) -> dict[str, str]:
+    path = _render_state_path(media_dir)
+    if not path.exists():
+        return {}
+    with contextlib.suppress(OSError, json.JSONDecodeError):
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(raw, dict):
+            return {str(key): str(value) for key, value in raw.items()}
+    return {}
+
+
+def _write_render_state(
+    deck: DeckConfig,
+    *,
+    variant: SlideThemeVariant,
+    media_dir: Path,
+    manim_args: tuple[str, ...],
+    scenes: tuple[str, ...],
+) -> None:
+    fingerprints = _scene_fingerprints(deck, variant=variant, manim_args=manim_args)
+    state = _load_render_state(media_dir)
+    for scene in scenes:
+        if scene in fingerprints:
+            state[scene] = fingerprints[scene]
+    path = _render_state_path(media_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _scene_fingerprints(
+    deck: DeckConfig,
+    *,
+    variant: SlideThemeVariant,
+    manim_args: tuple[str, ...],
+) -> dict[str, str]:
+    source_files = {
+        class_name: group.source_file
+        for group in deck.resolve_entrypoints()
+        for class_name in group.scene_names
+    }
+    config_files = tuple(path for path in _fingerprint_config_paths(deck) if path.exists())
+    out: dict[str, str] = {}
+    for scene in deck.scene_class_names:
+        digest = hashlib.blake2s(digest_size=16)
+        digest.update(b"simplex-render-v3\0")
+        digest.update(variant.encode())
+        digest.update(b"\0")
+        digest.update((deck.slide_theme_variant or "").encode())
+        digest.update(b"\0")
+        digest.update("\0".join(manim_args).encode())
+        digest.update(b"\0")
+        for path in (
+            *_simplex_runtime_fingerprint_paths(),
+            *config_files,
+            deck.path / "deck.toml",
+            source_files[scene],
+        ):
+            digest.update(path.resolve().as_posix().encode())
+            digest.update(b"\0")
+            with contextlib.suppress(OSError):
+                digest.update(path.read_bytes())
+            digest.update(b"\0")
+        out[scene] = digest.hexdigest()
+    return out
+
+
+def _simplex_runtime_fingerprint_paths() -> tuple[Path, ...]:
+    root = Path(__file__).resolve().parents[1]
+    return tuple(sorted(root.rglob("*.py")))
+
+
+def _fingerprint_config_paths(deck: DeckConfig) -> tuple[Path, ...]:
+    return (
+        deck.path / "manim.cfg",
+        deck.path.parent / "manim.cfg",
+        deck.path.parent.parent / "manim.cfg",
+    )
+
+
+def _package_existing_or_rendered(
+    *,
+    deck: DeckConfig,
+    variant: SlideThemeVariant,
+    units: tuple[RenderedUnit, ...],
+    cues: tuple[Any, ...],
+    deck_out: Path,
+    media_base_url: str,
+    segment_duration: int,
+) -> PackagedTheme:
+    media_dir = deck_out / "media" / variant
+    media_href = f"media/{variant}"
+    existing_lecture = media_dir / "lecture.mp4"
+    existing_hls = media_dir / "hls" / "master.m3u8"
+    if (
+        not any(unit.video is not None and unit.video.exists() for unit in units)
+        and existing_lecture.exists()
+    ):
+        theme_media = {
+            "hls": f"{media_href}/hls/master.m3u8" if existing_hls.exists() else None,
+            "mp4": f"{media_href}/lecture.mp4",
+        }
+        theme = ThemeTimeline(
+            id=variant,
+            label=_theme_label(variant),
+            strategy="rendered",
+            media=ThemeMedia(**theme_media),
+            duration=timeline.media_duration(existing_lecture),
+        )
+        if media_base_url:
+            theme = timeline.prefix_media_urls(theme, media_base_url)
+        return PackagedTheme(
+            theme=theme,
+            progressive_mode="copy",
+            hls_available=existing_hls.exists(),
+            warnings=(),
+            lecture_mp4=existing_lecture,
+        )
+    packaged = timeline.package_theme(
+        theme_id=variant,
+        label=_theme_label(variant),
+        units=units,
+        cues=tuple(cues),
+        output_dir=media_dir,
+        media_href_prefix=media_href,
+        segment_duration=segment_duration,
+    )
+    if media_base_url:
+        packaged = PackagedTheme(
+            theme=timeline.prefix_media_urls(packaged.theme, media_base_url),
+            progressive_mode=packaged.progressive_mode,
+            hls_available=packaged.hls_available,
+            warnings=packaged.warnings,
+            lecture_mp4=packaged.lecture_mp4,
+        )
+    return packaged
+
+
+def _missing_theme_fallback(
+    *,
+    variant: SlideThemeVariant,
+    source: PackagedTheme,
+    media_base_url: str,
+) -> PackagedTheme:
+    fallback = timeline.css_filter_fallback_theme(
+        theme_id=variant,
+        label=_theme_label(variant),
+        source=source.theme,
+    )
+    if media_base_url:
+        fallback = timeline.prefix_media_urls(fallback, media_base_url)
+    return PackagedTheme(
+        theme=fallback,
+        progressive_mode=source.progressive_mode,
+        hls_available=source.hls_available,
+        warnings=(f"theme {variant!r} is using CSS-filter fallback media",),
+        lecture_mp4=source.lecture_mp4,
+    )
+
+
+def _cue_slides(
+    manifest: DeckManifest,
+    *,
+    theme_posters: dict[str, dict[str, str]],
+) -> tuple[_SlideView, ...]:
+    slides: list[_SlideView] = []
+    for cue in manifest.cues:
+        if not cue.kind.is_slide:
+            continue
+        per_theme = {
+            variant: posters[cue.id]
+            for variant, posters in theme_posters.items()
+            if cue.id in posters
+        }
+        slides.append(
+            _SlideView(
+                index=cue.ordinal,
+                cue_id=cue.id,
+                scene=cue.unit,
+                name=cue.title,
+                duration_s=cue.duration,
+                thumbnail=cue.thumbnail,
+                theme_thumbnails=per_theme,
+            )
+        )
+    if slides:
+        return tuple(slides)
+    return tuple(
+        _SlideView(
+            index=cue.ordinal,
+            cue_id=cue.id,
+            scene=cue.unit,
+            name=cue.title,
+            duration_s=cue.duration,
+            thumbnail=cue.thumbnail,
+            theme_thumbnails={
+                variant: posters[cue.id]
+                for variant, posters in theme_posters.items()
+                if cue.id in posters
+            },
+        )
+        for cue in manifest.cues
+    )
+
+
+def _slide_ref_labels(slides: tuple[_SlideView, ...]) -> dict[str, tuple[int, str]]:
     from simplex.web.slide_ref import label_key
 
     refs: dict[str, tuple[int, str]] = {}
     for slide in slides:
-        index = int(slide.index)
-        display = str(slide.name)
         candidates = {
-            str(index),
-            display,
-            label_key(display),
-            str(slide.scene),
-            label_key(str(slide.scene)),
+            str(slide.index),
+            slide.cue_id,
+            slide.name,
+            label_key(slide.name),
+            slide.scene,
+            label_key(slide.scene),
         }
         for candidate in candidates:
             key = label_key(candidate)
             if key:
-                refs.setdefault(key, (index, display))
+                refs.setdefault(key, (slide.index, slide.name))
     return refs
 
 
@@ -261,467 +443,73 @@ def _with_notes_date(notes_html: str, info: _DeckDateInfo | None) -> str:
     return f"{notes_html[:insert_at]}\n{date_html}{notes_html[insert_at:]}"
 
 
-def _theme_rel(
-    variant: SlideThemeVariant,
-    path: Path | None,
-) -> Path | None:
-    """Convert a variant-local relative path into a deck-page relative path."""
-    if path is None:
-        return None
-    return Path("themes") / variant / path
-
-
-def _copy_default_slides_pdf(deck: DeckConfig, source_dir: Path, deck_out: Path) -> None:
-    """Expose the default variant's slides PDF at the deck root for downloads."""
-    source = source_dir / filenames.pdf_name(deck, "slides")
-    if not source.exists():
-        return
-    target = deck_out / source.name
-    if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
-        shutil.copy2(source, target)
-
-
-def _slides_pdf_hrefs(
+def _build_notes(
     deck: DeckConfig,
+    *,
     deck_out: Path,
-    *,
-    built_by_variant: dict[SlideThemeVariant, _BuiltVariant] | None = None,
-) -> dict[str, str]:
-    """Return downloadable slides-PDF hrefs relative to the deck page."""
-    root_name = filenames.pdf_name(deck, "slides")
-    hrefs: dict[str, str] = {}
-    if (deck_out / root_name).exists():
-        hrefs["default"] = root_name
-    if built_by_variant:
-        for variant, built in built_by_variant.items():
-            name = filenames.pdf_name(built.deck, "slides")
-            if (built.output_dir / name).exists():
-                hrefs[variant] = (Path("themes") / variant / name).as_posix()
-    return hrefs
-
-
-def _build_slide_views(
-    manifest: DeckManifest,
-    *,
-    default_variant: SlideThemeVariant | None,
-    variant_thumbs: dict[SlideThemeVariant, dict[int, Path]],
-) -> tuple[_SlideView, ...]:
-    slides: list[_SlideView] = []
-    for main in manifest.main_slides:
-        per_theme: dict[str, str] = {}
-        for variant, thumbs in variant_thumbs.items():
-            rel = _theme_rel(variant, thumbs.get(main.index))
-            if rel is not None:
-                per_theme[variant] = rel.as_posix()
-        thumbnail: str | None = None
-        if default_variant is not None:
-            thumbnail = per_theme.get(default_variant)
-        if thumbnail is None and main.thumbnail is not None:
-            thumbnail = main.thumbnail.as_posix()
-        slides.append(
-            _SlideView(
-                index=main.index,
-                scene=main.scene,
-                name=main.name,
-                duration_s=main.duration_s,
-                thumbnail=thumbnail,
-                theme_thumbnails=per_theme,
+    slides: tuple[_SlideView, ...],
+    render: bool,
+    deck_date_info: _DeckDateInfo | None,
+) -> str:
+    notes_md = deck.path / "notes.md"
+    if not notes_md.exists():
+        return ""
+    slide_refs = _slide_ref_labels(slides)
+    bib = _load_bibliography(deck.path)
+    notes_html = notes.render(
+        notes_md,
+        slide_count=len(slides),
+        slide_refs=slide_refs,
+        bibliography=bib,
+        code_style=deck.resolved_notes_code_style(),
+    )
+    if deck.web.show_notes_date:
+        notes_html = _with_notes_date(notes_html, deck_date_info)
+    if render:
+        with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError, ImportError):
+            notes_pdf.export(
+                deck,
+                notes_md,
+                output_dir=deck_out,
+                slide_refs=slide_refs,
+                bibliography=bib,
+                note_date=deck_date_info.value
+                if deck.web.show_notes_date and deck_date_info is not None
+                else None,
             )
-        )
-    return tuple(slides)
+    return notes_html
 
 
-def _prefixed_path(prefix: str, path: Path | None) -> str | None:
-    if path is None:
-        return None
-    rel = path.as_posix()
-    return f"{prefix}/{rel}" if prefix else rel
+def _has_notes_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
+    return (deck_dir / filenames.pdf_name(deck, "note")).exists()
 
 
-def _segment_path(main_idx: int, sub_idx: int) -> Path:
-    return Path("segments") / f"{main_idx:04d}_{sub_idx:02d}.mp4"
+def _deck_media_base_url(deck: DeckConfig, site_cfg: SiteConfig) -> str:
+    return deck.hosting.media_base_url or site_cfg.hosting.media_base_url
 
 
-def _variant_main_map(
-    built_by_variant: dict[SlideThemeVariant, _BuiltVariant],
-) -> dict[SlideThemeVariant, dict[int, Any]]:
-    return {
-        variant: {main.index: main for main in built.manifest.main_slides}
-        for variant, built in built_by_variant.items()
-    }
-
-
-def _sub_at(main: Any, sub_idx: int) -> Any | None:
-    subs = tuple(getattr(main, "subsections", ()) or ())
-    return subs[sub_idx] if sub_idx < len(subs) else None
-
-
-def _theme_asset(
-    *,
-    prefix: str,
-    built: _BuiltVariant,
-    main: Any,
-    sub_idx: int,
-) -> dict[str, str | None]:
-    sub = _sub_at(main, sub_idx)
-    frames = built.player_frames.get((int(main.index), sub_idx), {})
-    fallback = built.thumbs.get(int(main.index))
-    has_video = sub is not None and sub.video is not None and sub.video.exists()
-    first_frame = frames.get("first") if has_video else frames.get("first") or fallback
-    last_frame = frames.get("last") or (fallback if has_video else first_frame)
-    return {
-        "video": _prefixed_path(
-            prefix, _segment_path(int(main.index), sub_idx) if has_video else None
-        ),
-        "firstFrame": _prefixed_path(prefix, first_frame),
-        "lastFrame": _prefixed_path(prefix, last_frame),
-        "thumbnail": _prefixed_path(prefix, fallback),
-    }
-
-
-def _build_player_manifest(
-    *,
-    deck: DeckConfig,
-    default_manifest: DeckManifest,
-    built_by_variant: dict[SlideThemeVariant, _BuiltVariant],
-    variant_prefixes: dict[SlideThemeVariant, str],
-    available_slide_themes: tuple[SlideThemeVariant, ...],
-    default_slide_theme: SlideThemeVariant,
-    slide_theme_mode: str,
-) -> dict[str, Any]:
-    variant_mains = _variant_main_map(built_by_variant)
-    slides: list[dict[str, Any]] = []
-    for main in default_manifest.main_slides:
-        sub_count = max(1, len(main.subsections))
-        subslides: list[dict[str, Any]] = []
-        for sub_idx in range(sub_count):
-            default_sub = _sub_at(main, sub_idx)
-            themes_by_variant: dict[str, dict[str, str | None]] = {}
-            for variant in available_slide_themes:
-                variant_main = variant_mains.get(variant, {}).get(main.index, main)
-                themes_by_variant[variant] = _theme_asset(
-                    prefix=variant_prefixes.get(variant, ""),
-                    built=built_by_variant[variant],
-                    main=variant_main,
-                    sub_idx=sub_idx,
-                )
-            subslides.append(
-                {
-                    "subIndex": sub_idx,
-                    "name": str(default_sub.name if default_sub is not None else main.name),
-                    "sectionType": str(
-                        default_sub.section_type.value
-                        if default_sub is not None
-                        else main.section_type.value
-                    ),
-                    "duration": float(
-                        default_sub.duration_s if default_sub is not None else main.duration_s
-                    ),
-                    "themes": themes_by_variant,
-                }
+def _budget_warnings(deck_out: Path, deck: DeckConfig, site_cfg: SiteConfig) -> tuple[str, ...]:
+    packaging = _effective_packaging(deck, site_cfg)
+    warnings: list[str] = []
+    total_bytes = sum(path.stat().st_size for path in deck_out.rglob("*") if path.is_file())
+    if total_bytes >= packaging.warn_site_bytes:
+        warnings.append(f"deck output is {total_bytes / (1024 * 1024):.1f} MiB")
+    for mp4 in (deck_out / "media").glob("*/lecture.mp4"):
+        size = mp4.stat().st_size
+        if size >= packaging.warn_mp4_bytes:
+            warnings.append(
+                f"{mp4.relative_to(deck_out).as_posix()} is {size / (1024 * 1024):.1f} MiB"
             )
-        slides.append(
-            {
-                "mainIndex": int(main.index),
-                "scene": str(main.scene),
-                "name": str(main.name),
-                "duration": float(main.duration_s),
-                "subslides": subslides,
-            }
-        )
-    return {
-        "deckSlug": deck.slug,
-        "mode": slide_theme_mode,
-        "defaultTheme": default_slide_theme,
-        "availableThemes": tuple(available_slide_themes),
-        "slideCount": len(slides),
-        "slides": slides,
-    }
+    return tuple(warnings)
 
 
-def _initial_player_frames(
-    player_manifest: dict[str, Any],
-) -> dict[str, str]:
-    slides = player_manifest.get("slides")
-    if not isinstance(slides, list) or not slides:
-        return {}
-    first_slide = slides[0]
-    if not isinstance(first_slide, dict):
-        return {}
-    subslides = first_slide.get("subslides")
-    if not isinstance(subslides, list) or not subslides:
-        return {}
-    first_sub = subslides[0]
-    if not isinstance(first_sub, dict):
-        return {}
-    themes_by_variant = first_sub.get("themes")
-    if not isinstance(themes_by_variant, dict):
-        return {}
-    out: dict[str, str] = {}
-    for variant, raw_asset in themes_by_variant.items():
-        if not isinstance(variant, str) or not isinstance(raw_asset, dict):
-            continue
-        frame = (
-            raw_asset.get("firstFrame")
-            or (None if raw_asset.get("video") else raw_asset.get("lastFrame"))
-            or raw_asset.get("thumbnail")
-        )
-        if isinstance(frame, str) and frame:
-            out[variant] = frame
-    return out
+def _packaging_segment_duration(deck: DeckConfig, site_cfg: SiteConfig) -> int:
+    return _effective_packaging(deck, site_cfg).hls_segment_duration
 
 
-def _date_info_from_date(value: dt.date, *, source: str) -> _DeckDateInfo:
-    timestamp = dt.datetime.combine(value, dt.time.min, tzinfo=dt.UTC)
-    return _DeckDateInfo(
-        value=value,
-        timestamp=timestamp.timestamp(),
-        label=_format_deck_date(value),
-        iso=value.isoformat(),
-        source=source,
-    )
-
-
-def _date_info_from_datetime(value: dt.datetime, *, source: str) -> _DeckDateInfo:
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=dt.UTC)
-    value = value.astimezone(dt.UTC)
-    day = value.date()
-    return _DeckDateInfo(
-        value=day,
-        timestamp=value.timestamp(),
-        label=_format_deck_date(day),
-        iso=day.isoformat(),
-        source=source,
-    )
-
-
-def _format_deck_date(value: dt.date) -> str:
-    return f"{value.strftime('%b')} {value.day}, {value.year}"
-
-
-def _deck_date_info(deck: DeckConfig) -> _DeckDateInfo | None:
-    """Resolve the public deck date shown in cards and optional notes."""
-    if deck.date is not None:
-        return _date_info_from_date(deck.date, source="deck.toml")
-
-    repo_root = _git_root(deck.path)
-    deck_toml = deck.path / "deck.toml"
-    if repo_root is not None:
-        if info := _git_first_added_date(repo_root, deck_toml):
-            return info
-        if info := _git_slide_structure_date(repo_root, deck_toml):
-            return info
-
-    if info := _filesystem_mtime_date(deck_toml, source="deck.toml-mtime"):
-        return info
-
-    if repo_root is not None and (info := _git_latest_python_date(repo_root, deck.path)):
-        return info
-    return _filesystem_latest_python_date(deck.path)
-
-
-def _git_root(path: Path) -> Path | None:
-    with contextlib.suppress(
-        FileNotFoundError,
-        subprocess.CalledProcessError,
-        subprocess.TimeoutExpired,
-        OSError,
-    ):
-        output = _git(path, "rev-parse", "--show-toplevel")
-        if root := output.strip():
-            return Path(root).resolve()
-    return None
-
-
-def _git(cwd: Path, *args: str) -> str:
-    result = subprocess.run(  # noqa: S603 -- fixed local git metadata query.
-        ["git", "-C", str(cwd), *args],  # noqa: S607
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=5,
-    )
-    return result.stdout
-
-
-def _git_relative(repo_root: Path, path: Path) -> str | None:
-    with contextlib.suppress(ValueError, OSError):
-        return path.resolve().relative_to(repo_root.resolve()).as_posix()
-    return None
-
-
-def _parse_git_datetime(value: str) -> dt.datetime | None:
-    with contextlib.suppress(ValueError):
-        return dt.datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
-    return None
-
-
-def _git_first_added_date(repo_root: Path, path: Path) -> _DeckDateInfo | None:
-    rel = _git_relative(repo_root, path)
-    if rel is None:
-        return None
-    with contextlib.suppress(
-        FileNotFoundError,
-        subprocess.CalledProcessError,
-        subprocess.TimeoutExpired,
-        OSError,
-    ):
-        output = _git(
-            repo_root,
-            "log",
-            "--reverse",
-            "--diff-filter=A",
-            "--follow",
-            "--format=%aI",
-            "--",
-            rel,
-        )
-        for line in output.splitlines():
-            if dt := _parse_git_datetime(line):
-                return _date_info_from_datetime(dt, source="git-added")
-    return None
-
-
-def _git_slide_structure_date(repo_root: Path, deck_toml: Path) -> _DeckDateInfo | None:
-    rel = _git_relative(repo_root, deck_toml)
-    if rel is None:
-        return None
-    log = ""
-    with contextlib.suppress(
-        FileNotFoundError,
-        subprocess.CalledProcessError,
-        subprocess.TimeoutExpired,
-        OSError,
-    ):
-        log = _git(repo_root, "log", "--reverse", "--format=%H%x00%aI", "--", rel)
-
-    previous_signature: tuple[object, ...] | None = None
-    latest: _DeckDateInfo | None = None
-    for line in log.splitlines():
-        if "\x00" not in line:
-            continue
-        commit, raw_dt = line.split("\x00", 1)
-        with contextlib.suppress(
-            FileNotFoundError,
-            subprocess.CalledProcessError,
-            subprocess.TimeoutExpired,
-            OSError,
-        ):
-            content = _git(repo_root, "show", f"{commit}:{rel}")
-            signature = _slide_structure_signature(content)
-            dt = _parse_git_datetime(raw_dt)
-            if signature is not None and dt is not None and signature != previous_signature:
-                latest = _date_info_from_datetime(dt, source="git-slide-structure")
-                previous_signature = signature
-
-    current_text = ""
-    with contextlib.suppress(OSError, UnicodeDecodeError):
-        current_text = deck_toml.read_text(encoding="utf-8") if deck_toml.exists() else ""
-    current_signature = _slide_structure_signature(current_text)
-    if (
-        latest is not None
-        and current_signature is not None
-        and previous_signature is not None
-        and current_signature != previous_signature
-    ):
-        return _filesystem_mtime_date(deck_toml, source="deck.toml-mtime")
-    return latest
-
-
-def _slide_structure_signature(text: str) -> tuple[object, ...] | None:
-    with contextlib.suppress(tomllib.TOMLDecodeError):
-        data = tomllib.loads(text)
-        entrypoints = tuple(_entrypoint_signature(item) for item in data.get("entrypoints", ()))
-        scenes = tuple(str(item) for item in data.get("scenes", ()))
-        slide_order = tuple(str(item) for item in data.get("slide_order", ()))
-        slides_raw = data.get("slides")
-        order_overrides: list[tuple[str, object]] = []
-        if isinstance(slides_raw, dict):
-            for name, override in slides_raw.items():
-                if isinstance(override, dict) and "order_override" in override:
-                    order_overrides.append((str(name), override["order_override"]))
-        return (entrypoints, scenes, slide_order, tuple(sorted(order_overrides)))
-    return None
-
-
-def _entrypoint_signature(item: object) -> str:
-    if isinstance(item, str):
-        target, separator, _renderer = item.rpartition("@")
-        return target if separator else item
-    if isinstance(item, dict):
-        return str(item.get("target", ""))
-    return str(item)
-
-
-def _git_latest_python_date(repo_root: Path, deck_path: Path) -> _DeckDateInfo | None:
-    rels = [
-        rel
-        for path in sorted(deck_path.rglob("*.py"))
-        if (rel := _git_relative(repo_root, path)) is not None
-    ]
-    if not rels:
-        return None
-    with contextlib.suppress(
-        FileNotFoundError,
-        subprocess.CalledProcessError,
-        subprocess.TimeoutExpired,
-        OSError,
-    ):
-        output = _git(repo_root, "log", "-1", "--format=%aI", "--", *rels)
-        if dt := _parse_git_datetime(output.strip()):
-            return _date_info_from_datetime(dt, source="git-python")
-    return None
-
-
-def _filesystem_mtime_date(path: Path, *, source: str) -> _DeckDateInfo | None:
-    with contextlib.suppress(OSError):
-        return _date_info_from_datetime(
-            dt.datetime.fromtimestamp(path.stat().st_mtime, dt.UTC),
-            source=source,
-        )
-    return None
-
-
-def _filesystem_latest_python_date(deck_path: Path) -> _DeckDateInfo | None:
-    candidates: list[Path] = []
-    with contextlib.suppress(OSError):
-        candidates = [path for path in deck_path.rglob("*.py") if path.is_file()]
-    if not candidates:
-        return None
-    latest = max(candidates, key=lambda path: path.stat().st_mtime)
-    return _filesystem_mtime_date(latest, source="python-mtime")
-
-
-def _deck_created_timestamp(deck: DeckConfig) -> float:
-    info = _deck_date_info(deck)
-    return info.timestamp if info is not None else 0.0
-
-
-def _latest_section(
-    registry: SectionedRegistry,
-    deck_date_infos: dict[str, _DeckDateInfo | None] | None = None,
-    *,
-    limit: int = 12,
-) -> Section | None:
-    def sort_key(deck: DeckConfig) -> float:
-        if deck_date_infos is not None:
-            info = deck_date_infos.get(deck.slug)
-            return info.timestamp if info is not None else 0.0
-        return _deck_created_timestamp(deck)
-
-    decks = sorted(registry.all_decks, key=sort_key, reverse=True)
-    if not decks:
-        return None
-    return Section(
-        config=SectionConfig(
-            slug="latest",
-            title="Latest decks",
-            blurb="Newest work first.",
-            order=-1,
-        ),
-        decks=tuple(decks[:limit]),
-    )
+def _effective_packaging(deck: DeckConfig, site_cfg: SiteConfig) -> PackagingConfig:
+    default = PackagingConfig()
+    return site_cfg.packaging if deck.packaging == default else deck.packaging
 
 
 def _build_deck(
@@ -731,182 +519,262 @@ def _build_deck(
     site_cfg: SiteConfig,
     env: Environment,
     render: bool,
-    deck_date_info: _DeckDateInfo | None = None,
-    manim_args: tuple[str, ...] = (),
-    scenes: tuple[str, ...] = (),
-    theme_selection: SlideThemeSelection = "all",
-    watch: bool = False,
+    deck_date_info: _DeckDateInfo | None,
+    manim_args: tuple[str, ...],
+    scenes: tuple[str, ...],
+    theme_selection: SlideThemeSelection,
+    watch: bool,
 ) -> _DeckCardAssets:
-    """Render one deck and return its homepage/section-card assets."""
+    del watch
     deck_out = site_dir / "decks" / deck.slug
     deck_out.mkdir(parents=True, exist_ok=True)
-
+    media_base_url = _deck_media_base_url(deck, site_cfg)
     slide_theme_config = themes.resolve_slide_themes(deck, site_cfg.slide_themes)
-    slide_theme_mode = "true" if slide_theme_config.enabled else "filter"
-    available_slide_themes: tuple[SlideThemeVariant, ...]
-    default_slide_theme: SlideThemeVariant
-    preview_gif_href: str | None = None
+    requested_variants = (
+        themes.selected_variants(slide_theme_config, theme_selection)
+        if slide_theme_config.enabled
+        else ("dark",)
+    )
+    default_variant = (
+        slide_theme_config.default_variant(requested_variants)
+        if slide_theme_config.enabled
+        else "dark"
+    )
 
-    if slide_theme_config.enabled:
-        available_slide_themes = themes.selected_variants(slide_theme_config, theme_selection)
-        default_slide_theme = slide_theme_config.default_variant(available_slide_themes)
-        built_by_variant: dict[SlideThemeVariant, _BuiltVariant] = {}
-        for variant in available_slide_themes:
-            themed_deck = themes.variant_deck(deck, slide_theme_config, variant)
-            variant_dir = themes.variant_output_dir(deck_out, variant)
-            built = _build_variant_output(
-                themed_deck,
-                variant=variant,
-                output_dir=variant_dir,
-                cache_dir=deck_out,
-                site_cfg=site_cfg,
-                render=render,
-                manim_args=manim_args,
-                scenes=scenes,
-                theme_name=themed_deck.theme,
-                watch=watch,
-            )
-            built_by_variant[variant] = built
-
-        default_built = built_by_variant[default_slide_theme]
-        page_theme_name = default_built.deck.theme
-        _copy_default_slides_pdf(default_built.deck, default_built.output_dir, deck_out)
-        theme_preview_gifs: dict[str, str] = {}
-        for variant, built in built_by_variant.items():
-            preview_gif = thumbnail.generate_carousel_gif(
-                built.deck,
-                built.manifest,
-                site_deck_dir=built.output_dir,
-                cache_dir=deck_out,
-            )
-            if preview_gif is not None:
-                theme_preview_gifs[variant] = (Path("themes") / variant / preview_gif).as_posix()
-        preview_gif_href = theme_preview_gifs.get(default_slide_theme)
-        slides = _build_slide_views(
-            default_built.manifest,
-            default_variant=default_slide_theme,
-            variant_thumbs={variant: built.thumbs for variant, built in built_by_variant.items()},
+    units_by_variant: dict[SlideThemeVariant, tuple[RenderedUnit, ...]] = {}
+    packaged_by_variant: dict[SlideThemeVariant, PackagedTheme] = {}
+    for variant in requested_variants:
+        themed_deck = (
+            themes.variant_deck(deck, slide_theme_config, variant)
+            if slide_theme_config.enabled
+            else deck.model_copy(update={"slide_theme_variant": "dark"})
         )
-        player_manifest = _build_player_manifest(
-            deck=deck,
-            default_manifest=default_built.manifest,
-            built_by_variant=built_by_variant,
-            variant_prefixes={variant: f"themes/{variant}" for variant in built_by_variant},
-            available_slide_themes=available_slide_themes,
-            default_slide_theme=default_slide_theme,
-            slide_theme_mode=slide_theme_mode,
-        )
-    else:
-        available_slide_themes = ("dark", "light")
-        default_slide_theme = "dark"
-        built = _build_variant_output(
-            deck,
-            variant="dark",
-            output_dir=deck_out,
-            cache_dir=deck_out,
-            site_cfg=site_cfg,
+        _media_dir, units = _render_variant(
+            themed_deck,
+            variant=variant,
+            site_dir=site_dir,
             render=render,
             manim_args=manim_args,
             scenes=scenes,
-            watch=watch,
         )
-        page_theme_name = built.deck.theme
-        preview_gif = thumbnail.generate_carousel_gif(
+        if not render:
+            units = _hydrate_units_from_existing_media(
+                units,
+                deck_out / "media" / variant / "lecture.mp4",
+            )
+        units_by_variant[variant] = units
+
+    default_units = units_by_variant[default_variant]
+    fps = default_units[0].fps if default_units else timeline.DEFAULT_FPS
+    cues = timeline.rebase_cues(default_units, fps=fps)
+    warnings: list[str] = []
+    for variant, units in units_by_variant.items():
+        if variant != default_variant:
+            warnings.extend(timeline.validate_theme_cues(default_units, units, theme_id=variant))
+        packaged_by_variant[variant] = _package_existing_or_rendered(
+            deck=deck,
+            variant=variant,
+            units=units,
+            cues=cues,
+            deck_out=deck_out,
+            media_base_url=media_base_url,
+            segment_duration=_packaging_segment_duration(deck, site_cfg),
+        )
+        warnings.extend(packaged_by_variant[variant].warnings)
+
+    # Always expose dark/light controls. Missing requested renders degrade to a
+    # CSS-filter fallback that maps onto the default rendered media.
+    if slide_theme_config.enabled:
+        for variant in ("dark", "light"):
+            if variant not in packaged_by_variant:
+                packaged_by_variant[variant] = _missing_theme_fallback(
+                    variant=variant,
+                    source=packaged_by_variant[default_variant],
+                    media_base_url=media_base_url,
+                )
+                warnings.extend(packaged_by_variant[variant].warnings)
+    else:
+        packaged_by_variant["light"] = _missing_theme_fallback(
+            variant="light",
+            source=packaged_by_variant["dark"],
+            media_base_url=media_base_url,
+        )
+        warnings.extend(packaged_by_variant["light"].warnings)
+
+    theme_posters: dict[str, dict[str, str]] = {}
+    default_images = None
+    for variant, packaged in packaged_by_variant.items():
+        images = thumbnail.generate_cue_images(
             deck,
-            built.manifest,
+            cues,
+            theme_id=variant,
+            lecture_mp4=packaged.lecture_mp4,
             site_deck_dir=deck_out,
             cache_dir=deck_out,
+            thumbnails=(variant == default_variant),
         )
-        preview_gif_href = preview_gif.as_posix() if preview_gif is not None else None
-        theme_preview_gifs = {}
-        slides = _build_slide_views(
-            built.manifest,
-            default_variant=None,
-            variant_thumbs={},
-        )
-        built_by_variant = {"dark": built, "light": built}
-        player_manifest = _build_player_manifest(
-            deck=deck,
-            default_manifest=built.manifest,
-            built_by_variant=built_by_variant,
-            variant_prefixes={"dark": "", "light": ""},
-            available_slide_themes=available_slide_themes,
-            default_slide_theme=default_slide_theme,
-            slide_theme_mode=slide_theme_mode,
+        theme_posters[variant] = {
+            cue_id: path.as_posix() for cue_id, path in images.posters.items()
+        }
+        if variant == default_variant:
+            default_images = images
+
+    if default_images is not None:
+        cues = tuple(
+            cue.model_copy(
+                update={
+                    "thumbnail": _asset_str(default_images.thumbnails.get(cue.id, cue.thumbnail)),
+                    "poster": _asset_str(default_images.posters.get(cue.id, cue.poster)),
+                }
+            )
+            for cue in cues
         )
 
-    notes_md = deck.path / "notes.md"
-    notes_html = ""
-    slide_refs = _slide_ref_labels(deck, slides)
-    if notes_md.exists():
-        bib = _load_bibliography(deck.path)
-        notes_html = notes.render(
-            notes_md,
-            slide_count=len(slides),
-            slide_refs=slide_refs,
-            bibliography=bib,
-            code_style=deck.resolved_notes_code_style(),
-        )
-        if deck.web.show_notes_date:
-            notes_html = _with_notes_date(notes_html, deck_date_info)
-        if render:
-            with contextlib.suppress(
-                subprocess.SubprocessError,
-                FileNotFoundError,
-                ImportError,
-            ):
-                notes_pdf.export(
-                    deck,
-                    notes_md,
-                    output_dir=deck_out,
-                    slide_refs=slide_refs,
-                    bibliography=bib,
-                    note_date=deck_date_info.value
-                    if deck.web.show_notes_date and deck_date_info is not None
-                    else None,
-                )
-
-    total_seconds = sum(m.duration_s for m in slides)
-    total_minutes: int | None = int(total_seconds // 60) if total_seconds > 0 else None
-    if deck.duration_minutes is not None:
-        total_minutes = deck.duration_minutes
-    slides_pdf_hrefs = _slides_pdf_hrefs(
+    compat = ManifestCompat(
+        progressive_mode=packaged_by_variant[default_variant].progressive_mode,
+        player="shaka",
+        hls=packaged_by_variant[default_variant].hls_available,
+    )
+    manifest = timeline.build_manifest(
         deck,
-        deck_out,
-        built_by_variant=built_by_variant if slide_theme_config.enabled else None,
+        cues=cues,
+        themes=tuple(packaged.theme for packaged in packaged_by_variant.values()),
+        warnings=tuple(warnings),
+        compat=compat,
+        media_base_url=media_base_url or ".",
+        fps=fps,
+    )
+    slides = _cue_slides(manifest, theme_posters=theme_posters)
+
+    notes_html = _build_notes(
+        deck,
+        deck_out=deck_out,
+        slides=slides,
+        render=render,
+        deck_date_info=deck_date_info,
     )
 
+    slides_pdf = pdf.export(deck, manifest, output_dir=deck_out)
+    slides_pptx = pptx.export(deck, manifest, output_dir=deck_out)
+    manifest = manifest.model_copy(
+        update={
+            "exports": ManifestExports(
+                pdf=slides_pdf.relative_to(deck_out).as_posix(),
+                pptx=slides_pptx.relative_to(deck_out).as_posix(),
+                notes_pdf=filenames.pdf_name(deck, "note")
+                if _has_notes_pdf(deck, deck_out)
+                else None,
+            ),
+            "budget_warnings": (
+                *manifest.budget_warnings,
+                *_budget_warnings(deck_out, deck, site_cfg),
+            ),
+        }
+    )
+    (deck_out / "simplex-manifest.json").write_text(manifest.to_public_json(), encoding="utf-8")
+
+    preview_gif = thumbnail.generate_carousel_gif(
+        deck,
+        manifest.cues,
+        lecture_mp4=packaged_by_variant[default_variant].lecture_mp4,
+        site_deck_dir=deck_out,
+        cache_dir=deck_out,
+    )
+    initial_player_frames = {
+        variant: posters[manifest.cues[0].id]
+        for variant, posters in theme_posters.items()
+        if manifest.cues and manifest.cues[0].id in posters
+    }
+    slide_theme_mode = (
+        "filter"
+        if any(theme.strategy == "css_filter_fallback" for theme in manifest.themes)
+        else "true"
+    )
+    page_theme_name = (
+        slide_theme_config.theme_name(default_variant) if slide_theme_config.enabled else deck.theme
+    )
     page = env.get_template("deck.html").render(
         deck=deck,
         slides=slides,
         slide_count=len(slides),
-        total_duration_min=total_minutes,
-        has_pdf=bool(slides_pdf_hrefs),
+        total_duration_min=int(manifest.duration // 60)
+        if manifest.duration > 0
+        else deck.duration_minutes,
+        has_pdf=True,
         has_notes_pdf=_has_notes_pdf(deck, deck_out),
-        slides_pdf_href=slides_pdf_hrefs.get(default_slide_theme)
-        or slides_pdf_hrefs.get("default")
-        or next(iter(slides_pdf_hrefs.values()), filenames.pdf_name(deck, "slides")),
-        slides_pdf_hrefs=slides_pdf_hrefs,
+        slides_pdf_href=manifest.exports.pdf or "",
+        slides_pdf_hrefs={"default": manifest.exports.pdf or ""},
         notes_pdf_name=filenames.pdf_name(deck, "note"),
         notes_html=notes_html,
         palette_css=render_web_css(
-            deck.resolved_web_palette(page_theme_name, variant=default_slide_theme),
+            deck.resolved_web_palette(page_theme_name, variant=default_variant),
             code_style=deck.resolved_notes_code_style(),
         ),
         slide_theme_mode=slide_theme_mode,
-        available_slide_themes=available_slide_themes,
-        default_slide_theme=default_slide_theme,
-        player_manifest=player_manifest,
-        initial_player_frames=_initial_player_frames(player_manifest),
+        available_slide_themes=tuple(packaged_by_variant),
+        default_slide_theme=default_variant,
+        default_player_mode="presentation",
+        player_manifest=manifest.model_dump(mode="json", exclude_none=True),
+        initial_player_frames=initial_player_frames,
     )
     (deck_out / "index.html").write_text(page, encoding="utf-8")
-    cover = slides[0].thumbnail if slides else None
+    first_slide = slides[0] if slides else None
+    first_cue_id = manifest.cues[0].id if manifest.cues else ""
+    card_theme_thumbs = {
+        variant: posters[first_cue_id]
+        for variant, posters in theme_posters.items()
+        if first_cue_id in posters
+    }
     return _DeckCardAssets(
-        thumbnail=cover,
-        theme_thumbnails=dict(slides[0].theme_thumbnails) if slides else {},
-        preview_gif=preview_gif_href,
-        theme_preview_gifs=theme_preview_gifs,
+        thumbnail=first_slide.thumbnail if first_slide else None,
+        theme_thumbnails=card_theme_thumbs,
+        preview_gif=preview_gif.as_posix() if preview_gif is not None else None,
+        theme_preview_gifs={},
     )
+
+
+def _hydrate_units_from_existing_media(
+    units: tuple[RenderedUnit, ...],
+    lecture_mp4: Path,
+) -> tuple[RenderedUnit, ...]:
+    if not units or any(unit.video is not None for unit in units):
+        return units
+    duration = timeline.media_duration(lecture_mp4)
+    if duration <= 0:
+        return units
+    fps = units[0].fps
+    per_unit = duration / len(units)
+    out: list[RenderedUnit] = []
+    for unit in units:
+        cue_count = max(1, len(unit.cues))
+        per_cue = per_unit / cue_count
+        cues = []
+        for index, cue in enumerate(unit.cues):
+            start = index * per_cue
+            end = (index + 1) * per_cue
+            cues.append(
+                cue.model_copy(
+                    update={
+                        "start": start,
+                        "end": end,
+                        "start_frame": round(start * fps),
+                        "end_frame": round(end * fps),
+                    }
+                )
+            )
+        out.append(
+            RenderedUnit(
+                scene=unit.scene,
+                unit=unit.unit,
+                source_file=unit.source_file,
+                video=unit.video,
+                fps=fps,
+                duration=per_unit,
+                duration_frames=round(per_unit * fps),
+                cues=tuple(cues),
+            )
+        )
+    return tuple(out)
 
 
 def _build_section_page(
@@ -959,8 +827,15 @@ def _build_index(
     (site_dir / "index.html").write_text(page, encoding="utf-8")
 
 
+def _asset_str(value: object) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, Path):
+        return value.as_posix()
+    return str(value)
+
+
 def _site_palette_css(site_cfg: SiteConfig) -> str:
-    """Return CSS for the site-wide palette (uses site_cfg.theme if set, else default)."""
     from simplex.theme.presets import get as get_theme
 
     theme_name = getattr(site_cfg, "theme", None) or "simplex_dark"
@@ -980,7 +855,7 @@ def build(
     theme_selection: SlideThemeSelection = "all",
     watch: bool = False,
 ) -> None:
-    """Discover decks, render them, write the static site."""
+    """Discover decks, render/package timelines, and write static HTML."""
     site_cfg = site_cfg or SiteConfig.load(repo_root=decks_dir.parent)
     registry = discover(decks_dir, default_section_order=site_cfg.default_section_order)
     site_dir.mkdir(parents=True, exist_ok=True)
@@ -998,6 +873,7 @@ def build(
         for slug, info in deck_date_infos.items()
         if info is not None and info.label
     }
+
     for section in registry.sections:
         for deck in section.decks:
             if only_set and deck.slug not in only_set:
@@ -1019,7 +895,7 @@ def build(
             deck_preview_gifs[deck.slug] = assets.preview_gif
             deck_theme_preview_gifs[deck.slug] = assets.theme_preview_gifs
 
-    site_palette_css = _site_palette_css(site_cfg)
+    palette_css = _site_palette_css(site_cfg)
     for section in registry.sections:
         _build_section_page(
             section,
@@ -1030,7 +906,7 @@ def build(
             deck_preview_gifs,
             deck_theme_preview_gifs,
             deck_dates,
-            site_palette_css,
+            palette_css,
         )
 
     _build_index(
@@ -1043,5 +919,78 @@ def build(
         deck_theme_preview_gifs,
         deck_date_infos,
         deck_dates,
-        site_palette_css,
+        palette_css,
+    )
+
+
+def _date_info_from_date(value: dt.date, *, source: str) -> _DeckDateInfo:
+    timestamp = dt.datetime.combine(value, dt.time.min, tzinfo=dt.UTC)
+    return _DeckDateInfo(
+        value=value,
+        timestamp=timestamp.timestamp(),
+        label=_format_deck_date(value),
+        iso=value.isoformat(),
+        source=source,
+    )
+
+
+def _date_info_from_datetime(value: dt.datetime, *, source: str) -> _DeckDateInfo:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=dt.UTC)
+    value = value.astimezone(dt.UTC)
+    day = value.date()
+    return _DeckDateInfo(
+        value=day,
+        timestamp=value.timestamp(),
+        label=_format_deck_date(day),
+        iso=day.isoformat(),
+        source=source,
+    )
+
+
+def _format_deck_date(value: dt.date) -> str:
+    return f"{value.strftime('%b')} {value.day}, {value.year}"
+
+
+def _deck_date_info(deck: DeckConfig) -> _DeckDateInfo | None:
+    if deck.date is not None:
+        return _date_info_from_date(deck.date, source="deck.toml")
+    deck_toml = deck.path / "deck.toml"
+    if deck_toml.exists():
+        return _filesystem_mtime_date(deck_toml, source="deck.toml-mtime")
+    return None
+
+
+def _filesystem_mtime_date(path: Path, *, source: str) -> _DeckDateInfo | None:
+    with contextlib.suppress(OSError):
+        return _date_info_from_datetime(
+            dt.datetime.fromtimestamp(path.stat().st_mtime, dt.UTC),
+            source=source,
+        )
+    return None
+
+
+def _latest_section(
+    registry: SectionedRegistry,
+    deck_date_infos: dict[str, _DeckDateInfo | None] | None = None,
+    *,
+    limit: int = 12,
+) -> Section | None:
+    def sort_key(deck: DeckConfig) -> float:
+        if deck_date_infos is not None:
+            info = deck_date_infos.get(deck.slug)
+            return info.timestamp if info is not None else 0.0
+        return 0.0
+
+    decks = sorted(registry.all_decks, key=sort_key, reverse=True)
+    if not decks:
+        return None
+    return Section(
+        config=SectionConfig(
+            slug="latest",
+            title="Latest decks",
+            blurb="Newest work first.",
+            order=-1,
+        ),
+        decks=tuple(decks[:limit]),
     )

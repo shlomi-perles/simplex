@@ -10,7 +10,7 @@ import sys
 import threading
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, override
 
 import typer
 from rich.console import Console
@@ -18,11 +18,12 @@ from rich.console import Console
 from simplex.deck.config import DeckConfig
 from simplex.deck.registry import discover
 from simplex.deck.scaffold import scaffold as deck_scaffold
-from simplex.render import filenames, pdf, runner, themes
+from simplex.render import runner, themes
 from simplex.web.builder import build as build_site
+from simplex.web.range_server import RangeRequestHandlerMixin
 from simplex.web.site_config import SiteConfig
 
-app = typer.Typer(help="Simplex -- Manim-slides framework with a generated portal.")
+app = typer.Typer(help="Simplex -- timeline-native Manim lecture player and static portal.")
 console = Console()
 
 _DECKS = Path("decks")
@@ -133,16 +134,6 @@ def _runner_render(
     )
 
 
-def _copy_slides_pdf(deck: DeckConfig, source_dir: Path, deck_out: Path) -> None:
-    name = filenames.pdf_name(deck, "slides")
-    source = source_dir / name
-    if not source.exists():
-        return
-    target = deck_out / name
-    if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
-        shutil.copy2(source, target)
-
-
 def _render_deck_outputs(
     deck: DeckConfig,
     deck_out: Path,
@@ -155,12 +146,11 @@ def _render_deck_outputs(
     write_last_frame: bool = False,
     export_pdf: bool = False,
 ) -> None:
+    del export_pdf
     deck_out.mkdir(parents=True, exist_ok=True)
-    export_full_pdf = export_pdf and not scenes
     slide_theme_config = themes.resolve_slide_themes(deck, site_cfg.slide_themes)
     if slide_theme_config.enabled:
         variants = themes.selected_variants(slide_theme_config, slide_theme)
-        default_variant = slide_theme_config.default_variant(variants)
         for variant in variants:
             themed_deck = themes.variant_deck(deck, slide_theme_config, variant)
             out = themes.variant_output_dir(deck_out, variant)
@@ -173,15 +163,6 @@ def _render_deck_outputs(
                 skip_renderers=skip_renderers,
                 write_last_frame=write_last_frame,
             )
-            if export_full_pdf:
-                with contextlib.suppress(
-                    subprocess.SubprocessError,
-                    FileNotFoundError,
-                    ImportError,
-                ):
-                    pdf.export(themed_deck, output_dir=out)
-                if variant == default_variant:
-                    _copy_slides_pdf(themed_deck, out, deck_out)
         return
 
     _runner_render(
@@ -192,9 +173,6 @@ def _render_deck_outputs(
         skip_renderers=skip_renderers,
         write_last_frame=write_last_frame,
     )
-    if export_full_pdf:
-        with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError, ImportError):
-            pdf.export(deck, output_dir=deck_out)
 
 
 @app.command(context_settings=_MANIM_ARGS_CONTEXT)
@@ -234,23 +212,21 @@ def render(
         scene_name, _, _main = scene_spec.partition("::")
         scene_filter = (*scene_filter, scene_name)
 
-    out = _SITE / "decks" / deck.slug
-    out.mkdir(parents=True, exist_ok=True)
-
     try:
-        _render_deck_outputs(
-            deck,
-            out,
-            site_cfg,
+        build_site(
+            _DECKS,
+            _SITE,
+            render=True,
+            site_cfg=site_cfg,
+            only=(deck.slug,),
             manim_args=manim_args,
             scenes=scene_filter,
-            slide_theme=slide_theme,
-            export_pdf=True,
+            theme_selection=slide_theme,
         )
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    console.print(f"[green]Rendered[/green] {deck.slug} -> {out}")
+    console.print(f"[green]Rendered[/green] {deck.slug} -> {_SITE / 'decks' / deck.slug}")
 
 
 @app.command(context_settings=_MANIM_ARGS_CONTEXT)
@@ -416,10 +392,11 @@ class _SimplexTCPServer(socketserver.ThreadingTCPServer):
 def _make_handler(site_dir: Path) -> type[http.server.BaseHTTPRequestHandler]:
     """Return a request handler that serves files + an SSE endpoint."""
 
-    class _Handler(http.server.SimpleHTTPRequestHandler):
+    class _Handler(RangeRequestHandlerMixin):
         def __init__(self, *args: object, **kwargs: object) -> None:
             super().__init__(*args, directory=str(site_dir), **kwargs)  # type: ignore[arg-type]
 
+        @override
         def do_GET(self) -> None:
             if self.path == "/_simplex/events":
                 self.send_response(200)
@@ -531,7 +508,7 @@ def clean(
 @app.command()
 def doctor() -> None:
     """Verify required system binaries are reachable on PATH."""
-    required = ("latex", "ffmpeg", "manim", "manim-slides")
+    required = ("latex", "manim")
     ok = True
     for tool in required:
         found = shutil.which(tool)
@@ -548,6 +525,32 @@ def doctor() -> None:
         console.print(f"[green]ok[/green]   notes-pdf -> {notes_engine}")
     else:
         console.print("[yellow]optional[/yellow] notes-pdf -> xelatex/lualatex/pdflatex not found")
+
+    try:
+        import av
+
+        av.format.ContainerFormat("hls", "w")
+        console.print(f"[green]ok[/green]   pyav HLS/CMAF -> PyAV {av.__version__}")
+    except Exception as exc:
+        console.print(f"[red]MISSING[/red] pyav HLS/CMAF -> {exc}")
+        ok = False
+
+    if found := shutil.which("ffmpeg"):
+        console.print(f"[yellow]optional[/yellow] ffmpeg fallback -> {found}")
+        with contextlib.suppress(subprocess.SubprocessError, FileNotFoundError):
+            result = subprocess.run(
+                ["ffmpeg", "-hide_banner", "-h", "muxer=mp4"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if "hybrid_fragmented" in (result.stdout + result.stderr):
+                console.print("[green]ok[/green]   ffmpeg hybrid MP4 -> supported")
+            else:
+                console.print("[yellow]fallback[/yellow] ffmpeg hybrid MP4 -> using +faststart")
+    else:
+        console.print("[yellow]optional[/yellow] ffmpeg fallback -> not found")
     sys.exit(0 if ok else 1)
 
 

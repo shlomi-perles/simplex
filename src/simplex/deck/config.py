@@ -13,7 +13,7 @@ Three nested override types tune per-deck or per-main-slide behaviour:
 
 - ``SlideOverride`` -- per-main-slide tweaks (thumbnail path/index, order).
   Keyed by the main slide's ``name=`` in ``deck.slides``.
-- ``WebOverride`` -- per-deck portal + RevealJS palette overrides
+- ``WebOverride`` -- per-deck portal/player palette overrides
   (``deck.web``). Every field is optional; ``resolved_web_palette()``
   merges with the active theme's defaults field-by-field.
 
@@ -86,11 +86,10 @@ class SlideOverride(BaseModel):
 
 
 class WebOverride(BaseModel):
-    """Per-deck portal + RevealJS overrides. Every field is optional.
+    """Per-deck portal + player overrides. Every field is optional.
 
     Resolution: ``deck.web`` field if non-None > ``theme.web_palette`` field >
-    ``WebPalette()`` default. RevealJS-specific fields (``transition``,
-    ``controls``, ...) are passed straight to the converter.
+    ``WebPalette()`` default.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -104,16 +103,14 @@ class WebOverride(BaseModel):
     font_family_mono: str | None = None
     font_size_base: str | None = None
 
-    # RevealJS knobs (forwarded to manim_slides.convert.RevealJS kwargs).
-    # Default ``"none"``: the next video replaces the previous one with no
-    # animation. This keeps both desktop and mobile playback direction-free.
+    # Timeline-player presentation defaults kept for deck-level UI policy.
     transition: str = "none"
     controls: bool = True
     progress: bool = True
     hash_navigation: bool = True
 
     # Slide-presentation chrome. These used to be drawn into each frame
-    # by ``make_chrome(..., page=)``; they now live in the RevealJS host
+    # by ``make_chrome(..., page=)``; they now live in the web player shell
     # so toggling them is free (no re-render).
     show_slide_number: bool = False
     show_clock: bool = False
@@ -138,6 +135,30 @@ class WebOverride(BaseModel):
     # Escape hatches.
     custom_css_path: Path | None = None
     template: Path | None = None
+
+
+class HostingConfig(BaseModel):
+    """Provider-neutral hosting configuration."""
+
+    model_config = ConfigDict(frozen=True)
+    media_base_url: str = ""
+
+
+class PackagingConfig(BaseModel):
+    """Timeline media packaging options."""
+
+    model_config = ConfigDict(frozen=True)
+    hls_segment_duration: int = 4
+    strict_budgets: bool = False
+    warn_site_bytes: int = 800 * 1024 * 1024
+    warn_mp4_bytes: int = 150 * 1024 * 1024
+
+    @field_validator("hls_segment_duration")
+    @classmethod
+    def _segment_duration_positive(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("hls_segment_duration must be positive")
+        return value
 
 
 class ResolvedSlideThemes(BaseModel):
@@ -222,6 +243,8 @@ class DeckConfig(BaseModel):
     slide_order: tuple[str, ...] = ()
     web: WebOverride = WebOverride()
     slide_themes: SlideThemeConfig = Field(default_factory=SlideThemeConfig)
+    hosting: HostingConfig = Field(default_factory=HostingConfig)
+    packaging: PackagingConfig = Field(default_factory=PackagingConfig)
 
     @field_validator("slug")
     @classmethod
@@ -297,7 +320,7 @@ class DeckConfig(BaseModel):
         """Merge per-deck ``web`` overrides over the active theme's palette.
 
         Returns a fully-resolved ``WebPalette`` (every field set). Used by
-        the web builder + RevealJS template injection.
+        the web builder + player template injection.
         """
         theme = get_theme(theme_name or self.theme, variant=variant or self.slide_theme_variant)
         base = theme.web_palette

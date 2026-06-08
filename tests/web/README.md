@@ -1,7 +1,7 @@
 # tests/web/
 
 Tests for `simplex.web.notes`, `simplex.web.builder`, and the generated deck
-player -- no real `manim-slides` invocation. The builder is exercised
+player -- no real Manim invocation. The builder is exercised
 end-to-end with `render=False` so it emits HTML without shelling out to Manim.
 
 ## Public surface
@@ -11,7 +11,7 @@ end-to-end with `render=False` so it emits HTML without shelling out to Manim.
 - `test_builder.py` -- `build(render=False)` writes `index.html` and one page per deck.
 - `test_player_browser.py` -- Playwright smoke checks for parent-owned media
   player controls, notes slide refs, settings, tap zones, progress, and true
-  slide theme swaps.
+  timeline theme swaps.
 
 ## Don't
 

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ deck.title }} -- {{ site.brand }}{% endblock %}
 {% block head_meta %}
+  <script src="{{ static('shaka/shaka-player.compiled.js') }}" defer></script>
   {% for _variant, frame in initial_player_frames.items() %}
   <link rel="preload" as="image" href="{{ frame }}" fetchpriority="high" />
   {% endfor %}
@@ -62,6 +63,7 @@
   data-default-slide-number="{% if deck.web.show_slide_number %}true{% else %}false{% endif %}"
   data-default-clock="{% if deck.web.show_clock %}true{% else %}false{% endif %}"
   data-default-stopwatch="{% if deck.web.show_stopwatch %}true{% else %}false{% endif %}"
+  data-default-player-mode="{{ default_player_mode }}"
 >
   <div class="deck-viewer">
     <div class="deck-viewer-frame" data-player-frame>
@@ -90,7 +92,6 @@
               img.getAttribute("data-initial-light");
             if (src) {
               img.setAttribute("src", src);
-              img.hidden = false;
             }
             var grid = img.closest("[data-deck-slug]");
             if (grid) {
@@ -183,6 +184,14 @@
           <label class="deck-setting-row">
             <span><i data-lucide="clock" aria-hidden="true"></i>Clock</span>
             <input type="checkbox" data-setting="clock" {% if deck.web.show_clock %}checked{% endif %} />
+          </label>
+          <label class="deck-setting-row">
+            <span><i data-lucide="step-forward" aria-hidden="true"></i>Continuous</span>
+            <input
+              type="checkbox"
+              data-setting="watch-mode"
+              {% if default_player_mode == "watch" %}checked{% endif %}
+            />
           </label>
           <div class="deck-setting-row deck-stopwatch-row">
             <span><i data-lucide="timer" aria-hidden="true"></i>Stopwatch</span>

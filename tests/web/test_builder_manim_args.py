@@ -5,6 +5,9 @@ from typing import Any
 
 import pytest
 
+from simplex.manifest import SceneCue
+from simplex.render.timeline import RenderedUnit
+from simplex.section import CueKind
 from simplex.web import builder
 from simplex.web.site_config import SiteConfig
 
@@ -62,7 +65,7 @@ def test_build_threads_manim_args_to_deck_builder(
     assert calls[0]["manim_args"] == ("--disable_caching", "--fps", "60")
 
 
-def test_maybe_render_passes_manim_args_to_runner(
+def test_render_variant_passes_manim_args_to_runner(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -87,27 +90,83 @@ def test_maybe_render_passes_manim_args_to_runner(
             }
         )
 
-    def fake_export(*args: Any, **kwargs: Any) -> None:
-        return None
+    def fake_load_units(*args: Any, **kwargs: Any) -> tuple[Any, ...]:
+        return ()
 
     monkeypatch.setattr(builder.runner, "render", fake_render)
-    monkeypatch.setattr(builder.pdf, "export", fake_export)
+    monkeypatch.setattr(builder.timeline, "load_units", fake_load_units)
 
-    builder._maybe_render(
+    builder._render_variant(
         deck,
-        tmp_path / "out",
+        variant="dark",
+        site_dir=tmp_path / "site",
         render=True,
         manim_args=("--disable_caching",),
-        scenes=("Foo", "Ghost"),
+        scenes=("Foo",),
         write_last_frame=True,
     )
 
     assert calls == [
         {
             "deck": "demo",
-            "output_dir": tmp_path / "out",
+            "output_dir": tmp_path / ".simplex_cache" / "decks" / "demo" / "dark" / "intermediate",
             "manim_args": ("--disable_caching",),
             "scenes": ("Foo",),
             "write_last_frame": True,
         }
     ]
+
+
+def test_render_variant_skips_unchanged_cached_units(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    deck = builder.DeckConfig.load(_write_deck(tmp_path))
+    site_dir = tmp_path / "site"
+    media_dir = tmp_path / ".simplex_cache" / "decks" / "demo" / "dark" / "intermediate"
+    video = media_dir / "videos" / "slides" / "480p15" / "Foo.mp4"
+    video.parent.mkdir(parents=True)
+    video.write_bytes(b"cached")
+    cue = SceneCue(
+        id="foo",
+        kind=CueKind.SLIDE,
+        title="Foo",
+        unit="slides.scenes:Foo",
+        start_frame=0,
+        end_frame=60,
+        start=0.0,
+        end=1.0,
+    )
+    unit = RenderedUnit(
+        scene="Foo",
+        unit="slides.scenes:Foo",
+        source_file=deck.path / "slides" / "scenes.py",
+        video=video,
+        fps=60,
+        duration=1.0,
+        duration_frames=60,
+        cues=(cue,),
+    )
+    state = builder._scene_fingerprints(deck, variant="dark", manim_args=())
+    builder._render_state_path(media_dir).parent.mkdir(parents=True, exist_ok=True)
+    builder._render_state_path(media_dir).write_text(
+        '{"Foo": "' + state["Foo"] + '"}',
+        encoding="utf-8",
+    )
+
+    def fail_render(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("unchanged cached unit should not be rendered")
+
+    monkeypatch.setattr(builder.runner, "render", fail_render)
+    monkeypatch.setattr(builder.timeline, "load_units", lambda *args, **kwargs: (unit,))
+
+    _media_dir, units = builder._render_variant(
+        deck,
+        variant="dark",
+        site_dir=site_dir,
+        render=True,
+        manim_args=(),
+        scenes=(),
+    )
+
+    assert units == (unit,)

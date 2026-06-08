@@ -6,6 +6,7 @@ import re
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from fractions import Fraction
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -18,12 +19,13 @@ import pytest
 from playwright.sync_api import Browser, BrowserContext, Error, Page, expect, sync_playwright
 
 from simplex.web.builder import build
+from simplex.web.range_server import RangeRequestHandlerMixin
 from simplex.web.site_config import SiteConfig
 
 pytestmark = pytest.mark.browser
 
 
-class _QuietHTTPRequestHandler(SimpleHTTPRequestHandler):
+class _QuietHTTPRequestHandler(RangeRequestHandlerMixin, SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         return
 
@@ -38,8 +40,14 @@ def _write_solid_mp4(path: Path, color: tuple[int, int, int], frames: int = 30) 
         stream.width = width
         stream.height = height
         stream.pix_fmt = "yuv420p"
-        for _ in range(frames):
+        stream.codec_context.gop_size = 1
+        stream.codec_context.max_b_frames = 0
+        stream.options = {"preset": "ultrafast", "tune": "zerolatency"}
+        time_base = Fraction(1, 15)
+        for index in range(frames):
             frame = av.VideoFrame.from_ndarray(array, format="rgb24")
+            frame.pts = index
+            frame.time_base = time_base
             for packet in stream.encode(frame):
                 container.mux(packet)
         for packet in stream.encode():
@@ -145,25 +153,7 @@ def _build_site(tmp_path: Path) -> Path:
     return site_dir
 
 
-def _build_site_with_variant_pdfs(tmp_path: Path) -> Path:
-    decks_dir = tmp_path / "decks"
-    decks_dir.mkdir()
-    _write_deck(decks_dir)
-    site_dir = tmp_path / "site"
-    for variant in ("dark", "light"):
-        variant_dir = site_dir / "decks" / "alpha" / "themes" / variant
-        variant_dir.mkdir(parents=True, exist_ok=True)
-        (variant_dir / "Alpha-slides.pdf").write_bytes(b"%PDF")
-    build(
-        decks_dir=decks_dir,
-        site_dir=site_dir,
-        render=False,
-        site_cfg=SiteConfig(brand="Simplex"),
-    )
-    return site_dir
-
-
-def _build_site_with_real_subslide_video(tmp_path: Path) -> Path:
+def _build_site_with_real_timeline_video(tmp_path: Path) -> Path:
     decks_dir = tmp_path / "decks"
     decks_dir.mkdir()
     _write_deck(decks_dir)
@@ -172,15 +162,8 @@ def _build_site_with_real_subslide_video(tmp_path: Path) -> Path:
         "dark": (40, 80, 180),
         "light": (210, 230, 245),
     }.items():
-        media_dir = site_dir / "decks" / "alpha" / "themes" / variant / "media"
-        slides_dir = site_dir / "decks" / "alpha" / "themes" / variant / "slides"
-        slides_dir.mkdir(parents=True, exist_ok=True)
-        _write_solid_mp4(media_dir / "intro.mp4", color=color)
-        _write_solid_mp4(media_dir / "detail.mp4", color=color)
-        (slides_dir / "Intro.json").write_text(
-            '{"slides":[{"file":"media/intro.mp4"},{"file":"media/detail.mp4"}]}',
-            encoding="utf-8",
-        )
+        media_dir = site_dir / "decks" / "alpha" / "media" / variant
+        _write_solid_mp4(media_dir / "lecture.mp4", color=color, frames=60)
     build(
         decks_dir=decks_dir,
         site_dir=site_dir,
@@ -288,7 +271,7 @@ def test_initial_light_theme_selects_light_sidebar_thumbnails(
         _open_deck(page, base_url)
 
         first_thumb = page.locator('[data-slide-target="1"] .deck-slide-thumb img')
-        expect(first_thumb).to_have_attribute("src", re.compile(r"themes/light/"))
+        expect(first_thumb).to_have_attribute("src", re.compile(r"posters/light/"))
         page.get_by_role("button", name="Next slide").click()
 
         page.locator("[data-theme-toggle]").click()
@@ -312,10 +295,10 @@ def test_homepage_cards_follow_global_theme(
         page.goto(base_url)
 
         first_thumb = page.locator(".carousel-card img").first
-        expect(first_thumb).to_have_attribute("src", re.compile(r"themes/light/"))
+        expect(first_thumb).to_have_attribute("src", re.compile(r"decks/alpha/posters/light/"))
 
         page.locator("[data-theme-toggle]").click()
-        expect(first_thumb).to_have_attribute("src", re.compile(r"themes/dark/"))
+        expect(first_thumb).to_have_attribute("src", re.compile(r"decks/alpha/posters/dark/"))
 
 
 def test_active_thumbnail_border_uses_slide_theme_not_global_theme(
@@ -347,18 +330,18 @@ def test_slides_pdf_href_follows_slide_theme(
     tmp_path: Path,
     browser_page: _BrowserPage,
 ) -> None:
-    site_dir = _build_site_with_variant_pdfs(tmp_path)
+    site_dir = _build_site(tmp_path)
 
     with _serve_directory(site_dir) as base_url:
         page = browser_page.page
         _open_deck(page, base_url)
 
         slides_pdf = page.locator("[data-slides-pdf-link]")
-        expect(slides_pdf).to_have_attribute("href", re.compile(r"themes/dark/Alpha-slides\.pdf"))
+        expect(slides_pdf).to_have_attribute("href", re.compile(r"exports/Alpha-slides\.pdf"))
 
         page.locator("[data-settings-toggle]").click()
         page.locator('[data-setting="slide-theme"]').click()
-        expect(slides_pdf).to_have_attribute("href", re.compile(r"themes/light/Alpha-slides\.pdf"))
+        expect(slides_pdf).to_have_attribute("href", re.compile(r"exports/Alpha-slides\.pdf"))
 
 
 def test_direct_player_has_tap_zones_and_progress_bar(
@@ -403,11 +386,11 @@ def test_keyboard_navigation_does_not_add_extra_thumbnail_focus_ring(
         expect(second_card).to_have_css("outline-style", "none")
 
 
-def test_theme_toggle_at_subslide_end_keeps_end_frame(
+def test_cue_navigation_seeks_one_timeline_without_source_swap(
     tmp_path: Path,
     browser_page: _BrowserPage,
 ) -> None:
-    site_dir = _build_site_with_real_subslide_video(tmp_path)
+    site_dir = _build_site_with_real_timeline_video(tmp_path)
 
     with _serve_directory(site_dir) as base_url:
         page = browser_page.page
@@ -417,7 +400,7 @@ def test_theme_toggle_at_subslide_end_keeps_end_frame(
             """
             async () => {
               const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-              const active = () => document.querySelector('.deck-player-video.is-active');
+              const video = () => document.querySelector('.deck-player-video.is-active');
               const waitFor = async (predicate, timeout = 8000) => {
                 const start = performance.now();
                 while (performance.now() - start < timeout) {
@@ -426,41 +409,315 @@ def test_theme_toggle_at_subslide_end_keeps_end_frame(
                 }
                 return false;
               };
-              document.querySelector('[data-control="next"]').click();
-              await waitFor(() => active() && active().dataset.subIndex === '1' && active().readyState >= 2);
-              const video = active();
-              const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 2;
-              video.currentTime = Math.max(0, duration - 0.18);
-              await video.play().catch(() => {});
-              await waitFor(() => active() && active().dataset.subIndex === '1' && active().ended, 5000);
-              const beforeTheme = active().dataset.theme;
-              document.querySelector('[data-setting="slide-theme"]').click();
               await waitFor(() => (
-                active() &&
-                active().dataset.subIndex === '1' &&
-                active().dataset.theme !== beforeTheme &&
-                active().readyState >= 2
+                video() &&
+                video().readyState >= 2 &&
+                (video().currentSrc || video().src) &&
+                document.querySelector('[data-player-preview]').hidden
               ));
-              await sleep(350);
-              const after = active();
-              const preview = document.querySelector('[data-player-preview]');
+              const beforeSrc = video().currentSrc || video().src;
+              document.querySelector('[data-control="next"]').click();
+              await waitFor(() => (
+                document.querySelector('[data-counter]').textContent.trim() === '2 / 2' &&
+                video().currentTime >= 1.8
+              ));
+              const afterNextSrc = video().currentSrc || video().src;
+              const afterNextTime = video().currentTime;
+              document.querySelector('[data-slide-target="1"]').click();
+              await waitFor(() => document.querySelector('[data-counter]').textContent.trim() === '1 / 2');
+              const afterJumpSrc = video().currentSrc || video().src;
               return {
-                subIndex: after ? after.dataset.subIndex : '1',
-                activeCount: document.querySelectorAll('.deck-player-video.is-active').length,
-                currentTime: after ? after.currentTime : null,
-                duration: after ? after.duration : duration,
-                previewHidden: preview.hidden,
-                previewSrc: preview.getAttribute('src'),
-                videoCount: document.querySelectorAll('.deck-player-video').length,
+                beforeSrc,
+                afterNextSrc,
+                afterJumpSrc,
+                afterNextTime,
+                videoCount: document.querySelectorAll('.deck-player-video').length
               };
             }
             """
         )
 
-        assert result["subIndex"] == "1"
         assert result["videoCount"] == 1
-        if result["activeCount"]:
-            assert result["currentTime"] >= result["duration"] - 0.12
-        else:
-            assert result["previewHidden"] is False
-            assert "themes/light/" in result["previewSrc"]
+        assert result["beforeSrc"].endswith("/media/dark/lecture.mp4")
+        assert result["afterNextSrc"] == result["beforeSrc"]
+        assert result["afterJumpSrc"] == result["beforeSrc"]
+        assert result["afterNextTime"] >= 1.8
+
+
+def test_deck_autoplays_first_cue_on_entry(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_real_timeline_video(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 8000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = document.querySelector('.deck-player-video.is-active');
+              await waitFor(() => (
+                video &&
+                video.readyState >= 2 &&
+                (video.currentSrc || video.src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              const start = video.currentTime;
+              const advanced = await waitFor(() => video.currentTime > start + 0.08);
+              return {
+                advanced,
+                paused: video.paused,
+                currentTime: video.currentTime,
+                playState: document.querySelector('[data-control="toggle-play"]').dataset.state
+              };
+            }
+            """
+        )
+
+        assert result["advanced"] is True
+        assert result["paused"] is False
+        assert result["currentTime"] > 0.08
+        assert result["playState"] == "playing"
+
+
+def test_presentation_mode_auto_advances_to_next_main_slide(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_real_timeline_video(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 6000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = document.querySelector('.deck-player-video.is-active');
+              await waitFor(() => (
+                video.readyState >= 2 &&
+                (video.currentSrc || video.src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              const mode = document.querySelector('[data-setting="watch-mode"]');
+              mode.checked = false;
+              mode.dispatchEvent(new Event('change', { bubbles: true }));
+              video.currentTime = 1.92;
+              await waitFor(() => video.currentTime >= 1.8);
+              await video.play().catch(() => {});
+              await waitFor(() => (
+                !video.paused &&
+                video.currentTime >= 2 &&
+                document.querySelector('[data-counter]').textContent.trim() === '2 / 2'
+              ));
+              return {
+                counter: document.querySelector('[data-counter]').textContent.trim(),
+                currentTime: video.currentTime,
+                paused: video.paused
+              };
+            }
+            """
+        )
+
+        assert result["paused"] is False
+        assert result["counter"] == "2 / 2"
+        assert result["currentTime"] >= 2.0
+
+
+def test_watch_mode_continues_across_cues(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_real_timeline_video(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 6000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = document.querySelector('.deck-player-video.is-active');
+              await waitFor(() => (
+                video.readyState >= 2 &&
+                (video.currentSrc || video.src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              const mode = document.querySelector('[data-setting="watch-mode"]');
+              mode.checked = true;
+              mode.dispatchEvent(new Event('change', { bubbles: true }));
+              video.currentTime = 1.92;
+              await waitFor(() => video.currentTime >= 1.8);
+              await video.play().catch(() => {});
+              await waitFor(() => document.querySelector('[data-counter]').textContent.trim() === '2 / 2');
+              return {
+                counter: document.querySelector('[data-counter]').textContent.trim(),
+                currentTime: video.currentTime,
+                paused: video.paused
+              };
+            }
+            """
+        )
+
+        assert result["counter"] == "2 / 2"
+        assert result["currentTime"] >= 1.99
+
+
+def test_theme_switch_preserves_cue_progress_on_target_timeline(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_real_timeline_video(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 8000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = () => document.querySelector('.deck-player-video.is-active');
+              await waitFor(() => (
+                video() &&
+                video().readyState >= 2 &&
+                (video().currentSrc || video().src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              document.querySelector('[data-control="next"]').click();
+              await waitFor(() => (
+                document.querySelector('[data-counter]').textContent.trim() === '2 / 2' &&
+                video().currentTime >= 1.8
+              ));
+              video().currentTime = 2.05;
+              await waitFor(() => video().currentTime >= 2.03);
+              const beforeSrc = video().currentSrc || video().src;
+              const beforeTime = video().currentTime;
+              const beforePaused = video().paused;
+              document.querySelector('[data-settings-toggle]').click();
+              document.querySelector('[data-setting="slide-theme"]').click();
+              const landed = await waitFor(() => (
+                (video().currentSrc || video().src).includes('/media/light/lecture.mp4') &&
+                video().readyState >= 2 &&
+                video().currentTime >= beforeTime - 0.05 &&
+                !video().paused
+              ), 3000);
+              return {
+                beforeSrc,
+                beforeTime,
+                beforePaused,
+                landed,
+                afterSrc: video().currentSrc || video().src,
+                currentTime: video().currentTime,
+                paused: video().paused,
+                counter: document.querySelector('[data-counter]').textContent.trim(),
+                theme: document.querySelector('[data-player-stage]').dataset.slideTheme,
+                videoCount: document.querySelectorAll('.deck-player-video').length
+              };
+            }
+            """
+        )
+
+        assert result["beforeSrc"].endswith("/media/dark/lecture.mp4")
+        assert result["afterSrc"].endswith("/media/light/lecture.mp4")
+        assert result["counter"] == "2 / 2"
+        assert result["theme"] == "light"
+        assert result["videoCount"] == 1
+        assert result["beforePaused"] is False
+        assert result["landed"] is True
+        assert result["paused"] is False
+        assert result["currentTime"] >= result["beforeTime"] - 0.05
+
+
+def test_theme_switch_preserves_paused_frame_without_poster_flash(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_real_timeline_video(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 8000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = () => document.querySelector('.deck-player-video.is-active');
+              await waitFor(() => (
+                video() &&
+                video().readyState >= 2 &&
+                (video().currentSrc || video().src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              video().currentTime = 0.95;
+              await waitFor(() => video().currentTime >= 0.9);
+              video().pause();
+              await waitFor(() => video().paused);
+              const beforeTime = video().currentTime;
+              document.querySelector('[data-settings-toggle]').click();
+              document.querySelector('[data-setting="slide-theme"]').click();
+              await waitFor(() => (video().currentSrc || video().src).includes('/media/light/lecture.mp4'));
+              await waitFor(() => video().readyState >= 2);
+              return {
+                afterSrc: video().currentSrc || video().src,
+                currentTime: video().currentTime,
+                beforeTime,
+                paused: video().paused,
+                previewHidden: document.querySelector('[data-player-preview]').hidden,
+                theme: document.querySelector('[data-player-stage]').dataset.slideTheme,
+              };
+            }
+            """
+        )
+
+        assert result["afterSrc"].endswith("/media/light/lecture.mp4")
+        assert result["theme"] == "light"
+        assert result["paused"] is True
+        assert result["previewHidden"] is True
+        assert result["currentTime"] == pytest.approx(result["beforeTime"], abs=0.25)

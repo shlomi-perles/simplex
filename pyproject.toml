@@ -35,7 +35,6 @@ classifiers = [
 dependencies = [
   # Manim authoring/plugin layer.
   "manim>=0.20.1",
-  "manim-slides>=5.1.7",
   "pydantic>=2.7",
   "pygments>=2.18",
   "pypdfium2>=4.0",
@@ -60,7 +59,6 @@ dependencies = [
 description = "Manim plugin and lecture-site CLI for Simplex presentations."
 keywords = [
   "manim",
-  "manim-slides",
   "animation",
   "presentation",
   "lecture",
@@ -108,7 +106,7 @@ artifacts = [
   "src/simplex/web/static/fonts/**/*",
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",
-  "src/simplex/web/static/reveal.js/**/*",
+  "src/simplex/web/static/shaka/**/*",
   "src/simplex/web/static/tailwind.css",
 ]
 exclude = [
@@ -129,7 +127,7 @@ artifacts = [
   "src/simplex/web/static/fonts/**/*",
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",
-  "src/simplex/web/static/reveal.js/**/*",
+  "src/simplex/web/static/shaka/**/*",
   "src/simplex/web/static/tailwind.css",
 ]
 packages = ["src/simplex"]

@@ -8,9 +8,7 @@ Jinja2 templates.
 - `index.html` -- home page: one carousel per section.
 - `_carousel.html` -- partial used by the home page.
 - `section.html` -- "view all" grid for one section.
-- `deck.html` -- parent-owned media player + sidebar + controls + notes.
-- `revealjs.html.j2` -- standalone RevealJS export/debug page loaded into
-  `slides.html`.
+- `deck.html` -- timeline media player + sidebar + controls + notes.
 
 ## Don't
 

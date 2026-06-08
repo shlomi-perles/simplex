@@ -1,10 +1,4 @@
-/* Simplex parent-side viewer glue.
- *
- *   - Wires carousel arrows + keyboard nav on the home page.
- *   - Drives the deck media player, sidebar, controls, and slide refs from
- *     one parent-owned state store.
- */
-
+/* Simplex portal and timeline player. */
 (function () {
   "use strict";
 
@@ -14,6 +8,24 @@
 
   function currentDocumentTheme() {
     return normalizeThemeName(document.documentElement.dataset.theme || "dark");
+  }
+  function nextFrame(fn) {
+    var done = false;
+    function run() {
+      if (done) return;
+      done = true;
+      fn();
+    }
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(run);
+    }
+    window.setTimeout(run, 50);
+  }
+  function monotonicNow() {
+    if (window.performance && typeof window.performance.now === "function") {
+      return window.performance.now();
+    }
+    return Date.now();
   }
 
   function themedAsset(el, name, theme) {
@@ -30,16 +42,11 @@
       window.lucide.createIcons({
         icons: window.lucide.icons,
         nameAttr: "data-lucide",
-        attrs: {
-          "stroke-width": 1.9,
-          "aria-hidden": "true",
-        },
+        attrs: { "stroke-width": 1.9, "aria-hidden": "true" },
       });
       document.querySelectorAll(".icon-fallback").forEach(function (fallback) {
         var parent = fallback.parentElement;
-        if (parent && parent.querySelector("svg[data-lucide]")) {
-          fallback.classList.add("is-hidden");
-        }
+        if (parent && parent.querySelector("svg[data-lucide]")) fallback.classList.add("is-hidden");
       });
     } catch (_) {
       document.querySelectorAll(".icon-fallback").forEach(function (fallback) {
@@ -52,10 +59,8 @@
     var root = document.documentElement;
     var button = document.querySelector("[data-theme-toggle]");
     var media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-
     function storedTheme() {
-      try { return localStorage.getItem("simplex-theme"); }
-      catch (_) { return null; }
+      try { return localStorage.getItem("simplex-theme"); } catch (_) { return null; }
     }
     function systemTheme() {
       return media && media.matches ? "dark" : "light";
@@ -67,20 +72,13 @@
         try { localStorage.setItem("simplex-theme", theme); } catch (_) {}
       }
       if (button) {
-        button.setAttribute(
-          "aria-label",
-          theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
-        );
-        button.setAttribute(
-          "title",
-          theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
-        );
+        button.setAttribute("aria-label", theme === "dark" ? "Switch to light theme" : "Switch to dark theme");
+        button.setAttribute("title", theme === "dark" ? "Switch to light theme" : "Switch to dark theme");
       }
       try {
         window.dispatchEvent(new CustomEvent("simplex.theme", { detail: { theme: theme } }));
       } catch (_) {}
     }
-
     apply(storedTheme() || root.dataset.theme || systemTheme(), false);
     if (button) {
       button.addEventListener("click", function () {
@@ -99,18 +97,14 @@
       "img[data-card-thumb-default], img[data-card-thumb-dark], img[data-card-thumb-light]"
     ));
     if (!images.length) return;
-
     function apply(theme) {
       var currentTheme = normalizeThemeName(theme);
       images.forEach(function (img) {
-        var preview = img.dataset.previewLoaded === "true"
-          ? themedAsset(img, "preview-gif", currentTheme)
-          : "";
+        var preview = img.dataset.previewLoaded === "true" ? themedAsset(img, "preview-gif", currentTheme) : "";
         var src = preview || themedAsset(img, "card-thumb", currentTheme);
         if (src && img.getAttribute("src") !== src) img.setAttribute("src", src);
       });
     }
-
     apply(currentDocumentTheme());
     window.addEventListener("simplex.theme", function (e) {
       apply(e.detail && e.detail.theme ? e.detail.theme : currentDocumentTheme());
@@ -121,12 +115,10 @@
     var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var saveData = navigator.connection && navigator.connection.saveData;
     if (reduce || saveData) return;
-
     var images = Array.prototype.slice.call(document.querySelectorAll(
       "img[data-preview-gif], img[data-preview-gif-dark], img[data-preview-gif-light]"
     ));
     if (!images.length) return;
-
     function loadPreview(img, src) {
       if (!src || img.dataset.previewLoadedSrc === src) return;
       img.dataset.previewLoadingSrc = src;
@@ -141,46 +133,21 @@
       };
       gif.src = src;
     }
-
     function load() {
       var theme = currentDocumentTheme();
-      images.forEach(function (img) {
-        loadPreview(img, themedAsset(img, "preview-gif", theme));
-      });
+      images.forEach(function (img) { loadPreview(img, themedAsset(img, "preview-gif", theme)); });
     }
-
-    function schedule() {
-      if ("requestIdleCallback" in window) {
-        window.requestIdleCallback(load, { timeout: 1800 });
-      } else {
-        window.setTimeout(load, 500);
-      }
-    }
-
-    if (document.readyState === "complete") schedule();
-    else window.addEventListener("load", schedule, { once: true });
-    window.addEventListener("simplex.theme", function (e) {
-      var theme = e.detail && e.detail.theme ? e.detail.theme : currentDocumentTheme();
-      images.forEach(function (img) {
-        if (img.dataset.previewLoaded === "true") {
-          loadPreview(img, themedAsset(img, "preview-gif", theme));
-        }
-      });
-    });
+    if ("requestIdleCallback" in window) window.requestIdleCallback(load, { timeout: 1800 });
+    else window.setTimeout(load, 500);
   }
 
-  // ------------------------------------------------------------------
-  // Carousel (home page).
-  // ------------------------------------------------------------------
   function initCarousels() {
     document.querySelectorAll(".carousel-section").forEach(function (section) {
       var track = section.querySelector(".carousel-track");
       if (!track) return;
       var prev = section.querySelector('.carousel-arrow[data-dir="prev"]');
       var next = section.querySelector('.carousel-arrow[data-dir="next"]');
-      function step(delta) {
-        track.scrollBy({ left: delta, behavior: "smooth" });
-      }
+      function step(delta) { track.scrollBy({ left: delta, behavior: "smooth" }); }
       function syncArrows() {
         if (!prev || !next) return;
         var atStart = track.scrollLeft <= 4;
@@ -195,8 +162,7 @@
         if (e.key === "ArrowRight") { e.preventDefault(); step(track.clientWidth * 0.9); }
         else if (e.key === "ArrowLeft") { e.preventDefault(); step(-track.clientWidth * 0.9); }
       });
-      // Initial state -- after layout.
-      requestAnimationFrame(syncArrows);
+      nextFrame(syncArrows);
       window.addEventListener("resize", syncArrows);
     });
   }
@@ -206,29 +172,19 @@
       var toggle = menu.querySelector("[data-resource-toggle]");
       var panel = menu.querySelector("[data-resource-panel]");
       if (!toggle || !panel) return;
-
       function close() {
         panel.hidden = true;
         toggle.setAttribute("aria-expanded", "false");
       }
-      function open() {
-        panel.hidden = false;
-        toggle.setAttribute("aria-expanded", "true");
-      }
-      function isOpen() {
-        return !panel.hidden;
-      }
-
       toggle.addEventListener("click", function (e) {
         e.preventDefault();
         e.stopPropagation();
-        if (isOpen()) close();
-        else open();
+        panel.hidden = !panel.hidden;
+        toggle.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
       });
-      panel.addEventListener("click", function () { close(); });
+      panel.addEventListener("click", close);
       document.addEventListener("click", function (e) {
-        if (menu.contains(e.target)) return;
-        close();
+        if (!menu.contains(e.target)) close();
       });
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape") close();
@@ -236,23 +192,19 @@
     });
   }
 
-  // ------------------------------------------------------------------
-  // Deck page: media player + sidebar + controls + slide-refs.
-  // ------------------------------------------------------------------
   function initDeck() {
     var deck = document.querySelector("[data-deck-slug]");
     if (!deck) return;
-
     var frame = deck.querySelector(".deck-viewer-frame");
     var stage = deck.querySelector("[data-player-stage]");
     var manifestEl = deck.querySelector("[data-player-manifest]");
     var preview = deck.querySelector("[data-player-preview]");
     var freeze = deck.querySelector("[data-player-freeze]");
     var empty = deck.querySelector("[data-player-empty]");
-    var videos = Array.prototype.slice.call(deck.querySelectorAll("[data-player-video]"));
+    var video = deck.querySelector("[data-player-video]");
     var counter = deck.querySelector("[data-counter]");
     var playBtn = deck.querySelector('[data-control="toggle-play"]');
-    var slideButtons = deck.querySelectorAll("[data-slide-target]");
+    var slideButtons = Array.prototype.slice.call(deck.querySelectorAll("[data-slide-target]"));
     var slideList = deck.querySelector(".deck-slide-list");
     var sidebar = deck.querySelector(".deck-sidebar");
     var controls = deck.querySelectorAll("[data-control]");
@@ -263,6 +215,7 @@
     var slideThemeLabel = deck.querySelector("[data-slide-theme-label]");
     var slideNumberSetting = deck.querySelector('[data-setting="slide-number"]');
     var clockSetting = deck.querySelector('[data-setting="clock"]');
+    var watchModeSetting = deck.querySelector('[data-setting="watch-mode"]');
     var stopwatchSetting = deck.querySelector('[data-setting="stopwatch"]');
     var stopwatchToggle = deck.querySelector('[data-stopwatch-action="toggle"]');
     var stopwatchReset = deck.querySelector('[data-stopwatch-action="reset"]');
@@ -273,98 +226,155 @@
     var tapZones = deck.querySelectorAll("[data-tap]");
     var slidesPdfLink = document.querySelector("[data-slides-pdf-link]");
     var manifest = readManifest();
-    var slides = Array.isArray(manifest.slides) ? manifest.slides : [];
-    var timeline = [];
-    var total = parseInt(deck.dataset.slideCount || manifest.slideCount || "0", 10) ||
-      slides.length ||
-      slideButtons.length;
-    var slideThemeMode = deck.dataset.slideThemeMode || manifest.mode || "filter";
-    var availableSlideThemes = (deck.dataset.availableSlideThemes || "dark,light")
-      .split(",")
-      .filter(Boolean);
-    if (Array.isArray(manifest.availableThemes) && manifest.availableThemes.length) {
-      availableSlideThemes = manifest.availableThemes.slice();
-    }
-    slideButtons.forEach(function (btn) {
-      var img = btn.querySelector(".deck-slide-thumb img");
-      if (img) img.dataset.mainIndex = btn.dataset.slideTarget || "";
-    });
-    slides.forEach(function (slide) {
-      subslidesFor(slide).forEach(function (sub) {
-        timeline.push({
-          mainIndex: slide.mainIndex,
-          subIndex: sub.subIndex || 0,
-        });
-      });
-    });
-
+    var cues = Array.isArray(manifest.cues) ? manifest.cues : [];
+    var themes = Array.isArray(manifest.themes) ? manifest.themes : [];
+    var slideCues = cues.filter(function (cue) { return cue.kind === "slide"; });
+    if (!slideCues.length) slideCues = cues.slice();
+    var totalSlides = slideCues.length || parseInt(deck.dataset.slideCount || "0", 10) || 0;
+    var defaultTheme = normalizeThemeName(deck.dataset.defaultSlideTheme || "dark");
     var state = {
-      globalTheme: chooseSlideTheme(document.documentElement.dataset.theme || deck.dataset.defaultSlideTheme || "dark"),
-      currentMain: slides[0] ? slides[0].mainIndex : 1,
-      currentSub: 0,
-      playbackStatus: "paused",
-      currentTime: 0,
-      duration: 0,
-      effectiveSlideTheme: "dark",
+      cueIndex: initialCueIndex(),
+      globalTheme: normalizeThemeName(document.documentElement.dataset.theme || defaultTheme),
       slideThemeOverride: null,
-      activeVideoIndex: 0,
+      activeTheme: defaultTheme,
+      mode: initialPlaybackMode(),
       mediaKey: "",
-      pendingAutoplay: false,
-      pendingMain: slides[0] ? slides[0].mainIndex : 1,
-      pendingSub: 0,
-      pendingSeekMode: "start",
-      pendingSeekTime: 0,
-      renderSeq: 0,
+      loadingSeq: 0,
+      seeking: false,
+      pendingPlay: false,
+      shaka: null,
+      engine: "native",
+      stopwatchElapsedMs: 0,
+      stopwatchStartedAt: 0,
+      stopwatchRunning: false,
+      stopwatchTimer: 0,
     };
-    var stopwatchState = {
-      elapsedMs: 0,
-      startedAt: 0,
-      running: false,
-      timer: 0,
-    };
-    var reduceMotion = window.matchMedia &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    var saveData = navigator.connection && navigator.connection.saveData;
     var clockFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: "medium" });
-    var hourCycle = clockFormatter.resolvedOptions().hourCycle || "";
-    var durationHourDigits = hourCycle === "h11" || hourCycle === "h12" ? 1 : 2;
 
     function readManifest() {
       if (!manifestEl) return {};
-      try { return JSON.parse(manifestEl.textContent || "{}"); }
-      catch (_) { return {}; }
-    }
-    function normalizeTheme(theme) {
-      return theme === "light" ? "light" : "dark";
-    }
-    function themeAvailable(theme) {
-      if (theme !== "dark" && theme !== "light") return false;
-      if (slideThemeMode !== "true") return true;
-      return availableSlideThemes.indexOf(theme) !== -1;
-    }
-    function chooseSlideTheme(theme) {
-      var normalized = normalizeTheme(theme);
-      if (themeAvailable(normalized)) return normalized;
-      if (themeAvailable(deck.dataset.defaultSlideTheme)) return normalizeTheme(deck.dataset.defaultSlideTheme);
-      return themeAvailable("dark") ? "dark" : "light";
-    }
-    function pageTheme() {
-      return normalizeTheme(document.documentElement.dataset.theme || "dark");
+      try { return JSON.parse(manifestEl.textContent || "{}"); } catch (_) { return {}; }
     }
     function finiteNumber(value) {
       return typeof value === "number" && Number.isFinite(value);
     }
-    function saveThemeOverride(theme) {
-      state.slideThemeOverride = chooseSlideTheme(theme);
+    function cueAt(index) {
+      return cues[Math.max(0, Math.min(index, cues.length - 1))] || null;
+    }
+    function themeById(theme) {
+      var normalized = normalizeThemeName(theme);
+      return themes.find(function (entry) { return entry && entry.id === normalized; }) ||
+        themes.find(function (entry) { return entry && entry.id === defaultTheme; }) ||
+        themes[0] ||
+        null;
+    }
+    function initialCueIndex() {
+      var hash = decodeURIComponent((window.location.hash || "").replace(/^#/, ""));
+      if (!hash) return 0;
+      var idx = cues.findIndex(function (cue) { return cue.id === hash; });
+      return idx >= 0 ? idx : 0;
+    }
+    function initialPlaybackMode() {
+      var fromData = deck.dataset.defaultPlayerMode === "watch" ? "watch" : "presentation";
+      try {
+        var params = new URLSearchParams(window.location.search || "");
+        if (params.get("watch") === "1" || params.get("mode") === "watch") return "watch";
+      } catch (_) {}
+      return fromData;
     }
     function effectiveTheme() {
-      return chooseSlideTheme(state.slideThemeOverride || state.globalTheme);
+      return normalizeThemeName(state.slideThemeOverride || state.globalTheme || defaultTheme);
+    }
+    function currentCue() {
+      return cueAt(state.cueIndex);
+    }
+    function slideOrdinalForCue(cue) {
+      if (!cue) return 1;
+      var current = 1;
+      for (var i = 0; i < slideCues.length; i += 1) {
+        if (slideCues[i].ordinal <= cue.ordinal) current = i + 1;
+      }
+      return current;
+    }
+    function cueIndexForOrdinal(ordinal) {
+      var idx = cues.findIndex(function (cue) { return cue.ordinal === ordinal; });
+      return idx >= 0 ? idx : 0;
+    }
+    function cueAtTime(time) {
+      var current = 0;
+      for (var i = 0; i < cues.length; i += 1) {
+        if (time + 0.02 >= Number(cues[i].start || 0)) current = i;
+        if (time < Number(cues[i].end || 0) - 0.02) break;
+      }
+      return current;
+    }
+    function cueLocalProgress(cue) {
+      if (!cue || !video) return 0;
+      return Math.max(0, Math.min(Number(video.currentTime || 0) - Number(cue.start || 0), Math.max(0, Number(cue.end || 0) - Number(cue.start || 0))));
+    }
+    function targetTime(cue, localProgress) {
+      if (!cue) return 0;
+      var start = Number(cue.start || 0);
+      var end = Number(cue.end || start);
+      return Math.max(start, Math.min(end, start + (localProgress || 0)));
+    }
+    function isVideoPlaying() {
+      return !!(video && !video.paused && !video.ended);
+    }
+    function requestPlay(seq) {
+      if (!video) return;
+      state.pendingPlay = true;
+      setPlayState(true);
+      [0, 80, 240, 600].forEach(function (delay, index, delays) {
+        window.setTimeout(function () {
+          if (seq !== state.loadingSeq || !state.pendingPlay || !video || video.ended) return;
+          if (!video.paused) {
+            if (index === delays.length - 1) state.pendingPlay = false;
+            setPlayState(true);
+            return;
+          }
+          var p = video.play();
+          if (p && typeof p.catch === "function") {
+            p.catch(function () {
+              if (index === delays.length - 1) {
+                state.pendingPlay = false;
+                setPlayState(false);
+              }
+            });
+          }
+        }, delay);
+      });
+    }
+    function posterFor(cue, theme) {
+      if (!cue) return "";
+      var poster = cue.poster || cue.thumbnail || "";
+      if (poster && theme) poster = poster.replace(/posters\/[^/]+\//, "posters/" + normalizeThemeName(theme) + "/");
+      return poster;
+    }
+    function mediaFor(themeEntry) {
+      if (!themeEntry || !themeEntry.media) return { hls: "", mp4: "" };
+      return { hls: themeEntry.media.hls || "", mp4: themeEntry.media.mp4 || "" };
+    }
+    function mediaKeyFor(themeEntry) {
+      var media = mediaFor(themeEntry);
+      return [themeEntry ? themeEntry.id : "", themeEntry ? themeEntry.strategy : "", media.hls, media.mp4].join("|");
+    }
+    function showEmpty(show, message) {
+      if (!empty) return;
+      empty.hidden = !show;
+      if (show && message) {
+        var span = empty.querySelector("span");
+        if (span) span.textContent = message;
+      }
     }
     function applyThumbnailThemes() {
+      var theme = state.activeTheme;
       deck.querySelectorAll(".deck-slide-thumb img").forEach(function (img) {
-        var theme = effectiveTheme();
-        var key = theme === "light" ? "thumbLight" : "thumbDark";
-        var src = img.dataset[key];
+        var src = img.getAttribute("data-thumb-" + theme) ||
+          img.getAttribute("data-thumb-" + defaultTheme) ||
+          img.getAttribute("data-thumb-default") ||
+          img.getAttribute("data-thumb-dark") ||
+          img.getAttribute("data-thumb-light");
         if (src && img.getAttribute("src") !== src) img.setAttribute("src", src);
       });
     }
@@ -373,108 +383,357 @@
       var href = themedAsset(slidesPdfLink, "pdf", theme);
       if (href) slidesPdfLink.setAttribute("href", href);
     }
-    function applySlideThemeDom(theme) {
-      state.effectiveSlideTheme = chooseSlideTheme(theme);
-      deck.dataset.currentSlideTheme = state.effectiveSlideTheme;
-      deck.classList.toggle("is-slide-theme-light", slideThemeMode === "filter" && state.effectiveSlideTheme === "light");
-      deck.classList.toggle("is-true-slide-theme-light", state.effectiveSlideTheme === "light");
-      if (stage) stage.dataset.slideTheme = state.effectiveSlideTheme;
-      applySlidesPdfTheme(state.effectiveSlideTheme);
-      if (slideThemeSetting) {
-        slideThemeSetting.dataset.slideTheme = state.effectiveSlideTheme;
-        slideThemeSetting.setAttribute(
-          "aria-label",
-          state.effectiveSlideTheme === "dark" ? "Switch slides to light theme" : "Switch slides to dark theme"
-        );
-        slideThemeSetting.setAttribute(
-          "title",
-          state.effectiveSlideTheme === "dark" ? "Switch slides to light theme" : "Switch slides to dark theme"
-        );
+    function applyThemeDom(themeEntry) {
+      var theme = normalizeThemeName(themeEntry ? themeEntry.id : effectiveTheme());
+      state.activeTheme = theme;
+      deck.dataset.currentSlideTheme = theme;
+      deck.classList.toggle("is-slide-theme-light", theme === "light" && themeEntry && themeEntry.strategy === "css_filter_fallback");
+      deck.classList.toggle("is-true-slide-theme-light", theme === "light" && (!themeEntry || themeEntry.strategy === "rendered"));
+      if (stage) {
+        stage.dataset.slideTheme = theme;
+        stage.style.filter = "";
       }
-      if (slideThemeLabel) slideThemeLabel.textContent = state.effectiveSlideTheme === "dark" ? "Dark" : "Light";
-    }
-    function syncThemeSetting() {
-      applySlideThemeDom(effectiveTheme());
+      applySlidesPdfTheme(theme);
+      if (slideThemeSetting) {
+        slideThemeSetting.dataset.slideTheme = theme;
+        slideThemeSetting.setAttribute("aria-label", theme === "dark" ? "Switch slides to light theme" : "Switch slides to dark theme");
+        slideThemeSetting.setAttribute("title", theme === "dark" ? "Switch slides to light theme" : "Switch slides to dark theme");
+      }
+      if (slideThemeLabel) slideThemeLabel.textContent = theme === "dark" ? "Dark" : "Light";
       applyThumbnailThemes();
     }
     function centerActiveCard(btn) {
-      var candidates = [slideList, sidebar];
-      for (var i = 0; i < candidates.length; i += 1) {
-        var scroller = candidates[i];
-        if (!scroller) continue;
+      [slideList, sidebar].some(function (scroller) {
+        if (!scroller) return false;
         var canX = scroller.scrollWidth > scroller.clientWidth + 1;
         var canY = scroller.scrollHeight > scroller.clientHeight + 1;
-        if (!canX && !canY) continue;
+        if (!canX && !canY) return false;
         var cardRect = btn.getBoundingClientRect();
         var scrollRect = scroller.getBoundingClientRect();
         var options = { behavior: "smooth" };
-        if (canX) {
-          options.left = scroller.scrollLeft + cardRect.left - scrollRect.left -
-            (scrollRect.width - cardRect.width) / 2;
-        }
-        if (canY) {
-          options.top = scroller.scrollTop + cardRect.top - scrollRect.top -
-            (scrollRect.height - cardRect.height) / 2;
-        }
+        if (canX) options.left = scroller.scrollLeft + cardRect.left - scrollRect.left - (scrollRect.width - cardRect.width) / 2;
+        if (canY) options.top = scroller.scrollTop + cardRect.top - scrollRect.top - (scrollRect.height - cardRect.height) / 2;
         scroller.scrollTo(options);
-        return;
-      }
+        return true;
+      });
     }
-    function renderSlideNumber() {
-      if (slideNumberEl) slideNumberEl.textContent = state.currentMain + " / " + total;
-    }
-    function timelineIndex() {
-      for (var i = 0; i < timeline.length; i += 1) {
-        if (
-          timeline[i].mainIndex === state.currentMain &&
-          timeline[i].subIndex === state.currentSub
-        ) return i;
-      }
-      return Math.max(0, slidePosition(state.currentMain));
+    function renderCounter() {
+      var cue = currentCue();
+      var slideOrdinal = slideOrdinalForCue(cue);
+      if (counter) counter.textContent = slideOrdinal + " / " + Math.max(1, totalSlides);
+      if (slideNumberEl) slideNumberEl.textContent = slideOrdinal + " / " + Math.max(1, totalSlides);
     }
     function renderProgress() {
       if (!progressBar) return;
-      var denom = Math.max(1, timeline.length - 1);
-      var value = timeline.length <= 1 ? 0 : timelineIndex() / denom;
+      var denom = Math.max(1, cues.length - 1);
+      var value = cues.length <= 1 ? 0 : state.cueIndex / denom;
       progressBar.style.transform = "scaleX(" + Math.max(0, Math.min(1, value)) + ")";
     }
-    function setActive(idx) {
-      state.currentMain = idx;
-      if (counter) counter.textContent = idx + " / " + total;
-      renderSlideNumber();
+    function setActiveCue(index, options) {
+      state.cueIndex = Math.max(0, Math.min(index, cues.length - 1));
+      var cue = currentCue();
+      renderCounter();
       renderProgress();
       slideButtons.forEach(function (btn) {
-        var t = parseInt(btn.dataset.slideTarget, 10);
-        if (t === idx) {
+        var target = parseInt(btn.dataset.slideTarget, 10);
+        var activeSlide = slideCues[slideOrdinalForCue(cue) - 1];
+        if (cue && activeSlide && target === activeSlide.ordinal) {
           btn.setAttribute("aria-current", "true");
           centerActiveCard(btn);
         } else {
           btn.removeAttribute("aria-current");
         }
       });
+      if (!options || options.hash !== false) {
+        if (cue && window.history && window.history.replaceState) {
+          window.history.replaceState(null, "", "#" + encodeURIComponent(cue.id));
+        }
+      }
     }
     function setPlayState(playing) {
-      state.playbackStatus = playing ? "playing" : "paused";
       if (!playBtn) return;
       playBtn.dataset.state = playing ? "playing" : "paused";
       playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
       playBtn.setAttribute("title", playing ? "Pause" : "Play");
     }
-    function boolAttr(name) {
-      return deck.dataset[name] === "true";
+    function captureFreeze() {
+      if (!freeze || !video || video.readyState < 2) return false;
+      try {
+        var rect = video.getBoundingClientRect();
+        freeze.width = Math.max(1, Math.round(rect.width * (window.devicePixelRatio || 1)));
+        freeze.height = Math.max(1, Math.round(rect.height * (window.devicePixelRatio || 1)));
+        var ctx = freeze.getContext("2d");
+        ctx.drawImage(video, 0, 0, freeze.width, freeze.height);
+        freeze.hidden = false;
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+    function hideFreeze() {
+      if (freeze) freeze.hidden = true;
+    }
+    function setPreview(src) {
+      if (!preview) return;
+      if (src) {
+        if (preview.getAttribute("src") !== src) preview.setAttribute("src", src);
+        preview.hidden = false;
+      } else {
+        preview.hidden = true;
+      }
+    }
+    function hidePreview() {
+      if (preview) preview.hidden = true;
+    }
+    function seekVideoTo(time, seq) {
+      if (!video || !finiteNumber(time)) return;
+      var target = Math.max(0, Number(time));
+      var tolerance = Math.max(1 / Math.max(1, Number(manifest.fps || 60)), 0.04);
+      function apply() {
+        if (seq !== state.loadingSeq || !state.seeking || !video) return;
+        if (video.currentTime >= target - tolerance && video.currentTime <= target + 0.25) return;
+        try {
+          if (typeof video.fastSeek === "function") video.fastSeek(target);
+          else video.currentTime = target;
+        } catch (_) {
+          try { video.currentTime = target; } catch (_) {}
+        }
+      }
+      apply();
+      [60, 160, 360, 800, 1400].forEach(function (delay) {
+        window.setTimeout(apply, delay);
+      });
+    }
+    function waitForDecodedFrame(seq, expectedTime) {
+      return new Promise(function (resolve) {
+        if (!video || seq !== state.loadingSeq) { resolve(false); return; }
+        var done = false;
+        var timer = window.setTimeout(function () { finish(false); }, 3600);
+        var target = finiteNumber(expectedTime) ? Number(expectedTime) : null;
+        function cleanup() {
+          video.removeEventListener("seeked", onReady);
+          video.removeEventListener("loadeddata", onReady);
+          video.removeEventListener("canplay", onReady);
+          video.removeEventListener("timeupdate", onReady);
+          window.clearTimeout(timer);
+        }
+        function finish(ok) {
+          if (done) return;
+          done = true;
+          cleanup();
+          resolve(ok);
+        }
+        function onReady() {
+          var reachedTarget = target === null ||
+            video.currentTime >= target - Math.max(1 / Math.max(1, Number(manifest.fps || 60)), 0.04);
+          if (video.readyState >= 2 && reachedTarget) finish(true);
+        }
+        video.addEventListener("seeked", onReady);
+        video.addEventListener("loadeddata", onReady);
+        video.addEventListener("canplay", onReady);
+        video.addEventListener("timeupdate", onReady);
+        if ("requestVideoFrameCallback" in video) {
+          video.requestVideoFrameCallback(function () { onReady(); });
+        }
+        onReady();
+      });
+    }
+    function loadNative(media) {
+      return new Promise(function (resolve, reject) {
+        var src = media.mp4 || media.hls || "";
+        if (!src) { reject(new Error("No media URL available")); return; }
+        if (video.getAttribute("src") !== src) {
+          video.setAttribute("src", src);
+          video.load();
+        }
+        state.engine = "native";
+        resolve();
+      });
+    }
+    function loadShaka(media, startTime) {
+      if (!media.hls || !window.shaka || !window.shaka.Player) return Promise.reject(new Error("Shaka unavailable"));
+      try {
+        window.shaka.polyfill.installAll();
+        if (!window.shaka.Player.isBrowserSupported()) return Promise.reject(new Error("Shaka unsupported"));
+      } catch (err) {
+        return Promise.reject(err);
+      }
+      var player = state.shaka;
+      var created = false;
+      if (!player) {
+        player = new window.shaka.Player();
+        state.shaka = player;
+        created = true;
+      }
+      function attachAndLoad() {
+        player.addEventListener("error", function (event) {
+          var detail = event && event.detail;
+          if (detail && detail.severity && window.shaka && window.shaka.util &&
+              detail.severity === window.shaka.util.Error.Severity.CRITICAL) {
+            showEmpty(true, "Streaming error. Use the MP4 fallback from the resources menu.");
+          }
+        });
+        return player.load(media.hls, finiteNumber(startTime) ? Math.max(0, Number(startTime)) : undefined).then(function () {
+          state.engine = "shaka";
+        });
+      }
+      if (created && typeof player.attach === "function") {
+        return player.attach(video).then(attachAndLoad);
+      }
+      if (typeof player.unload === "function") {
+        return player.unload().then(attachAndLoad);
+      }
+      return attachAndLoad();
+    }
+    function ensureMedia(themeEntry, options) {
+      options = options || {};
+      var key = mediaKeyFor(themeEntry);
+      if (key === state.mediaKey && video && (video.src || video.currentSrc)) return Promise.resolve(true);
+      state.mediaKey = key;
+      var media = mediaFor(themeEntry);
+      return loadShaka(media, options.startTime)
+        .catch(function () {
+          if (state.shaka && typeof state.shaka.unload === "function") {
+            return state.shaka.unload().catch(function () {}).then(function () {
+              return loadNative(media);
+            });
+          }
+          return loadNative(media);
+        })
+        .then(function () {
+          video.classList.add("is-active");
+          showEmpty(false);
+          return true;
+        })
+        .catch(function () {
+          showEmpty(true, "No playable timeline media is available yet.");
+          if (options.poster) setPreview(options.poster);
+          return false;
+        });
+    }
+    function seekToCue(index, options) {
+      options = options || {};
+      var cue = cueAt(index);
+      if (!cue) return Promise.resolve(false);
+      var targetTheme = themeById(effectiveTheme());
+      var themeChanged = normalizeThemeName(targetTheme ? targetTheme.id : defaultTheme) !== state.activeTheme ||
+        mediaKeyFor(targetTheme) !== state.mediaKey;
+      var time = targetTime(cue, options.localProgress || 0);
+      var longSeek = video && Math.abs((video.currentTime || 0) - time) > 1.5;
+      var seq = state.loadingSeq + 1;
+      state.loadingSeq = seq;
+      state.seeking = true;
+      setActiveCue(index, { hash: options.hash });
+      applyThemeDom(targetTheme);
+      var poster = posterFor(cue, targetTheme ? targetTheme.id : defaultTheme);
+      if (themeChanged || longSeek || options.initial) {
+        var showPoster = !options.initial && !options.preserveFrame;
+        if (!captureFreeze() && showPoster) setPreview(poster);
+      }
+      return ensureMedia(targetTheme, { poster: poster, startTime: time }).then(function (ok) {
+        if (!ok || seq !== state.loadingSeq) {
+          if (seq === state.loadingSeq) state.seeking = false;
+          return false;
+        }
+        seekVideoTo(time, seq);
+        return waitForDecodedFrame(seq, time).then(function () {
+          if (seq !== state.loadingSeq) return false;
+          state.seeking = false;
+          hidePreview();
+          hideFreeze();
+          if (options.play) {
+            requestPlay(seq);
+          } else {
+            state.pendingPlay = false;
+            video.pause();
+            setPlayState(false);
+          }
+          return true;
+        });
+      });
+    }
+    function syncFromPlayback() {
+      if (!video || !cues.length) return;
+      if (state.seeking) return;
+      var time = Number(video.currentTime || 0);
+      var cue = currentCue();
+      if (!cue) return;
+      if (state.mode === "presentation") {
+        var start = Number(cue.start || 0);
+        var end = Number(cue.end || cue.start || 0);
+        var epsilon = Math.max(1 / Math.max(1, Number(manifest.fps || 60)), 0.03);
+        if (cue.kind === "loop" && time >= end - epsilon) {
+          try { video.currentTime = Number(cue.start || 0); } catch (_) {}
+          return;
+        }
+        if (time >= end - epsilon && end > start) {
+          var next = cues[state.cueIndex + 1];
+          if (next && next.kind === "slide") {
+            setActiveCue(state.cueIndex + 1, { hash: false });
+            return;
+          }
+          state.pendingPlay = false;
+          video.pause();
+          setPlayState(false);
+          return;
+        }
+        if (time < start - 0.08 || time > end + 0.25) {
+          var presentationIdx = cueAtTime(time);
+          if (presentationIdx !== state.cueIndex) setActiveCue(presentationIdx, { hash: false });
+        }
+        return;
+      }
+      var idx = cueAtTime(time);
+      if (idx !== state.cueIndex) setActiveCue(idx, { hash: false });
+    }
+    function nextCue() {
+      if (state.cueIndex + 1 < cues.length) seekToCue(state.cueIndex + 1, { play: true });
+    }
+    function previousCue() {
+      var cue = currentCue();
+      var threshold = cue ? Number(cue.start || 0) + 1.25 : 0;
+      if (video && video.currentTime > threshold) {
+        seekToCue(state.cueIndex, { play: false, localProgress: 0 });
+      } else if (state.cueIndex > 0) {
+        seekToCue(state.cueIndex - 1, { play: true });
+      }
+    }
+    function restartCue() {
+      seekToCue(state.cueIndex, { play: true, localProgress: 0 });
+    }
+    function goToNextMain() {
+      var cue = currentCue();
+      var currentSlide = slideOrdinalForCue(cue);
+      var next = slideCues[currentSlide];
+      if (next) seekToCue(cueIndexForOrdinal(next.ordinal), { play: true });
+    }
+    function goToPrevMainOrReset() {
+      var cue = currentCue();
+      var currentSlide = slideOrdinalForCue(cue);
+      if (cue && cue.kind !== "slide") {
+        seekToCue(cueIndexForOrdinal(slideCues[currentSlide - 1].ordinal), { play: true });
+      } else if (currentSlide > 1) {
+        seekToCue(cueIndexForOrdinal(slideCues[currentSlide - 2].ordinal), { play: true });
+      } else {
+        restartCue();
+      }
+    }
+    function toggleCurrentVideo() {
+      if (!video || !video.currentSrc && !video.src) return;
+      if (video.paused) {
+        var p = video.play();
+        if (p && typeof p.catch === "function") p.catch(function () {});
+      } else {
+        video.pause();
+      }
+      window.setTimeout(function () { setPlayState(!video.paused); }, 0);
     }
     function syncChromeSettings() {
       if (slideNumberEl) slideNumberEl.hidden = !(slideNumberSetting && slideNumberSetting.checked);
       if (clockEl) clockEl.hidden = !(clockSetting && clockSetting.checked);
       if (stopwatchEl) stopwatchEl.hidden = !(stopwatchSetting && stopwatchSetting.checked);
-      renderSlideNumber();
+      renderCounter();
       renderStopwatch();
-    }
-    function setStopwatchState(running) {
-      if (!stopwatchToggle) return;
-      stopwatchToggle.dataset.state = running ? "running" : "stopped";
-      stopwatchToggle.setAttribute("aria-label", running ? "Stop stopwatch" : "Start stopwatch");
-      stopwatchToggle.setAttribute("title", running ? "Stop stopwatch" : "Start stopwatch");
     }
     function closeSettings() {
       if (!settingsPanel || !settingsToggle) return;
@@ -487,537 +746,52 @@
       settingsPanel.hidden = !open;
       settingsToggle.setAttribute("aria-expanded", open ? "true" : "false");
     }
-    function findSlide(mainIndex) {
-      return slides.find(function (slide) {
-        return slide && slide.mainIndex === mainIndex;
-      }) || null;
-    }
-    function slidePosition(mainIndex) {
-      for (var i = 0; i < slides.length; i += 1) {
-        if (slides[i] && slides[i].mainIndex === mainIndex) return i;
-      }
-      return -1;
-    }
-    function currentSlide() {
-      return findSlide(state.currentMain) || slides[0] || null;
-    }
-    function subslidesFor(slide) {
-      return slide && Array.isArray(slide.subslides) && slide.subslides.length ? slide.subslides : [];
-    }
-    function currentSubslide() {
-      var slide = currentSlide();
-      var subs = subslidesFor(slide);
-      return subs[state.currentSub] || subs[0] || null;
-    }
-    function pendingMatchesCurrent() {
-      return state.pendingMain === state.currentMain && state.pendingSub === state.currentSub;
-    }
-    function rememberPendingSeek(mode, time, autoplay) {
-      state.pendingMain = state.currentMain;
-      state.pendingSub = state.currentSub;
-      state.pendingSeekMode = mode || "start";
-      state.pendingSeekTime = finiteNumber(time) ? Math.max(0, time) : 0;
-      state.pendingAutoplay = !!autoplay;
-    }
-    function assetFor(sub, theme) {
-      if (!sub || !sub.themes) return {};
-      return sub.themes[theme] ||
-        sub.themes[manifest.defaultTheme] ||
-        sub.themes.dark ||
-        sub.themes.light ||
-        {};
-    }
-    function activeVideo() {
-      return videos[state.activeVideoIndex] || videos[0] || null;
-    }
-    function videoRepresentsCurrent(video) {
-      return !!video &&
-        video.dataset.mainIndex === String(state.currentMain) &&
-        video.dataset.subIndex === String(state.currentSub);
-    }
-    function targetVideo() {
-      return videos[0] || activeVideo();
-    }
-    function waitForAny(el, names, timeoutMs) {
-      return new Promise(function (resolve) {
-        var done = false;
-        var timer = window.setTimeout(finish, timeoutMs || 1400);
-        function finish() {
-          if (done) return;
-          done = true;
-          window.clearTimeout(timer);
-          names.forEach(function (name) { el.removeEventListener(name, finish); });
-          resolve();
-        }
-        names.forEach(function (name) { el.addEventListener(name, finish, { once: true }); });
-      });
-    }
-    function absoluteUrl(src) {
-      try { return new URL(src || "", location.href).href; }
-      catch (_) { return src || ""; }
-    }
-    function sourceMatchesExpected(video) {
-      if (!video) return false;
-      var expected = video.dataset.expectedSrc || "";
-      if (!expected) return true;
-      return absoluteUrl(video.currentSrc || video.src) === expected;
-    }
-    function markMetadataReady(video) {
-      if (!video || video.readyState < 1 || !sourceMatchesExpected(video)) return;
-      video.dataset.metadataSeq = video.dataset.loadSeq || "";
-    }
-    function hasExpectedMetadata(video) {
-      return !!video &&
-        video.readyState >= 1 &&
-        video.dataset.metadataSeq === video.dataset.loadSeq &&
-        sourceMatchesExpected(video);
-    }
-    function waitForMetadata(video, seq) {
-      if (!video) return Promise.resolve(false);
-      markMetadataReady(video);
-      if (hasExpectedMetadata(video)) return Promise.resolve(true);
-      return waitForAny(video, ["loadedmetadata", "loadeddata"], 2500).then(function () {
-        if (!videoOwnsSeq(video, seq)) return false;
-        markMetadataReady(video);
-        return hasExpectedMetadata(video);
-      });
-    }
-    function waitForCanPlay(video) {
-      if (!video || video.readyState >= 3) return Promise.resolve();
-      return waitForAny(video, ["canplay", "canplaythrough", "loadeddata"], 1800);
-    }
-    function decodePreview(src, seq, revealImmediately) {
-      if (!preview || !src) {
-        if (preview) preview.hidden = true;
-        return Promise.resolve(false);
-      }
-      if (preview.getAttribute("src") === src && !preview.hidden) return Promise.resolve(true);
-      if (revealImmediately) {
-        preview.setAttribute("src", src);
-        preview.hidden = false;
-      }
-      var img = new Image();
-      img.decoding = "async";
-      img.src = src;
-      var decoded = img.decode ? img.decode().catch(function () {}) : waitForAny(img, ["load", "error"], 1200);
-      return decoded.then(function () {
-        if (seq !== state.renderSeq) return false;
-        preview.setAttribute("src", src);
-        preview.hidden = false;
-        return true;
-      });
-    }
-    function showEmpty(show) {
-      if (empty) empty.hidden = !show;
-    }
-    function captureFreeze(onlyCurrent) {
-      var video = activeVideo();
-      if (onlyCurrent && !videoRepresentsCurrent(video)) return false;
-      if (!freeze || !video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return false;
-      try {
-        freeze.width = video.videoWidth;
-        freeze.height = video.videoHeight;
-        var ctx = freeze.getContext("2d");
-        if (!ctx) return false;
-        ctx.drawImage(video, 0, 0, freeze.width, freeze.height);
-        freeze.hidden = false;
-        return true;
-      } catch (_) {
-        return false;
-      }
-    }
-    function hideFreeze() {
-      if (freeze) freeze.hidden = true;
-    }
-    function hideVideos() {
-      videos.forEach(function (video) {
-        try { video.pause(); } catch (_) {}
-        video.classList.remove("is-active");
-        video.dataset.loadSeq = "";
-      });
-      setPlayState(false);
-    }
-    function deactivateStaleActiveVideos(seq) {
-      videos.forEach(function (video) {
-        if (!video.classList.contains("is-active")) return;
-        if (videoOwnsSeq(video, seq) && videoRepresentsCurrent(video)) return;
-        try { video.pause(); } catch (_) {}
-        video.classList.remove("is-active");
-      });
-    }
-    function setVideoSource(video, src, poster, seq, meta) {
-      if (!video) return;
-      video.dataset.loadSeq = String(seq);
-      video.dataset.mainIndex = String(meta.mainIndex);
-      video.dataset.subIndex = String(meta.subIndex);
-      video.dataset.theme = meta.theme;
-      video.dataset.mediaKey = meta.mediaKey;
-      video.dataset.expectedSrc = absoluteUrl(src);
-      if (poster) video.poster = poster;
-      video.preload = "auto";
-      video.classList.remove("is-active");
-      try { video.pause(); } catch (_) {}
-      video.dataset.metadataSeq = "";
-      video.dataset.src = src;
-      video.src = src;
-      try { video.load(); } catch (_) {}
-    }
-    function videoOwnsSeq(video, seq) {
-      return !!video && video.dataset.loadSeq === String(seq) && seq === state.renderSeq;
-    }
-    function seekVideo(video, sub, seekMode, seq) {
-      if (!video || seekMode === "none") return Promise.resolve(true);
-      return waitForMetadata(video, seq).then(function (ready) {
-        if (!ready || !videoOwnsSeq(video, seq)) return false;
-        var target = 0;
-        if (seekMode === "end") {
-          var duration = finiteNumber(video.duration) && video.duration > 0
-            ? video.duration
-            : Number(sub && sub.duration) || 0;
-          target = Math.max(0, duration - 0.05);
-        } else if (seekMode === "time") {
-          var requested = Number(video.dataset.seekTime);
-          var limit = finiteNumber(video.duration) && video.duration > 0
-            ? video.duration
-            : Number(sub && sub.duration) || 0;
-          target = Math.max(0, requested || 0);
-          if (limit > 0) target = Math.min(target, Math.max(0, limit - 0.05));
-        }
-        var ready = target > 0 ? waitForCanPlay(video) : Promise.resolve();
-        return ready.then(function () {
-          if (!videoOwnsSeq(video, seq)) return false;
-          try { video.currentTime = target; } catch (_) {}
-          if (target <= 0) return true;
-          return waitForAny(video, ["seeked"], 1600).then(function () {
-            if (!videoOwnsSeq(video, seq)) return false;
-            if (Math.abs((video.currentTime || 0) - target) <= 0.08) return true;
-            try { video.currentTime = target; } catch (_) {}
-            return waitForAny(video, ["seeked"], 1200).then(function () {
-              if (!videoOwnsSeq(video, seq)) return false;
-              return Math.abs((video.currentTime || 0) - target) <= 0.08;
-            });
-          });
-        });
-      });
-    }
-    function activateVideo(video, autoplay, seq) {
-      if (!videoOwnsSeq(video, seq)) return;
-      videos.forEach(function (candidate, index) {
-        var active = candidate === video;
-        candidate.classList.toggle("is-active", active);
-        if (active) {
-          state.activeVideoIndex = index;
-        } else {
-          try { candidate.pause(); } catch (_) {}
-          candidate.dataset.loadSeq = "";
-        }
-      });
-      if (preview) preview.hidden = true;
-      hideFreeze();
-      showEmpty(false);
-      state.duration = finiteNumber(video.duration) ? video.duration : state.duration;
-      state.pendingAutoplay = !!autoplay;
-      if (autoplay) {
-        var p = video.play();
-        if (p && typeof p.catch === "function") p.catch(function () {
-          state.pendingAutoplay = false;
-          setPlayState(false);
-        });
-        window.setTimeout(function () { setPlayState(!video.paused); }, 0);
-      } else {
-        try { video.pause(); } catch (_) {}
-        setPlayState(false);
-      }
-    }
-    function catchUpVideo(video, target, seq) {
-      if (!video || target <= 0) return Promise.resolve(true);
-      return waitForCanPlay(video).then(function () {
-        if (!videoOwnsSeq(video, seq)) return false;
-        return new Promise(function (resolve) {
-          var done = false;
-          var timeout = Math.min(Math.max(target * 1000 + 700, 900), 5000);
-          var timer = window.setTimeout(function () { finish(false); }, timeout);
-          function cleanup() {
-            video.removeEventListener("timeupdate", check);
-            video.removeEventListener("ended", check);
-            window.clearTimeout(timer);
-          }
-          function finish(ok) {
-            if (done) return;
-            done = true;
-            cleanup();
-            resolve(ok);
-          }
-          function check() {
-            if (!videoOwnsSeq(video, seq)) {
-              finish(false);
-              return;
-            }
-            if ((video.currentTime || 0) >= Math.max(0, target - 0.08) || video.ended) {
-              finish(true);
-            }
-          }
-          video.addEventListener("timeupdate", check);
-          video.addEventListener("ended", check);
-          try { video.currentTime = 0; } catch (_) {}
-          var p = video.play();
-          if (p && typeof p.catch === "function") p.catch(function () { finish(false); });
-          check();
-        });
-      });
-    }
-    function mediaKeyFor(main, sub, theme, asset) {
-      return [main, sub, theme, asset.video || "", asset.firstFrame || "", asset.lastFrame || ""].join("|");
-    }
-    function startPreviewFor(asset) {
-      if (!asset) return null;
-      if (asset.firstFrame) return asset.firstFrame;
-      return asset.video ? null : (asset.lastFrame || asset.thumbnail || null);
-    }
-    function activeVideoSnapshot() {
-      var video = activeVideo();
-      if (!video || !video.classList.contains("is-active") || !videoRepresentsCurrent(video)) {
-        return { video: null, time: 0, playing: false, ended: false };
-      }
-      var time = finiteNumber(video.currentTime) ? video.currentTime : 0;
-      var duration = finiteNumber(video.duration) ? video.duration : 0;
-      return {
-        video: video,
-        time: time,
-        playing: !video.paused && !video.ended,
-        ended: video.ended || (duration > 0 && time >= Math.max(0, duration - 0.05)),
-      };
-    }
-    function renderCurrent(options) {
-      options = options || {};
-      var slide = currentSlide();
-      var sub = currentSubslide();
-      if (!slide || !sub) return;
-      var theme = effectiveTheme();
-      var asset = assetFor(sub, theme);
-      var seq = state.renderSeq + 1;
-      var isThemeSwap = options.reason === "theme";
-      var prior = activeVideoSnapshot();
-      var usePendingSeek = isThemeSwap && !prior.video && pendingMatchesCurrent() && state.pendingSeekMode;
-      var preserveThemeTime = isThemeSwap && prior.video && !prior.ended;
-      var themeSeekMode = "start";
-      var seekTime = 0;
-      if (preserveThemeTime) themeSeekMode = "time";
-      else if (isThemeSwap && prior.video && prior.ended) themeSeekMode = "end";
-      else if (usePendingSeek) themeSeekMode = state.pendingSeekMode;
-      if (preserveThemeTime) seekTime = prior.time || 0;
-      else if (usePendingSeek) seekTime = state.pendingSeekTime || 0;
-      var previewSrc = themeSeekMode === "time" && asset.video
-        ? null
-        : isThemeSwap && themeSeekMode === "end"
-        ? (asset.lastFrame || asset.firstFrame || asset.thumbnail)
-        : startPreviewFor(asset);
-      var autoplay = options.autoplay === true;
-      if (isThemeSwap) {
-        if (preserveThemeTime) autoplay = prior.playing;
-        else if (themeSeekMode === "end") autoplay = false;
-        else if (usePendingSeek) autoplay = !!state.pendingAutoplay;
-        else autoplay = !!state.pendingAutoplay;
-      }
-      var key = mediaKeyFor(state.currentMain, state.currentSub, theme, asset);
-      state.currentTime = 0;
-      state.duration = Number(sub.duration) || 0;
-      setActive(state.currentMain);
-      applySlideThemeDom(theme);
-      applyThumbnailThemes();
-      showEmpty(false);
-      if (!options.force && key === state.mediaKey && !isThemeSwap) return;
-      state.renderSeq = seq;
-      state.mediaKey = key;
-      rememberPendingSeek(isThemeSwap ? themeSeekMode : "start", seekTime, autoplay);
-      var shouldFreeze = !options.initial && isThemeSwap && themeSeekMode === "time";
-      var freezeCaptured = shouldFreeze && (
-        preserveThemeTime ? captureFreeze(true) : !!(freeze && !freeze.hidden)
-      );
-      if (shouldFreeze && !freezeCaptured) {
-        previewSrc = startPreviewFor(asset);
-      }
-      if (isThemeSwap && !prior.video) {
-        var staleActive = activeVideo();
-        if (staleActive && staleActive.classList.contains("is-active")) {
-          try { staleActive.pause(); } catch (_) {}
-        }
-      }
-      var holdFreezeUntilVideo = preserveThemeTime && freezeCaptured;
-      var revealPreviewImmediately = !shouldFreeze || !freezeCaptured;
-      var previewReady = decodePreview(previewSrc, seq, revealPreviewImmediately);
-      if (revealPreviewImmediately) deactivateStaleActiveVideos(seq);
-      previewReady.then(function () {
-        if (seq !== state.renderSeq) return;
-        if (!holdFreezeUntilVideo) hideFreeze();
-      });
-      if (!asset.video) {
-        previewReady.then(function () {
-          if (seq !== state.renderSeq) return;
-          hideVideos();
-          showEmpty(!previewSrc);
-        });
-        preloadNearby(!!options.initial);
-        return;
-      }
-      var video = targetVideo();
-      setVideoSource(video, asset.video, previewSrc, seq, {
-        mainIndex: state.currentMain,
-        subIndex: state.currentSub,
-        theme: theme,
-        mediaKey: key,
-      });
-      if (themeSeekMode === "time") video.dataset.seekTime = String(seekTime || 0);
-      else video.dataset.seekTime = "";
-      seekVideo(video, sub, isThemeSwap ? themeSeekMode : "start", seq)
-        .then(function (seekOk) {
-          if (!seekOk && isThemeSwap && themeSeekMode === "time" && autoplay) {
-            return catchUpVideo(video, seekTime, seq).then(function (caughtUp) {
-              if (!caughtUp) setPlayState(false);
-              return caughtUp;
-            });
-          }
-          if (!seekOk && isThemeSwap && themeSeekMode !== "start") {
-            if (preview && previewSrc) preview.hidden = false;
-            setPlayState(false);
-            return Promise.resolve(false);
-          }
-          return waitForCanPlay(video).then(function () { return true; });
-        })
-        .then(function (ready) {
-          if (ready) activateVideo(video, autoplay, seq);
-        });
-      preloadNearby(!!options.initial);
-    }
-    function goTo(mainIndex, subIndex, options) {
-      var slide = findSlide(mainIndex);
-      if (!slide) return;
-      var subs = subslidesFor(slide);
-      var nextSub = Math.max(0, Math.min(subIndex || 0, Math.max(0, subs.length - 1)));
-      state.currentMain = mainIndex;
-      state.currentSub = nextSub;
-      renderCurrent(options || { autoplay: true });
-    }
-    function next() {
-      var slide = currentSlide();
-      if (!slide) return;
-      var subs = subslidesFor(slide);
-      if (state.currentSub + 1 < subs.length) {
-        goTo(state.currentMain, state.currentSub + 1, { autoplay: true });
-        return;
-      }
-      var pos = slidePosition(state.currentMain);
-      if (pos >= 0 && pos + 1 < slides.length) goTo(slides[pos + 1].mainIndex, 0, { autoplay: true });
-    }
-    function prev() {
-      if (state.currentSub > 0) {
-        goTo(state.currentMain, state.currentSub - 1, { autoplay: true });
-        return;
-      }
-      var pos = slidePosition(state.currentMain);
-      if (pos > 0) {
-        var previous = slides[pos - 1];
-        goTo(previous.mainIndex, Math.max(0, subslidesFor(previous).length - 1), { autoplay: true });
-      }
-    }
-    function goToNextMain() {
-      var pos = slidePosition(state.currentMain);
-      if (pos >= 0 && pos + 1 < slides.length) goTo(slides[pos + 1].mainIndex, 0, { autoplay: true });
-    }
-    function goToPrevMainOrReset() {
-      if (state.currentSub > 0) {
-        goTo(state.currentMain, 0, { autoplay: true, force: true });
-        return;
-      }
-      var pos = slidePosition(state.currentMain);
-      if (pos > 0) goTo(slides[pos - 1].mainIndex, 0, { autoplay: true });
-    }
-    function restart() {
-      goTo(state.currentMain, 0, { autoplay: true, force: true });
-    }
-    function toggleCurrentVideo() {
-      var video = activeVideo();
-      if (!video || !video.classList.contains("is-active")) return;
-      if (video.paused) {
-        if (video.ended || video.currentTime >= Math.max(0, (video.duration || 0) - 0.05)) {
-          try { video.currentTime = 0; } catch (_) {}
-        }
-        var p = video.play();
-        if (p && typeof p.catch === "function") p.catch(function () {});
-      } else {
-        video.pause();
-      }
-      window.setTimeout(function () { setPlayState(!video.paused); }, 0);
-    }
-    function preloadImage(src) {
-      if (!src) return;
-      var img = new Image();
-      img.decoding = "async";
-      img.src = src;
-      if (img.decode) img.decode().catch(function () {});
-    }
-    function preloadNearby(immediate) {
-      if (reduceMotion || saveData) return;
-      var work = function () {
-        var currentTheme = effectiveTheme();
-        var alternate = currentTheme === "dark" ? "light" : "dark";
-        var sub = currentSubslide();
-        preloadImage(assetFor(sub, alternate).lastFrame);
-        var slide = currentSlide();
-        var subs = subslidesFor(slide);
-        var nextSub = null;
-        if (state.currentSub + 1 < subs.length) nextSub = subs[state.currentSub + 1];
-        else {
-          var pos = slidePosition(state.currentMain);
-          nextSub = pos >= 0 && pos + 1 < slides.length ? subslidesFor(slides[pos + 1])[0] : null;
-        }
-        preloadImage(assetFor(nextSub, currentTheme).firstFrame);
-        preloadImage(assetFor(nextSub, alternate).firstFrame);
-      };
-      if (immediate) work();
-      else if ("requestIdleCallback" in window) window.requestIdleCallback(work, { timeout: 1500 });
-      else window.setTimeout(work, 500);
+    function stopwatchElapsed() {
+      if (!state.stopwatchRunning) return state.stopwatchElapsedMs;
+      return state.stopwatchElapsedMs + monotonicNow() - state.stopwatchStartedAt;
     }
     function formatDuration(ms) {
       var totalSeconds = Math.floor(Math.max(0, ms) / 1000);
       var hours = Math.floor(totalSeconds / 3600);
       var minutes = Math.floor((totalSeconds % 3600) / 60);
       var seconds = totalSeconds % 60;
-      return String(hours).padStart(durationHourDigits, "0") +
-        ":" + String(minutes).padStart(2, "0") +
-        ":" + String(seconds).padStart(2, "0");
-    }
-    function stopwatchElapsed() {
-      if (!stopwatchState.running) return stopwatchState.elapsedMs;
-      return stopwatchState.elapsedMs + performance.now() - stopwatchState.startedAt;
+      return String(hours).padStart(2, "0") + ":" +
+        String(minutes).padStart(2, "0") + ":" +
+        String(seconds).padStart(2, "0");
     }
     function renderStopwatch() {
       if (!stopwatchEl) return;
       stopwatchEl.textContent = formatDuration(stopwatchElapsed());
-      stopwatchEl.classList.toggle("is-running", stopwatchState.running);
+      stopwatchEl.classList.toggle("is-running", state.stopwatchRunning);
+    }
+    function setStopwatchButton() {
+      if (!stopwatchToggle) return;
+      stopwatchToggle.dataset.state = state.stopwatchRunning ? "running" : "stopped";
+      stopwatchToggle.setAttribute("aria-label", state.stopwatchRunning ? "Stop stopwatch" : "Start stopwatch");
+      stopwatchToggle.setAttribute("title", state.stopwatchRunning ? "Stop stopwatch" : "Start stopwatch");
     }
     function scheduleStopwatchRender() {
-      if (stopwatchState.timer) window.clearTimeout(stopwatchState.timer);
+      if (state.stopwatchTimer) window.clearTimeout(state.stopwatchTimer);
       renderStopwatch();
-      if (stopwatchState.running) stopwatchState.timer = window.setTimeout(scheduleStopwatchRender, 250);
-      else stopwatchState.timer = 0;
+      if (state.stopwatchRunning) state.stopwatchTimer = window.setTimeout(scheduleStopwatchRender, 250);
+      else state.stopwatchTimer = 0;
     }
     function toggleStopwatch() {
-      if (stopwatchState.running) {
-        stopwatchState.elapsedMs = stopwatchElapsed();
-        stopwatchState.running = false;
+      if (state.stopwatchRunning) {
+        state.stopwatchElapsedMs = stopwatchElapsed();
+        state.stopwatchRunning = false;
       } else {
-        stopwatchState.startedAt = performance.now();
-        stopwatchState.running = true;
+        state.stopwatchStartedAt = monotonicNow();
+        state.stopwatchRunning = true;
       }
+      setStopwatchButton();
       scheduleStopwatchRender();
-      setStopwatchState(stopwatchState.running);
     }
     function resetStopwatch() {
-      stopwatchState.elapsedMs = 0;
-      stopwatchState.startedAt = performance.now();
+      state.stopwatchElapsedMs = 0;
+      state.stopwatchStartedAt = monotonicNow();
+      setStopwatchButton();
       scheduleStopwatchRender();
-      setStopwatchState(stopwatchState.running);
     }
     function startClock() {
       if (!clockEl) return;
@@ -1028,26 +802,12 @@
     function fullscreenTarget() {
       return frame || stage;
     }
-    function nativeFullscreen(el) {
-      if (!el) return false;
-      var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
-      if (!fn) return false;
-      try {
-        var p = fn.call(el);
-        if (p && typeof p.catch === "function") p.catch(function () {});
-        return true;
-      } catch (_) { return false; }
-    }
-    function exitFullscreen() {
-      var fn = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen;
-      if (fn) { try { fn.call(document); } catch (_) {} }
-    }
-    function isFullscreen() {
-      return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
-    }
     function toggleFullscreen() {
-      if (isFullscreen()) { exitFullscreen(); return; }
-      nativeFullscreen(fullscreenTarget());
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(function () {});
+      } else if (fullscreenTarget() && fullscreenTarget().requestFullscreen) {
+        fullscreenTarget().requestFullscreen().catch(function () {});
+      }
     }
     function scrollViewerBelowNav() {
       var target = frame || stage;
@@ -1060,17 +820,17 @@
 
     slideButtons.forEach(function (btn) {
       btn.addEventListener("click", function () {
-        var t = parseInt(btn.dataset.slideTarget, 10);
-        if (Number.isInteger(t)) goTo(t, 0, { autoplay: true });
+        var ordinal = parseInt(btn.dataset.slideTarget, 10);
+        if (Number.isInteger(ordinal)) seekToCue(cueIndexForOrdinal(ordinal), { play: true });
       });
     });
     controls.forEach(function (btn) {
       btn.addEventListener("click", function (e) {
         e.preventDefault();
         var ctl = btn.dataset.control;
-        if (ctl === "next") next();
-        else if (ctl === "prev") prev();
-        else if (ctl === "restart") restart();
+        if (ctl === "next") nextCue();
+        else if (ctl === "prev") previousCue();
+        else if (ctl === "restart") restartCue();
         else if (ctl === "toggle-play") toggleCurrentVideo();
         else if (ctl === "fullscreen") toggleFullscreen();
       });
@@ -1078,18 +838,17 @@
     tapZones.forEach(function (zone) {
       zone.addEventListener("click", function (e) {
         e.preventDefault();
-        if (zone.dataset.tap === "prev") prev();
-        else next();
+        if (zone.dataset.tap === "prev") previousCue();
+        else nextCue();
       });
     });
     document.addEventListener("click", function (e) {
       var a = e.target && e.target.closest ? e.target.closest(".slide-ref[data-slide]") : null;
-      if (!a) return;
+      if (!a || a.classList.contains("slide-ref-stale")) return;
       e.preventDefault();
-      if (a.classList.contains("slide-ref-stale")) return;
-      var idx = parseInt(a.dataset.slide, 10);
-      if (!Number.isInteger(idx)) return;
-      goTo(idx, 0, { autoplay: true });
+      var ordinal = parseInt(a.dataset.slide, 10);
+      if (!Number.isInteger(ordinal)) return;
+      seekToCue(cueIndexForOrdinal(ordinal), { play: true });
       scrollViewerBelowNav();
     });
     document.addEventListener("keydown", function (e) {
@@ -1106,69 +865,42 @@
         goToPrevMainOrReset();
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
-        next();
+        nextCue();
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
-        prev();
+        previousCue();
       }
     });
     if (slideThemeSetting) {
       slideThemeSetting.addEventListener("click", function () {
-        var nextTheme = state.effectiveSlideTheme === "dark" ? "light" : "dark";
-        saveThemeOverride(nextTheme);
-        renderCurrent({ reason: "theme", force: true });
+        var cue = currentCue();
+        var local = cueLocalProgress(cue);
+        var wasPlaying = isVideoPlaying();
+        state.slideThemeOverride = state.activeTheme === "dark" ? "light" : "dark";
+        seekToCue(state.cueIndex, { play: wasPlaying, localProgress: local, hash: false, preserveFrame: true });
       });
     }
     if (slideNumberSetting) {
-      slideNumberSetting.checked = boolAttr("defaultSlideNumber");
+      slideNumberSetting.checked = deck.dataset.defaultSlideNumber === "true";
       slideNumberSetting.addEventListener("change", syncChromeSettings);
     }
     if (clockSetting) {
-      clockSetting.checked = boolAttr("defaultClock");
+      clockSetting.checked = deck.dataset.defaultClock === "true";
       clockSetting.addEventListener("change", syncChromeSettings);
     }
+    if (watchModeSetting) {
+      watchModeSetting.checked = state.mode === "watch";
+      watchModeSetting.addEventListener("change", function () {
+        state.mode = watchModeSetting.checked ? "watch" : "presentation";
+        syncFromPlayback();
+      });
+    }
     if (stopwatchSetting) {
-      stopwatchSetting.checked = boolAttr("defaultStopwatch");
+      stopwatchSetting.checked = deck.dataset.defaultStopwatch === "true";
       stopwatchSetting.addEventListener("change", syncChromeSettings);
     }
     if (stopwatchToggle) stopwatchToggle.addEventListener("click", toggleStopwatch);
     if (stopwatchReset) stopwatchReset.addEventListener("click", resetStopwatch);
-    videos.forEach(function (video) {
-      video.addEventListener("loadedmetadata", function () {
-        markMetadataReady(video);
-      });
-      video.addEventListener("loadeddata", function () {
-        markMetadataReady(video);
-      });
-      video.addEventListener("play", function () {
-        if (video === activeVideo() && videoRepresentsCurrent(video)) setPlayState(true);
-      });
-      video.addEventListener("pause", function () {
-        if (video === activeVideo() && videoRepresentsCurrent(video)) setPlayState(false);
-      });
-      video.addEventListener("timeupdate", function () {
-        if (video !== activeVideo() || !videoRepresentsCurrent(video)) return;
-        state.currentTime = finiteNumber(video.currentTime) ? video.currentTime : 0;
-        state.duration = finiteNumber(video.duration) ? video.duration : state.duration;
-        rememberPendingSeek("time", state.currentTime, !video.paused && !video.ended);
-      });
-      video.addEventListener("ended", function () {
-        if (video === activeVideo() && videoRepresentsCurrent(video)) {
-          rememberPendingSeek("end", video.currentTime || state.duration || 0, false);
-          setPlayState(false);
-        }
-      });
-    });
-    window.addEventListener("simplex.theme", function (e) {
-      var nextTheme = chooseSlideTheme(e.detail && e.detail.theme ? e.detail.theme : pageTheme());
-      state.globalTheme = nextTheme;
-      applyThumbnailThemes();
-      if (!state.slideThemeOverride) {
-        renderCurrent({ reason: "theme", force: true });
-      } else {
-        syncThemeSetting();
-      }
-    });
     if (settingsToggle) {
       settingsToggle.addEventListener("click", function (e) {
         e.preventDefault();
@@ -1183,14 +915,45 @@
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") closeSettings();
     });
+    window.addEventListener("simplex.theme", function (e) {
+      state.globalTheme = normalizeThemeName(e.detail && e.detail.theme ? e.detail.theme : currentDocumentTheme());
+      if (!state.slideThemeOverride) {
+        var cue = currentCue();
+        seekToCue(state.cueIndex, {
+          play: isVideoPlaying(),
+          localProgress: cueLocalProgress(cue),
+          hash: false,
+          preserveFrame: true,
+        });
+      } else {
+        applyThumbnailThemes();
+      }
+    });
+    if (video) {
+      video.addEventListener("play", function () { setPlayState(true); });
+      video.addEventListener("pause", function () { setPlayState(false); });
+      video.addEventListener("timeupdate", syncFromPlayback);
+      video.addEventListener("ended", function () {
+        setPlayState(false);
+        if (state.mode === "watch") syncFromPlayback();
+      });
+      if ("requestVideoFrameCallback" in video) {
+        var frameLoop = function () {
+          syncFromPlayback();
+          video.requestVideoFrameCallback(frameLoop);
+        };
+        video.requestVideoFrameCallback(frameLoop);
+      }
+    }
 
     startClock();
+    setStopwatchButton();
     syncChromeSettings();
-    setStopwatchState(false);
-    setActive(state.currentMain);
-    syncThemeSetting();
-    window.requestAnimationFrame(function () {
-      renderCurrent({ initial: true, autoplay: true, force: true });
+    setActiveCue(state.cueIndex, { hash: false });
+    applyThemeDom(themeById(effectiveTheme()));
+    hidePreview();
+    nextFrame(function () {
+      seekToCue(state.cueIndex, { initial: true, play: true, hash: false });
     });
   }
 

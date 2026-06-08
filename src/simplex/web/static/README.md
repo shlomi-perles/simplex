@@ -8,15 +8,15 @@ Vendored runtime assets, copied verbatim to `site/static/` at build time.
   notes typography, Tufte sidenotes, citations, bibliography).
 - `tailwind.input.css` -- Tailwind v4 source (CSS-first config + `@source`
   globs). Compiled to `tailwind.css` by `simplex.web.vendor`.
-- `viewer.js`, `notes.js` -- parent-page bridge for the deck iframe + carousel
-  arrows, and the standalone notes view.
+- `viewer.js`, `notes.js` -- parent-owned timeline player, carousel arrows,
+  and notes helpers.
 
 ## Vendored for builds (generated before release, ignored in git)
 
 - `tailwind.css` (compiled from `tailwind.input.css` by the Tailwind v4
   standalone CLI; binary cached per-user, CSS shipped in the wheel)
 - `katex/` (CSS + fonts + JS + auto-render)
-- `reveal.js/` (`reveal.js`, `reveal.css`, `reset.css`)
+- `shaka/` (compiled Shaka Player for HLS/CMAF playback)
 - `htmx.min.js` (optional, kept for future progressive enhancement)
 - `fonts/lato/` -- Lato 400/700/900 + italics (UI + headings)
 - `fonts/merriweather/` -- Merriweather 400/700/900 + italics (body notes)

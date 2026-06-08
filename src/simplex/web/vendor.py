@@ -1,4 +1,4 @@
-"""Fetch vendored runtime assets (tailwind, katex, reveal.js, fonts) into the
+"""Fetch vendored runtime assets (tailwind, katex, shaka, fonts) into the
 package static dir.
 
 Pinned versions are intentional so builds are reproducible. This is the
@@ -23,6 +23,7 @@ typography stack.
 
 import os
 import platform
+import shutil
 import stat
 import subprocess
 import warnings
@@ -32,21 +33,19 @@ from urllib.request import Request, urlopen
 
 TAILWIND_VER = "4.3.0"
 KATEX_VER = "0.16.11"
-REVEAL_VER = "5.1.0"
 HTMX_VER = "1.9.12"
 LATO_VER = "5.0.18"
 MERRIWEATHER_VER = "5.0.13"
 LUCIDE_VER = "1.16.0"
+SHAKA_VER = "5.1.4"
 
 _UNPKG = "https://unpkg.com"
 _JSDELIVR = "https://cdn.jsdelivr.net/npm"
 _TAILWIND_RELEASES = "https://github.com/tailwindlabs/tailwindcss/releases/download"
 
 _STALE_PATHS = (
-    # Reveal's `black.css` theme used to live here; it `@import`s
-    # `fonts/source-sans-pro/source-sans-pro.css` which we don't vendor,
-    # producing a 404. The inline <style> block in revealjs.html.j2 supplies
-    # every visual we need, so we no longer ship a theme file at all.
+    # RevealJS was part of the old source-swap export path.
+    "reveal.js",
     "reveal.js/theme/simplex.css",
     # Tailwind Play CDN runtime (v3). Replaced by a precompiled tailwind.css
     # produced from the v4 standalone CLI; keep the cleanup so upgrades from
@@ -92,11 +91,12 @@ def _assets() -> tuple[tuple[str, str], ...]:
             f"{_UNPKG}/katex@{KATEX_VER}/dist/contrib/auto-render.min.js",
             "katex/auto-render.min.js",
         ),
-        (f"{_UNPKG}/reveal.js@{REVEAL_VER}/dist/reveal.js", "reveal.js/reveal.js"),
-        (f"{_UNPKG}/reveal.js@{REVEAL_VER}/dist/reveal.css", "reveal.js/reveal.css"),
-        (f"{_UNPKG}/reveal.js@{REVEAL_VER}/dist/reset.css", "reveal.js/reset.css"),
         (f"{_UNPKG}/htmx.org@{HTMX_VER}/dist/htmx.min.js", "htmx.min.js"),
         (f"{_UNPKG}/lucide@{LUCIDE_VER}/dist/umd/lucide.min.js", "lucide/lucide.min.js"),
+        (
+            f"{_UNPKG}/shaka-player@{SHAKA_VER}/dist/shaka-player.compiled.js",
+            "shaka/shaka-player.compiled.js",
+        ),
     ]
     items.extend(
         (f"{_UNPKG}/katex@{KATEX_VER}/dist/fonts/{f}", f"katex/fonts/{f}") for f in _KATEX_FONTS
@@ -209,7 +209,9 @@ def ensure(static_dir: Path) -> list[Path]:
     """
     for rel in _STALE_PATHS:
         stale = static_dir / rel
-        if stale.exists():
+        if stale.is_dir():
+            shutil.rmtree(stale)
+        elif stale.exists():
             stale.unlink()
     fetched: list[Path] = []
     failed: list[str] = []

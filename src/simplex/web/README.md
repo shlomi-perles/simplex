@@ -20,8 +20,9 @@ notes pipeline (markdown + math + citations + Tufte sidenotes).
   id="thm:first">` blocks; resolve `\ref{}` / `\autoref{}` placeholders to
   the display label.
 - `builder.build(decks_dir, site_dir, *, render=True, site_cfg=None, only=(), scenes=(), watch=False)`
-  -- discover -> render -> pdf -> reconcile -> thumbnail -> notes ->
-  emit per-deck `slides.html` + page + per-section pages + home.
+  -- discover -> render scene units -> compose/package timelines -> generate
+  cue assets and exports -> notes -> emit per-deck page, manifest,
+  per-section pages, and home.
 
 ## Notes and dates
 
@@ -35,7 +36,7 @@ notes pipeline (markdown + math + citations + Tufte sidenotes).
 
 ## Don't
 
-- Don't bundle JS or load CDNs. Tailwind / KaTeX / RevealJS / Lato /
+- Don't bundle JS or load CDNs. Tailwind / KaTeX / Shaka Player / Lato /
   Merriweather are vendored under `static/` (see `static/README.md`).
 - Don't hand-edit anything under `site/`. Edit templates / CSS instead.
 - Don't import Jinja templates as Python modules. Loaded via
