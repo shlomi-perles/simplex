@@ -1,6 +1,13 @@
-"""SimplexSectionType -- string values, is_main/is_sub/is_loop/is_skip predicates."""
+"""CueKind plus transitional SimplexSectionType predicates."""
 
-from simplex.section import SimplexSectionType
+from simplex.section import CueKind, SimplexSectionType
+
+
+def test_cue_kind_values() -> None:
+    assert CueKind.SLIDE.value == "slide"
+    assert CueKind.FRAGMENT.is_fragment
+    assert CueKind.LOOP.is_loop
+    assert CueKind.SKIP.is_skip
 
 
 def test_main_values_start_with_simplex_main() -> None:
@@ -50,7 +57,7 @@ def test_round_trips_through_str() -> None:
 
 
 def test_module_imports_without_manim_in_clean_subprocess() -> None:
-    """The reconcile / web pipelines rely on this module being Manim-free.
+    """Render and web pipelines rely on this module being Manim-free.
 
     Verified in a clean Python subprocess so other tests' imports don't
     pollute sys.modules. ``manim`` must not appear after importing

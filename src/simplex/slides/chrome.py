@@ -1,9 +1,8 @@
 """``make_chrome`` -- header / footer factory for ``Slide``.
 
-Authors register ``chrome.mobjects`` on the manim-slides canvas and add them
-to the scene. The canvas registration keeps manim-slides metadata in sync;
-adding them makes the mobjects actually render and lets ``clear_scene``
-animate them like any other scene content.
+Authors add ``chrome.mobjects`` to the scene. ``SimplexScene.add_to_canvas``
+also stores a named mapping for callers that want to inspect header/footer
+objects.
 
 ``make_chrome`` is a *pure* factory: it doesn't mutate its ``region``
 argument. It returns a :class:`Chrome` ``NamedTuple`` carrying both the
@@ -11,8 +10,8 @@ mobjects for the canvas and a fresh, shrunk ``Region`` for the body.
 
 The actual buff distances (header gap, footer gap) live in
 ``Theme.spacing`` so themes can tune them deck-wide. Slide numbering and
-clock are presentation chrome, not rendered chrome — they live in the
-RevealJS template / web settings (see ``simplex.web``).
+clock are presentation chrome, not rendered chrome; they live in the web
+player shell and web settings (see ``simplex.web``).
 """
 
 from typing import Any, NamedTuple

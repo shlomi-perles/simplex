@@ -22,6 +22,8 @@ _EXPORTS: dict[str, str] = {
     "BaseSlide": "simplex.slides",
     "Caption": "simplex.engine.text",
     "Chrome": "simplex.slides",
+    "Cue": "simplex.manifest",
+    "CueKind": "simplex.section",
     "DN": "simplex.engine.dynamics",
     "DeckManifest": "simplex.manifest",
     "DeckConfig": "simplex.deck",
@@ -30,7 +32,6 @@ _EXPORTS: dict[str, str] = {
     "ExitAnim": "simplex.engine",
     "GhostSlideFade": "simplex.engine.ghost_fade",
     "HighlightResult": "simplex.engine",
-    "MainSlide": "simplex.manifest",
     "Node": "simplex.mobjects",
     "OutlinePart": "simplex.slides",
     "OutlineProgressBar": "simplex.mobjects",
@@ -46,7 +47,8 @@ _EXPORTS: dict[str, str] = {
     "Sphere": "simplex.mobjects",
     "Slide": "simplex.slides",
     "SimplexSectionType": "simplex.section",
-    "Subsection": "simplex.manifest",
+    "SimplexScene": "simplex.slides",
+    "SimplexThreeDScene": "simplex.slides",
     "TexPage": "simplex.engine.text",
     "ThreeDSlide": "simplex.slides",
     "TransformByGlyphMap": "simplex.engine.glyph_map",
@@ -137,7 +139,7 @@ if TYPE_CHECKING:
         munits_per_cm,
         search_shape_in_text,
     )
-    from simplex.manifest import DeckManifest, MainSlide, Subsection
+    from simplex.manifest import Cue, DeckManifest
     from simplex.mobjects import (
         Array,
         ArrayCell,
@@ -157,12 +159,14 @@ if TYPE_CHECKING:
         Sphere,
         colorize_surface,
     )
-    from simplex.section import SimplexSectionType
+    from simplex.section import CueKind, SimplexSectionType
     from simplex.slides import (
         BaseSlide,
         Chrome,
         OutlinePart,
         OutlineScene,
+        SimplexScene,
+        SimplexThreeDScene,
         Slide,
         ThreeDSlide,
         make_chrome,

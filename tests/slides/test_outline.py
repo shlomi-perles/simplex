@@ -5,7 +5,6 @@ from typing import Any, cast
 import pytest
 
 pytest.importorskip("manim")
-pytest.importorskip("manim_slides")
 
 import numpy as np
 from manim import (

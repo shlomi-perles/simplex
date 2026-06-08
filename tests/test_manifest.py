@@ -1,134 +1,95 @@
-"""DeckManifest schema -- construction, frozen-ness, helpers, JSON round-trip."""
-
-from pathlib import Path
+"""Manifest v2 schema helpers and validation."""
 
 import pytest
 from pydantic import ValidationError
 
-from simplex.manifest import DeckManifest, MainSlide, Subsection
-from simplex.section import SimplexSectionType
+from simplex.manifest import Cue, DeckInfo, DeckManifest, ThemeMedia, ThemeTimeline
+from simplex.section import CueKind
 
 
-def test_empty_manifest_for_slug() -> None:
-    m = DeckManifest.empty("dijkstra")
-    assert m.deck_slug == "dijkstra"
-    assert m.main_slides == ()
-    assert m.slide_count == 0
-    assert m.total_duration_s == 0.0
-
-
-def test_subsection_loop_skip_inherit_from_section_type() -> None:
-    s = Subsection(name="x", section_type=SimplexSectionType.SUB_LOOP, duration_s=1.0)
-    assert s.is_loop
-    assert not s.is_skip
-
-
-def test_main_slide_duration_sums_subsections() -> None:
-    main = MainSlide(
-        index=0,
-        scene="Intro",
-        name="Hello",
-        section_type=SimplexSectionType.MAIN,
-        subsections=(
-            Subsection(name="a", section_type=SimplexSectionType.SUB, duration_s=1.5),
-            Subsection(name="b", section_type=SimplexSectionType.SUB, duration_s=2.5),
-        ),
+def _cue(cue_id: str, ordinal: int, start_frame: int, end_frame: int) -> Cue:
+    return Cue(
+        id=cue_id,
+        ordinal=ordinal,
+        kind=CueKind.SLIDE,
+        title=cue_id.title(),
+        unit="slides.intro:Intro",
+        start_frame=start_frame,
+        end_frame=end_frame,
+        start=start_frame / 60,
+        end=end_frame / 60,
     )
-    assert main.duration_s == pytest.approx(4.0)
-    assert main.subsection_count == 2
 
 
-def test_deck_manifest_total_duration_sums_mains() -> None:
+def test_empty_manifest_is_schema_v2() -> None:
+    manifest = DeckManifest.empty("demo", "Demo")
+    assert manifest.schema_version == 2
+    assert manifest.deck_slug == "demo"
+    assert manifest.slide_count == 0
+
+
+def test_manifest_counts_only_slide_cues() -> None:
     manifest = DeckManifest(
-        deck_slug="d",
-        main_slides=(
-            MainSlide(
-                index=0,
-                scene="S",
-                name="A",
-                section_type=SimplexSectionType.MAIN,
-                subsections=(
-                    Subsection(name="a", section_type=SimplexSectionType.SUB, duration_s=1.0),
-                ),
-            ),
-            MainSlide(
-                index=1,
-                scene="S",
-                name="B",
-                section_type=SimplexSectionType.MAIN,
-                subsections=(
-                    Subsection(name="b", section_type=SimplexSectionType.SUB, duration_s=2.0),
-                ),
+        deck=DeckInfo(slug="demo", title="Demo"),
+        generated_at="2026-06-08T12:00:00+00:00",
+        fps=60,
+        duration=2.0,
+        cues=(
+            _cue("intro", 1, 0, 60),
+            _cue("detail", 2, 60, 120).model_copy(update={"kind": CueKind.FRAGMENT}),
+        ),
+        themes=(
+            ThemeTimeline(
+                id="dark",
+                label="Dark",
+                strategy="rendered",
+                duration=2.0,
+                media=ThemeMedia(hls="media/dark/hls/master.m3u8", mp4="media/dark/lecture.mp4"),
             ),
         ),
     )
-    assert manifest.total_duration_s == pytest.approx(3.0)
-    assert manifest.slide_count == 2
+    assert manifest.slide_count == 1
+    assert manifest.find("detail") is not None
+    assert manifest.theme("dark") is not None
 
 
-def test_find_returns_main_by_name() -> None:
+def test_duplicate_cue_ids_are_rejected() -> None:
+    with pytest.raises(ValidationError, match="duplicate cue id"):
+        DeckManifest(
+            deck=DeckInfo(slug="demo", title="Demo"),
+            generated_at="2026-06-08T12:00:00+00:00",
+            fps=60,
+            duration=2.0,
+            cues=(_cue("intro", 1, 0, 60), _cue("intro", 2, 60, 120)),
+        )
+
+
+def test_css_filter_fallback_requires_source_theme() -> None:
+    with pytest.raises(ValidationError, match="source_theme"):
+        ThemeTimeline(
+            id="light",
+            label="Light",
+            strategy="css_filter_fallback",
+            media=ThemeMedia(mp4="media/dark/lecture.mp4"),
+        )
+
+
+def test_json_round_trip() -> None:
     manifest = DeckManifest(
-        deck_slug="d",
-        main_slides=(
-            MainSlide(index=0, scene="S", name="Theorem", section_type=SimplexSectionType.MAIN),
-            MainSlide(index=1, scene="S", name="Proof", section_type=SimplexSectionType.MAIN),
-        ),
-    )
-    found = manifest.find("Proof")
-    assert found is not None
-    assert found.index == 1
-
-
-def test_find_returns_none_for_missing_name() -> None:
-    manifest = DeckManifest.empty("d")
-    assert manifest.find("Nope") is None
-
-
-def test_at_index() -> None:
-    main = MainSlide(index=0, scene="S", name="A", section_type=SimplexSectionType.MAIN)
-    manifest = DeckManifest(deck_slug="d", main_slides=(main,))
-    assert manifest.at(0) is main
-
-
-def test_at_index_out_of_range() -> None:
-    manifest = DeckManifest.empty("d")
-    with pytest.raises(IndexError):
-        manifest.at(0)
-
-
-def test_frozen_models_reject_mutation() -> None:
-    manifest = DeckManifest.empty("d")
-    with pytest.raises(ValidationError):
-        manifest.deck_slug = "other"  # type: ignore[misc]
-
-
-def test_json_round_trip_preserves_paths_and_enums() -> None:
-    manifest = DeckManifest(
-        deck_slug="d",
-        main_slides=(
-            MainSlide(
-                index=0,
-                scene="S",
-                name="A",
-                section_type=SimplexSectionType.MAIN,
-                thumbnail=Path("media/thumbs/a.png"),
-                subsections=(
-                    Subsection(
-                        name="a",
-                        section_type=SimplexSectionType.SUB,
-                        video=Path("media/videos/a.mp4"),
-                        duration_s=1.5,
-                    ),
-                ),
+        deck=DeckInfo(slug="demo", title="Demo"),
+        generated_at="2026-06-08T12:00:00+00:00",
+        fps=60,
+        duration=1.0,
+        cues=(_cue("intro", 1, 0, 60),),
+        themes=(
+            ThemeTimeline(
+                id="dark",
+                label="Dark",
+                strategy="rendered",
+                duration=1.0,
+                media=ThemeMedia(mp4="media/dark/lecture.mp4"),
             ),
         ),
     )
-    blob = manifest.model_dump_json()
-    revived = DeckManifest.model_validate_json(blob)
+    revived = DeckManifest.model_validate_json(manifest.to_public_json())
     assert revived == manifest
-    assert revived.main_slides[0].thumbnail == Path("media/thumbs/a.png")
-    assert revived.main_slides[0].subsections[0].section_type is SimplexSectionType.SUB
-
-
-def test_schema_version_default() -> None:
-    assert DeckManifest.empty("d").schema_version == 1
