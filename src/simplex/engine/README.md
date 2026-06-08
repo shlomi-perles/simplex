@@ -16,8 +16,8 @@ adaptations belong in `simplex.mobjects`, not in engine helpers.
 
 Cross-package types live one level up:
 
-- `simplex.section.SimplexSectionType` -- enum encoded into Manim's section JSON
-- `simplex.manifest.DeckManifest` / `MainSlide` / `Subsection` -- web builder contract
+- `simplex.section.CueKind` -- timeline cue kinds recorded by Simplex scenes
+- `simplex.manifest.DeckManifest` / `Cue` -- manifest schema v2 playback contract
 
 ## Submodules (import directly to keep `simplex.engine` cheap)
 

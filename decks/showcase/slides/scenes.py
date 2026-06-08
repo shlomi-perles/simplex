@@ -1,11 +1,11 @@
 """Showcase deck -- exercises every Simplex-specific helper end-to-end.
 
 Each scene targets one module so a reader can correlate the output with the
-source. The first ``self.next_slide()`` call in each scene is bare and
-auto-promotes to a main slide named after the class
-(``DFSLecture -> "DFS Lecture"``); subsequent bare calls are sub-stops.
+source. Most scenes still use the thin ``self.next_slide()`` cue alias so the
+showcase can demonstrate older helpers, but new scenes should prefer explicit
+``self.slide(...)`` and ``self.fragment(...)`` markers.
 
-Slide numbering and the wall clock live in the RevealJS host. The showcase
+Slide numbering and the wall clock live in the web player shell. The showcase
 renders only content chrome: a top helper title plus the Simplex logo footer.
 Toggle the clock or counter from ``[web]`` in ``deck.toml``.
 """

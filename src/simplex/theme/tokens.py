@@ -88,7 +88,7 @@ class LatexProfile(BaseModel):
 
 
 class WebPalette(BaseModel):
-    """CSS variables for the generated portal + RevealJS deck pages.
+    """CSS variables for the generated portal and deck player pages.
 
     Each field maps to a ``--simplex-*`` CSS custom property emitted by
     ``simplex.theme.web_css.render_web_css``. Decks override individual

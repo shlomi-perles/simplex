@@ -31,12 +31,12 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 - Body-sized prose uses plain `manim.Tex`. The plugin's `apply_theme_defaults` sets the body `font_size` and `color` so `Tex(...)` already matches what the old `BodyText` produced.
 - `region.place(mob, anchor, buff=...)` accepts a Manim direction vector (`UP`, `DR`, `ORIGIN`, ...) -- string anchors raise `ValueError`.
 - `region.split_regions(axis, k)` returns `k` sub-regions strung along `axis` (e.g. `RIGHT` → left-to-right). Each piece keeps the perpendicular extent and gets `1/k` of the axis extent; their union is the original.
-- Slide numbering and the wall clock live in the RevealJS host (toggle via `[web] show_slide_number` / `show_clock` in `deck.toml`). They are not drawn into each frame, so toggling them does not invalidate the manim cache.
+- Slide numbering and the wall clock live in the web player shell (toggle via `[web] show_slide_number` / `show_clock` in `deck.toml`). They are not drawn into each frame, so toggling them does not invalidate the Manim cache.
 - The MF-Tools-derived helpers deliberately drop everything Manim 0.20.x already ships -- `ValueTracker` arithmetic operators, `index_labels`, `ConvexHull`, `Polygon.round_corners`, `Union`, `BraceLabel`/`BraceText`, `Mobject.always`, `manim.utils.space_ops.normalize` / `angle_of_vector` / `rotate_vector`, and `manim.constants.QUALITIES` all stay native. We only add what isn't already there.
 - `TransformByGlyphMap` falls back to a `show_indices` mode if the leftover glyph counts don't line up -- pass an empty `glyph_map` (or `show_indices=True`) to see the index labels and write the right map.
 - `VT` only adds `~vt`, `vt @ x`, `vt @= x`. The `+`, `-`, `*`, `/`, `**` operators are inherited from `ValueTracker` (added in Manim 0.19.1).
 - `DN(callable_or_VT, ...)` attaches an `add_updater`, NOT `Mobject.always` -- the latter would snapshot the value once at attach time (a documented Manim gotcha).
-- The auto-promoted `next_slide()` name (when the first call is bare) splits PascalCase boundaries (`DFSLecture` → `"DFS Lecture"`).
+- Prefer `self.slide(title="...")` and `self.fragment(title="...")`; Simplex derives stable cue ids from the main slide title and number. The older `next_slide()` helper is now only a thin Simplex cue alias.
 
 ## Callout references
 

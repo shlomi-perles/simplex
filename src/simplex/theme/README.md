@@ -11,7 +11,7 @@ palette) plus a ContextVar-based active-theme registry.
 - `get_active_theme()` -- read the current theme (falls back to `SIMPLEX_DARK`)
 - `resolve_palette(name)`, `available_palette_names()` -- resolve Manim/iTerm palette data
 - `presets.get(name)`, `presets.available_names()` -- resolve built-in and repo-local themes
-- `render_web_css(palette, code_style=None)` -- emits a `:root { --simplex-* }` block for the portal and RevealJS pages; code colors come from the Pygments style
+- `render_web_css(palette, code_style=None)` -- emits a `:root { --simplex-* }` block for the portal and deck player pages; code colors come from the Pygments style
 - `studio.write_studio(...)` -- generate the packaged Theme Studio HTML
 - `pygments_style.SimplexPycharm`, `pygments_style.SimplexSolarizedLight`, `register_style(...)`
 

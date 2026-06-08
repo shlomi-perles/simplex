@@ -18,13 +18,11 @@ uv run manim -pql examples/glyph_map_demo.py GlyphMapDemo
 The `-pql` flag previews at low quality. Use `-pqh` for 1080p, `-qk` for
 4K render-only.
 
-## With manim-slides
-
-To render as a slide deck (uses the `Slide` base class):
+## Deck Playback
 
 ```bash
-uv run manim-slides render examples/hello_slide.py HelloSlide
-uv run manim-slides present HelloSlide
+uv run simplex build --only showcase
+uv run simplex serve
 ```
 
 The plugin auto-activates via the `manim.plugins` entry-point as long as a

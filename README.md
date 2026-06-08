@@ -12,27 +12,33 @@ namespace, `simplex`, with:
 
 - a Manim plugin (`plugins = simplex`);
 - theme tokens, mobjects, layout regions, slide bases, and animation helpers;
-- a deck manifest schema and render reconciliation pipeline;
+- a timeline manifest schema and render/package pipeline;
 - the `simplex` CLI for deck scaffolding, rendering, site building, serving,
   testing, and diagnostics;
 - a static lecture portal with notes, citations, math rendering, thumbnails,
-  RevealJS playback, and GitHub Pages-friendly output.
+  Shaka-backed HLS playback, MP4 fallback, and GitHub Pages-friendly output.
 
 The CLI and plugin intentionally live in one distribution so consumers only
 depend on `manim-simplex`.
+
+## Playback Architecture
+
+Simplex uses a continuous timeline player: render scene units independently,
+compose one lecture timeline per theme, package HLS/CMAF plus MP4 fallback,
+and navigate by seeking to cue timestamps instead of swapping per-slide videos.
 
 ## Requirements
 
 - Python 3.13+
 - Manim Community 0.20.1+
-- manim-slides 5.1.7+
-- FFmpeg, Cairo, Pango, and a TeX distribution when rendering TeX. See the
+- Cairo, Pango, and a TeX distribution when rendering TeX. FFmpeg is optional
+  as a packaging fallback. See the
   Manim installation guide: https://docs.manim.community/en/stable/installation.html
 
 Typical system packages:
 
 ```bash
-sudo apt-get install texlive-latex-extra texlive-fonts-recommended texlive-science ffmpeg \
+sudo apt-get install texlive-latex-extra texlive-fonts-recommended texlive-science \
                      libcairo2-dev libpango1.0-dev
 ```
 
@@ -69,13 +75,13 @@ Enable the plugin in a project-level `manim.cfg`:
 [CLI]
 plugins = simplex
 quality = high_quality
-save_sections = True
 ```
 
 Manim imports `simplex.plugin` through the `manim.plugins` entry point. The
 plugin applies the active Simplex theme to Manim defaults, registers Pygments
-styles, sets the TeX template, sets the background color, and enables section
-JSON output.
+styles, sets the TeX template, and sets the background color. Simplex records
+cue timing directly from `Scene.time`; Manim section output remains at Manim's
+default unless you explicitly enable it for debugging.
 
 When rendering a Simplex deck, the runner looks for `manim.cfg` in the lecture
 project root and also in the deck directory. If both exist, Simplex passes
@@ -88,26 +94,25 @@ for one-off renders.
 ```python
 from manim import ORIGIN, MathTex, Write
 
-from simplex import Slide
+from simplex import SimplexScene
 
 
-class HelloSlide(Slide):
+class HelloSlide(SimplexScene):
     def setup(self) -> None:
         super().setup()
         self.setup_chrome(header="Hello, Simplex")
 
     def construct(self) -> None:
+        self.slide(title="Hello, Simplex")
         eq = MathTex(r"e^{i\pi} + 1 = 0")
         self.region.place(eq, ORIGIN)
         self.play(Write(eq))
-        self.next_slide()
 ```
 
-Render as a slide deck:
+Render a standalone scene:
 
 ```bash
-uv run manim-slides render path/to/scene.py HelloSlide
-uv run manim-slides present HelloSlide
+uv run manim -pql path/to/scene.py HelloSlide
 ```
 
 Or create a lecture-site deck and build the portal:
@@ -124,13 +129,13 @@ uv run simplex serve
 | Module | Public surface |
 | --- | --- |
 | `simplex.plugin` | `activate()` entry point used by Manim. |
-| `simplex.slides` | `Slide`, `ThreeDSlide`, `OutlineScene`, `OutlinePart`, `Chrome`, `make_chrome`. |
+| `simplex.slides` | `SimplexScene`, `SimplexThreeDScene`, `Slide`, `ThreeDSlide`, `OutlineScene`, `OutlinePart`, `Chrome`, `make_chrome`. |
 | `simplex.engine` | `Region`, `ExitAnim`, `clear_scene`, `exit_for`, `register_exit`, `set_exit_animation`, `HighlightResult`, `apply_theme_defaults`. |
 | `simplex.mobjects` | `Node`, `Edge`, `ArrayMob`, `ArrayEntry`, `ArrayPointer`, `OutlineProgressBar`, `Paper`, `ShowPaper`, `DismissPaper`, `PickPage`, `Sphere`, `OpenGLSphere`, `ScalarFieldSurface`, `ColorBar`. |
 | `simplex.theme` | `Theme`, `Palette`, `Typography`, `Spacing`, `Motion`, `LatexProfile`, `WebPalette`, `active_theme`, `get_active_theme`, `presets`, `resolve_palette`, `available_palette_names`, `render_web_css`. |
-| `simplex.manifest` | `DeckManifest`, `MainSlide`, `Subsection`, the manifest schema written by the render pipeline. |
+| `simplex.manifest` | `DeckManifest`, `Cue`, `ThemeTimeline`, and the schema v2 playback contract. |
 | `simplex.deck` | `DeckConfig`, `discover`, `scaffold`, section metadata, bundled deck template. |
-| `simplex.render` | Manim runner, manifest reconciliation, thumbnails, HTML, PDF, PPTX, notes PDF, filenames. |
+| `simplex.render` | Manim runner, timeline composition, HLS/MP4 packaging, cue images, PDF, PPTX, notes PDF, filenames. |
 | `simplex.web` | Portal builder, notes renderer, citations, refs, templates, static assets, live reload. |
 | `simplex.cli` | Typer application installed as the `simplex` command. |
 
@@ -144,7 +149,7 @@ uv run simplex serve
 | `simplex render <slug>` | Render one deck into `site/decks/<slug>/`. |
 | `simplex render <slug>::<Scene>` | Render one scene from a deck. |
 | `simplex render <slug> --slide-theme light` | Render only one true slide theme for a deck. |
-| `simplex render <slug> --disable_caching` | Forward Manim render flags to `manim-slides render`. |
+| `simplex render <slug> --disable_caching` | Forward Manim render flags to Manim. |
 | `simplex build` | Render decks and build the static portal under `site/`. |
 | `simplex build --disable_caching` | Forward Manim render flags to every deck render. |
 | `simplex build --no-render` | Rebuild portal HTML from existing render output. |
@@ -153,7 +158,7 @@ uv run simplex serve
 | `simplex test --slide-theme dark` | Smoke-render decks by rendering only the first animation. |
 | `simplex theme-studio` | Generate and open the palette/code-style editor. |
 | `simplex clean` | Remove generated `site/` and `media/` output. |
-| `simplex doctor` | Check required binaries on `PATH`. |
+| `simplex doctor` | Check required binaries, PyAV packaging, and optional fallbacks. |
 
 ## Deck Layout
 
@@ -337,7 +342,7 @@ Simplex resolves those objects from the actual render role (`dark` or
 Simplex style, a Pygments style name, or a custom style exported into
 `simplex_themes/code_styles/`.
 
-`web_palette` controls generated HTML/RevealJS shell colors. Decks can still
+`web_palette` controls generated HTML/player shell colors. Decks can still
 override those shell colors with `[web] background`, `[web] text_primary`,
 `[web] accent`, etc. Markdown notes code blocks are separate and default to
 `SimplexSolarizedLight`; override them per deck with:

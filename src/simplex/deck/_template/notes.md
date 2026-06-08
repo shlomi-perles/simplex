@@ -2,7 +2,7 @@
 
 This deck is a starting point. Replace the contents of `slides/` and fill these notes.
 
-Refer to a slide label inline with `[slide:key-idea]` to add a clickable jump link: [slide:key-idea].
+Refer to a slide label inline with `[slide:a-second-slide]` to add a clickable jump link: [slide:a-second-slide].
 
 Add a sidenote with the `^[...]` syntax — it floats into the right margin on wide screens.^[Sidenotes are Tufte-style: a numbered reference inline, the body in the gutter; narrow viewports open a bottom-sheet note on click.]
 

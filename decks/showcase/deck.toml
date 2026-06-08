@@ -27,7 +27,7 @@ default = "dark"
 enabled = true
 light = "simplex_light"
 
-# Slide chrome lives in the RevealJS host, not the rendered frames.
+# Slide chrome lives in the web player shell, not the rendered frames.
 # Toggling these on costs nothing -- no re-render needed.
 [web]
 show_clock = true

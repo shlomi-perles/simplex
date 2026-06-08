@@ -2,7 +2,7 @@
 
 Consumed by two surfaces:
 - the portal `<head>` (homepage cards + section pages)
-- per-deck RevealJS HTML `<head>` (slide chrome, captions)
+- per-deck player HTML `<head>` (slide chrome, captions)
 
 This module intentionally emits custom properties only. Surface-specific
 stylesheets decide where those values apply, so a deck palette cannot
