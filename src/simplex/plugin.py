@@ -24,7 +24,7 @@ Theme selection priority:
    same interpreter).
 2. ``SIMPLEX_THEME`` / ``SIMPLEX_THEME_VARIANT`` environment variables -- the
    resolved Simplex theme name and true dark/light role propagated across the
-   ``manim-slides render`` subprocess by ``simplex.render.runner``.
+   Manim render subprocess by ``simplex.render.runner``.
 3. ``SIMPLEX_DARK`` -- the package default.
 """
 
@@ -71,13 +71,6 @@ def activate() -> None:
     from simplex.theme.context import set_default_theme
     from simplex.theme.pygments_style import register_all_builtin_styles
 
-    # Make manim-slides' slide concatenation deterministic (see module). Safe
-    # no-op when manim-slides isn't in use or its internals don't match.
-    with suppress(Exception):
-        from simplex.render._manim_slides_patch import install as _install_ms_patch
-
-        _install_ms_patch()
-
     theme = _resolve_theme()
     set_default_theme(theme)
     apply_theme_defaults(theme)
@@ -87,7 +80,6 @@ def activate() -> None:
         install_opengl_sphere()
     manim.config.tex_template = theme.latex.as_tex_template()
     manim.config.background_color = theme.palette.background
-    manim.config.save_sections = True
     register_all_builtin_styles()
 
 
