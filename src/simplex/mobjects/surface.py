@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from manim.opengl import OpenGLMobject
 
 import numpy as np
+import numpy.typing as npt
 from manim import (
     BLUE,
     GREEN,
@@ -45,6 +46,8 @@ type _ScalarResult = float | int | np.ndarray
 type _ScalarFunc2D = Callable[[_ScalarInput, _ScalarInput], _ScalarResult]
 type _ScalarFunc3D = Callable[[_ScalarInput, _ScalarInput, _ScalarInput], _ScalarResult]
 type _ScalarFunc = _ScalarFunc2D | _ScalarFunc3D
+type _SurfacePoint = Point3DLike | npt.NDArray[np.float64]
+type _SurfaceFunc = Callable[[float, float], _SurfacePoint]
 
 __all__ = [
     "ColorBar",
@@ -213,7 +216,7 @@ class ScalarFieldSurface(OpenGLSurface):
 
     def __init__(
         self,
-        uv_func: _ScalarFunc | None = None,
+        uv_func: _SurfaceFunc | None = None,
         *,
         color_func: _ScalarFunc | str | None = None,
         colormap: str | Sequence[ParsableManimColor] = (BLUE, GREEN, YELLOW, RED),

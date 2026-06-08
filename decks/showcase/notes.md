@@ -8,7 +8,7 @@ vanilla Manim. Each scene targets one module; read alongside the matching
 
 | Scene | Module | Helpers |
 |-------|--------|---------|
-| `TextHelpers` | `engine.text` | `Tex` body defaults, `Caption`, `TexPage` (`page_width`, `buff`, `math_spacing`, `equation(n)`), `color_tex` |
+| `TextHelpers` | `engine.text` | `Tex` body defaults, `Caption`, `TexPage` (`page_width`, `buff`, `math_spacing`, `equation(n)`), `color_substrings` |
 | `CodeHelpers` | `engine.code` | `code_block`, `highlight_code_lines`, `code_explain`, `transform_code_lines` |
 | `CodeWithMath` | `engine.code` | `code_with_math` -- inline LaTeX (`$...$`) in pseudocode, with `bold_math` + `math_color` styling |
 | `PseudocodeBlock` | `engine.code` | `pseudocode_block` -- algorithm2e LaTeX rendered as a `Code` object with numbered `code_lines` |

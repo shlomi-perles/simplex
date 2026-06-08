@@ -1,4 +1,4 @@
-"""Semantic Tex variants and a shape-matching color helper.
+"""Semantic Tex/Text variants and a shape-matching color helper.
 
 Classes (``Caption``, ``TexPage``) inherit from :class:`manim.Tex` so users
 get ``isinstance`` checks, per-class ``set_default(...)``, and the rest of
@@ -14,12 +14,22 @@ frame units so long prose fits inside a region.
 
 import functools
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from numbers import Real
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar
 
 import numpy as np
-from manim import DEFAULT_FONT_SIZE, LARGE_BUFF, MathTex, Tex, TransformMatchingShapes, VMobject
+from manim import (
+    DEFAULT_FONT_SIZE,
+    LARGE_BUFF,
+    MathTex,
+    Mobject,
+    Tex,
+    Text,
+    TransformMatchingShapes,
+    VGroup,
+    VMobject,
+)
 from manim.utils.color import ParsableManimColor
 
 from simplex.engine.region import Region
@@ -32,9 +42,9 @@ type DisplayMathSpacing = (
     | Mapping[str, int | float]
 )
 type PageWidth = int | float | Region
-type _TexLike = Tex | MathTex
-type _TexClass = type[Tex] | type[MathTex]
-type _ProbeCacheKey = tuple[_TexClass, str]
+type _TextLike = Text | Tex | MathTex
+type _TextClass = type[Text] | type[Tex] | type[MathTex]
+type _ProbeCacheKey = tuple[_TextClass, str]
 
 _DISPLAY_MATH_RE = re.compile(r"(\\\[(?:.|\n)*?\\\])", re.DOTALL)
 _DISPLAY_LENGTH_NAMES = (
@@ -43,7 +53,7 @@ _DISPLAY_LENGTH_NAMES = (
     "abovedisplayshortskip",
     "belowdisplayshortskip",
 )
-_PROBE_CACHE: dict[_ProbeCacheKey, _TexLike] = {}
+_PROBE_CACHE: dict[_ProbeCacheKey, _TextLike] = {}
 
 
 def _minipage_env(width_cm: float) -> str:
@@ -218,17 +228,60 @@ class TexPage(Tex):
     @property
     def equations(self) -> tuple[VMobject, ...]:
         """Display math parts isolated from ``\\[...\\]`` blocks."""
-        return tuple(cast(VMobject, self[index]) for index in self.equation_part_indices)
+        return tuple(_require_vmobject(self[index]) for index in self.equation_part_indices)
 
     def equation(self, index: int) -> VMobject:
         """Return the ``index``-th display equation mobject."""
         return self.equations[index]
 
 
-def _flatten_points(parts: list[VMobject]) -> VMobject:
+def _require_vmobject(mobject: Mobject) -> VMobject:
+    if not isinstance(mobject, VMobject):
+        raise TypeError(f"{type(mobject).__name__} is not a VMobject")
+    return mobject
+
+
+def _vmobject_children(mobject: VMobject) -> tuple[VMobject, ...]:
+    return tuple(_require_vmobject(child) for child in mobject.submobjects)
+
+
+def _glyph_lines(mobject: VMobject) -> tuple[tuple[VMobject, ...], ...]:
+    """Return glyph sequences for Tex/MathTex parts and flat Text objects."""
+    children = _vmobject_children(mobject)
+    if not children:
+        return ()
+    if all(len(child.submobjects) == 0 for child in children):
+        return (children,)
+    return tuple(_vmobject_children(child) for child in children)
+
+
+def _flatten_points(parts: Sequence[VMobject]) -> VMobject:
     out = VMobject()
-    out.points = np.concatenate([p.points for p in parts])
+    point_arrays = [p.points for p in parts if len(p.points) > 0]
+    out.points = np.concatenate(point_arrays) if point_arrays else np.empty((0, 3))
     return out
+
+
+def _first_glyph_line(mobject: VMobject) -> tuple[VMobject, ...]:
+    for glyphs in _glyph_lines(mobject):
+        if glyphs:
+            return glyphs
+    return ()
+
+
+def _shape_spans(glyphs: Sequence[VMobject], target_glyphs: Sequence[VMobject]) -> list[slice]:
+    target_len = len(target_glyphs)
+    if target_len == 0:
+        return []
+
+    key = TransformMatchingShapes.get_mobject_key
+    target_key = key(_flatten_points(target_glyphs))
+    hits: list[slice] = []
+    for i in range(len(glyphs) - target_len + 1):
+        window = _flatten_points(glyphs[i : i + target_len])
+        if key(window) == target_key:
+            hits.append(slice(i, i + target_len))
+    return hits
 
 
 def search_shape_in_text(text: VMobject, shape: VMobject) -> list[list[slice]]:
@@ -237,53 +290,61 @@ def search_shape_in_text(text: VMobject, shape: VMobject) -> list[list[slice]]:
     Returns one list of slices per line of ``text``. Useful for selective coloring
     where you don't want to re-render the equation.
     """
-    key = TransformMatchingShapes.get_mobject_key
-    target_len = len(shape.submobjects[0])
-    target_key = key(_flatten_points(list(shape.submobjects[0])))
-    results: list[list[slice]] = []
-    for line in text.submobjects:
-        hits: list[slice] = []
-        glyphs = list(line)
-        for i in range(len(glyphs) - target_len + 1):
-            window = _flatten_points(glyphs[i : i + target_len])
-            if key(window) == target_key:
-                hits.append(slice(i, i + target_len))
-        results.append(hits)
-    return results
+    target_glyphs = _first_glyph_line(shape)
+    return [_shape_spans(glyphs, target_glyphs) for glyphs in _glyph_lines(text)]
 
 
-def _build_probe(tex_class: _TexClass, substring: str) -> _TexLike:
-    key = (tex_class, substring)
+def _build_probe(
+    text_class: _TextClass,
+    substring: str,
+    *,
+    probe_config: Mapping[str, Any] | None,
+) -> _TextLike:
+    if probe_config:
+        return text_class(substring, **dict(probe_config))
+
+    key = (text_class, substring)
     probe = _PROBE_CACHE.get(key)
     if probe is None:
-        probe = tex_class(substring)
+        probe = text_class(substring)
         _PROBE_CACHE[key] = probe
     return probe
 
 
-def _resolve_tex_class(equation: _TexLike) -> _TexClass:
-    return type(equation)
+def _resolve_text_class(mobject: _TextLike) -> _TextClass:
+    return type(mobject)
 
 
-def color_tex[TexLikeT: (Tex, MathTex)](
-    equation: TexLikeT,
-    t2c: Mapping[str, ParsableManimColor],
+def color_substrings[TextLikeT: (Text, Tex, MathTex)](
+    mobject: TextLikeT,
+    colors: Mapping[str, ParsableManimColor],
     *,
-    tex_class: _TexClass | None = None,
-) -> TexLikeT:
-    """Color substrings of a rendered Tex/MathTex by shape-matching probes.
+    probe_class: _TextClass | None = None,
+    probe_config: Mapping[str, Any] | None = None,
+) -> TextLikeT:
+    """Color substrings of rendered Text/Tex/MathTex by shape-matching probes.
 
     Example::
 
         eq = MathTex(r\"a^2 + b^2 = c^2\")
-        color_tex(eq, {\"a\": \"#FF6B6B\", \"b\": \"#4ECDC4\", \"c\": \"#FFD93D\"})
+        color_substrings(eq, {\"a\": \"#FF6B6B\", \"b\": \"#4ECDC4\", \"c\": \"#FFD93D\"})
 
-    Returns ``equation`` so callers can chain.
+    Text probes should use the same font family/weight as the target text.
+    Pass ``probe_config`` for non-default ``Text`` styling.
+
+    Returns ``mobject`` so callers can chain.
     """
-    resolved_tex_class = tex_class if tex_class is not None else _resolve_tex_class(equation)
-    for substring, color in t2c.items():
-        probe = _build_probe(resolved_tex_class, substring)
-        for line_idx, hits in enumerate(search_shape_in_text(equation, probe)):
+    resolved_probe_class = probe_class if probe_class is not None else _resolve_text_class(mobject)
+    glyph_lines = _glyph_lines(mobject)
+    for substring, color in colors.items():
+        probe = _build_probe(
+            resolved_probe_class,
+            substring,
+            probe_config=probe_config,
+        )
+        target_glyphs = _first_glyph_line(probe)
+        for glyphs in glyph_lines:
+            hits = _shape_spans(glyphs, target_glyphs)
             for span in hits:
-                equation[line_idx][span].set_color(color)
-    return equation
+                VGroup(*glyphs[span]).set_color(color)
+    return mobject

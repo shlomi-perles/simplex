@@ -89,7 +89,7 @@ Issues = "https://github.com/shlomi-perles/simplex/issues"
 Repository = "https://github.com/shlomi-perles/simplex"
 
 [tool.basedpyright]
-include = ["src", "tests"]
+include = ["src", "tests", "decks"]
 pythonVersion = "3.13"
 reportMissingTypeStubs = false
 # Tests deliberately exercise private helpers (e.g. `_resolve_section_type`,

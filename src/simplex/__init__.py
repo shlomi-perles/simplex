@@ -61,7 +61,7 @@ _EXPORTS: dict[str, str] = {
     "code_block": "simplex.engine.code",
     "code_explain": "simplex.engine.code",
     "code_with_math": "simplex.engine.code",
-    "color_tex": "simplex.engine.text",
+    "color_substrings": "simplex.engine.text",
     "debug_glyph": "simplex.engine.debug",
     "debug_glyphs": "simplex.engine.debug",
     "discover": "simplex.deck",
@@ -132,7 +132,7 @@ if TYPE_CHECKING:
     from simplex.engine.text import (
         Caption,
         TexPage,
-        color_tex,
+        color_substrings,
         minipage_cm_for_page_width,
         munits_per_cm,
         search_shape_in_text,

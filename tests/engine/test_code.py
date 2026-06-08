@@ -410,7 +410,7 @@ def test_code_explain_string_uses_brace_text_creation_anim() -> None:
 
 def test_code_explain_accepts_mobject_explanation() -> None:
     pytest.importorskip("manim")
-    from manim import RED, Circle, Group
+    from manim import RED, Circle, VGroup, VMobject
 
     from simplex.engine.code import code_block, code_explain
 
@@ -418,7 +418,8 @@ def test_code_explain_accepts_mobject_explanation() -> None:
     label = Circle(radius=0.1, color=RED)
     mob, _ = code_explain(block, lines=[1], explanation=label)
 
-    assert isinstance(mob, Group)
+    assert isinstance(mob, VMobject)
+    assert isinstance(mob, VGroup)
     assert mob[1] is label
     assert label.get_color().to_hex() == RED.to_hex()
     assert label.get_center()[0] > mob[0].get_center()[0]

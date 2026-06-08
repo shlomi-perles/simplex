@@ -11,7 +11,8 @@ Toggle the clock or counter from ``[web]`` in ``deck.toml``.
 """
 
 import math
-from typing import Any, cast
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 from manim import (
@@ -77,7 +78,7 @@ from simplex.engine.ghost_fade import GhostSlideFade
 from simplex.engine.glyph_map import TransformByGlyphMap
 from simplex.engine.region import Region
 from simplex.engine.scaling import scale_to_fit, scale_to_fit_mobject
-from simplex.engine.text import Caption, TexPage, color_tex
+from simplex.engine.text import Caption, TexPage, color_substrings
 from simplex.mobjects import Array, ArrayPointer, Edge, Node
 from simplex.slides import OutlinePart, OutlineScene, Slide
 
@@ -95,7 +96,7 @@ type GlyphGridEntry = tuple[Region, VMobject, VMobject, tuple[GlyphMapSpec, ...]
 class TextHelpers(Slide):
     def setup(self) -> None:
         super().setup()
-        setup_showcase_chrome(self, "engine/text.py -- Tex, Caption, TexPage, color_tex")
+        setup_showcase_chrome(self, "engine/text.py -- Tex, Caption, TexPage, color_substrings")
 
     def construct(self) -> None:
         self.next_slide(name="Custom Slide's name")
@@ -136,7 +137,7 @@ class TextHelpers(Slide):
             page_width=self.region.width * 0.62,
         )
         formula = MathTex(r"a^2 + b^2 = c^2")
-        color_tex(formula, {"a": RED, "b": BLUE, "c": YELLOW})
+        color_substrings(formula, {"a": RED, "b": BLUE, "c": YELLOW})
         region_c.place(narrow, UP)
         self.play(Write(narrow))
         self.next_slide()
@@ -219,7 +220,7 @@ class CodeHelpers(Slide):
         )
         self.play(anim)
         self.next_slide()
-        self.play(Unwrite(cast(Any, brace)))
+        self.play(Unwrite(brace))
         self.play(highlight_code_lines(bfs_code).fade)  # Fade-in all lines to prepare for transform
         self.play(transform_code_lines(bfs_code, dfs_code, {1: 1, 2: 2, 3: 3, 4: 3, 5: 3, 6: 4}))
         self.play(
@@ -498,16 +499,17 @@ class GlyphMapTransform(Slide):
         setup_showcase_chrome(self, "engine/glyph_map.py -- TransformByGlyphMap")
 
     def construct(self) -> None:
-        specs: tuple[GlyphSpec, ...] = (
-            self._glyph_specs_1(),
-            self._glyph_specs_2(),
-            self._glyph_specs_3(),
-            self._glyph_specs_4(),
-            self._glyph_specs_5(),
-            self._glyph_specs_6(),
-            self._glyph_specs_7(),
-            self._glyph_specs_8(),
+        spec_factories: tuple[Callable[[], GlyphSpec], ...] = (
+            self._glyph_specs_1,
+            self._glyph_specs_2,
+            self._glyph_specs_3,
+            self._glyph_specs_4,
+            self._glyph_specs_5,
+            self._glyph_specs_6,
+            self._glyph_specs_7,
+            self._glyph_specs_8,
         )
+        specs = tuple(factory() for factory in spec_factories)
         cells = self._grid_regions(row_counts=(3, 3, 2), cols=3)
         entries: list[GlyphGridEntry] = []
         starts = VGroup()
@@ -718,6 +720,8 @@ class TrackingHelpers(Slide):
                 color=GOLD,
             )
         )
+        if not isinstance(hand, VMobject):
+            raise TypeError("Tracking hand must be a vectorized mobject for Write().")
         readout = DN(
             lambda: math.degrees(~angle) % 360,
             num_decimal_places=0,
@@ -728,9 +732,9 @@ class TrackingHelpers(Slide):
         # `~vt` reads it; `vt @ x` returns an animate.set_value builder for play().
 
         self.play(
-            Write(cast(Any, self.canvas["showcase_title"])),
-            Write(cast(Any, hand)),
-            Write(cast(Any, readout)),
+            Write(self.canvas["showcase_title"]),
+            Write(hand),
+            Write(readout),
             Create(ticks),
             GrowFromCenter(face),
         )
@@ -755,11 +759,12 @@ class ShapeAndDebug(Slide):
         # 6x4 grid of dots; group three subsets and surround each with a single
         # merged polygon (the rectangles for adjacent dots union together).
         rows, cols = 4, 6
-        dot_radius = 0.15
-        grid = VGroup(Dot(radius=dot_radius, color=GOLD) for _ in range(rows * cols))
+        dots = tuple(Dot(radius=0.15, color=GOLD) for _ in range(rows * cols))
+        grid = VGroup(*dots)
         grid.arrange_in_grid(rows=rows, cols=cols, buff=0.8)
         region_a, region_b, region_c = self.region.split_regions(RIGHT, 3)
         region_b.scale_and_place(grid)
+        rendered_dot_radius = min(dots[0].width, dots[0].height) / 2
 
         groups = (
             ([0, 1, 6, 7], RED),
@@ -770,8 +775,8 @@ class ShapeAndDebug(Slide):
             *(
                 SurroundingRectangleUnion(
                     *(grid[i] for i in indices),
-                    buff=dot_radius * 1.2,
-                    unbuff=dot_radius * 0.3,
+                    buff=rendered_dot_radius * 1.2,
+                    unbuff=rendered_dot_radius * 0.3,
                     corner_radius=0.12,
                     stroke_color=color,
                 )

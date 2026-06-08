@@ -25,13 +25,13 @@ from manim import (
     UP,
     Animation,
     AnimationGroup,
+    ApplyMethod,
     Brace,
     BraceLabel,
     BraceText,
     Code,
     Dot,
     FadeIn,
-    Group,
     GrowFromCenter,
     Indicate,
     MathTex,
@@ -301,8 +301,8 @@ def _algorithm_rows(rendered: Tex) -> tuple[VGroup, VGroup]:
 def _leaf_mobjects(mob: Mobject) -> Iterator[VMobject]:
     """Yield drawable leaves under ``mob`` without returning wrapper groups."""
     if len(mob.submobjects) == 0:
-        if len(getattr(mob, "points", ())) > 0:
-            yield cast(VMobject, mob)
+        if isinstance(mob, VMobject) and len(mob.points) > 0:
+            yield mob
         return
     for child in mob.submobjects:
         yield from _leaf_mobjects(child)
@@ -439,11 +439,11 @@ def highlight_code_lines(
     indicated: list[Any] = []
     for line_no, line in enumerate(code_lines, start=1):
         if line_no in selected:
-            fade_anims.append(cast(Animation, line.animate.set_fill(opacity=1.0)))
+            fade_anims.append(ApplyMethod(line.set_fill, {"opacity": 1.0}))
             if indicate:
                 indicated.append(line)
         else:
-            fade_anims.append(cast(Animation, line.animate.set_fill(opacity=off_opacity)))
+            fade_anims.append(ApplyMethod(line.set_fill, {"opacity": off_opacity}))
 
     fade_group = AnimationGroup(*fade_anims, **kwargs)
     if not indicate:
@@ -457,7 +457,7 @@ def highlight_code_lines(
 def code_explain(
     code: Code,
     lines: list[int],
-    explanation: str | Mobject,
+    explanation: str | VMobject,
     *,
     off_opacity: float = 0.5,
     buff: float = SMALL_BUFF,
@@ -465,12 +465,13 @@ def code_explain(
     scale: float = 1.0,
     tex_label: bool = False,
     **kwargs: Any,
-) -> tuple[Mobject, AnimationGroup]:
+) -> tuple[VMobject, AnimationGroup]:
     """Brace + explanation text for a (contiguous) range of lines.
 
     ``explanation`` can be a string, which produces a Manim ``BraceText``
-    (or ``BraceLabel`` when ``tex_label=True``), or a pre-built mobject such
-    as ``MathTex``. Custom mobjects are positioned with ``Brace.put_at_tip``.
+    (or ``BraceLabel`` when ``tex_label=True``), or a pre-built vectorized
+    mobject such as ``Text`` / ``Tex`` / ``MathTex``. Custom mobjects are
+    positioned with ``Brace.put_at_tip``.
 
     Returns ``(mobject, animation)``. Add the mobject to the scene before
     playing -- this lets callers position / restyle it first.
@@ -484,7 +485,7 @@ def code_explain(
     # Manim's ``Code.code_lines`` is a ``VGroup`` and supports list-style
     # slicing without rebuilding the group from a generator expression.
     target = code_lines[lines[0] - 1 : lines[-1]]
-    label_mobject: Mobject
+    label_mobject: VMobject
     label_creation: Animation
 
     if isinstance(explanation, str):
@@ -516,7 +517,7 @@ def code_explain(
             explanation.set_color(resolved_color)
         explanation.scale(scale)
         brace.put_at_tip(explanation, buff=buff)
-        label_mobject = Group(brace, explanation)
+        label_mobject = VGroup(brace, explanation)
         label_creation = AnimationGroup(GrowFromCenter(brace), FadeIn(explanation))
 
     highlight = highlight_code_lines(
