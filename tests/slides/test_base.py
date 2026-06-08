@@ -6,12 +6,15 @@ resolution logic from manim-slides' ``Slide`` machinery (no Scene init,
 no renderer, no file output).
 """
 
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 pytest.importorskip("manim")
 pytest.importorskip("manim_slides")
+
+from manim import config as manim_config
 
 from simplex.engine.region import Region
 from simplex.section import SimplexSectionType
@@ -53,6 +56,7 @@ class _ForwardingBase:
         self._start_animation = start_animation
         self._current_main: str | None = None
         self._wait_time_between_slides = 0.1
+        self.renderer: Any = None
         self.events: list[tuple[str, Any]] = []
 
     @property
@@ -77,6 +81,9 @@ class _ForwardingBase:
                 },
             )
         )
+
+    def tear_down(self) -> None:
+        self.events.append(("tear_down", None))
 
 
 class _ForwardingSlide(_SimplexSlideMixin, _ForwardingBase):
@@ -202,3 +209,46 @@ def test_next_slide_does_not_pad_empty_boundaries() -> None:
     stub.next_slide(name="Intro")
 
     assert [event[0] for event in stub.events] == ["next_slide"]
+
+
+def test_next_slide_suppresses_padding_after_partial_render_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(manim_config, "upto_animation_number", 0)
+    stub = _ForwardingSlide(current_animation=2, start_animation=1)
+    stub.renderer = SimpleNamespace(num_plays=1)
+
+    stub.next_slide(name="Intro")
+
+    forwarded_name, forwarded = stub.events[0]
+    assert forwarded_name == "next_slide"
+    assert forwarded["wait_time_between_slides"] == 0.0
+
+
+def test_tear_down_pads_final_slide_before_forwarding() -> None:
+    stub = _ForwardingSlide(current_animation=2, start_animation=1)
+
+    stub.tear_down()
+
+    assert stub.events == [("wait", 0.1), ("tear_down", None)]
+    assert stub.wait_time_between_slides == 0.1
+
+
+def test_tear_down_does_not_pad_empty_final_slide() -> None:
+    stub = _ForwardingSlide(current_animation=4, start_animation=4)
+
+    stub.tear_down()
+
+    assert stub.events == [("tear_down", None)]
+
+
+def test_tear_down_suppresses_padding_after_partial_render_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(manim_config, "upto_animation_number", 0)
+    stub = _ForwardingSlide(current_animation=2, start_animation=1)
+    stub.renderer = SimpleNamespace(num_plays=1)
+
+    stub.tear_down()
+
+    assert stub.events == [("tear_down", None)]

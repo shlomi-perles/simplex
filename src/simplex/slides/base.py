@@ -13,7 +13,8 @@ Theme and Manim defaults are wired in ``simplex.plugin:activate`` (the
 - ``loop=True`` flips to the ``LOOP`` variant; an explicit ``section_type=``
   always wins.
 - ``wait_time_between_slides`` defaults to a small final-frame hold so the
-  encoded slide segment includes the completed state of the last animation.
+  encoded slide segment includes the completed state of the last animation,
+  including the final implicitly closed segment at scene teardown.
 - reverse-video generation is skipped; Simplex's web/PDF/PPTX pipeline consumes
   the forward slide media and Manim's native section videos.
 
@@ -28,6 +29,7 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any, cast
 
+from manim import config as manim_config
 from manim_slides.slide import Slide as ManimSlide
 from manim_slides.slide import ThreeDSlide as ManimThreeDSlide
 
@@ -84,6 +86,10 @@ class _SimplexSlideMixin:
         self.region = Region.full_frame()
         self._current_main = None
         self.setup_chrome()
+
+    def tear_down(self) -> None:
+        self._pad_current_slide()
+        cast(Any, super()).tear_down()
 
     def setup_chrome(self, **kwargs: Any) -> Chrome | None:
         """Add header/footer chrome to the scene canvas and shrink ``self.region``.
@@ -162,9 +168,22 @@ class _SimplexSlideMixin:
 
         current_animation = int(getattr(self, "_current_animation", 0))
         start_animation = int(getattr(self, "_start_animation", 0))
-        if current_animation > start_animation:
+        if current_animation > start_animation and not self._render_exhausted_animation_range():
             cast(Any, self).wait(wait_time)
         return wait_time
+
+    def _render_exhausted_animation_range(self) -> bool:
+        """Whether Manim has already stopped a partial ``-n`` render."""
+        renderer = getattr(self, "renderer", None)
+        num_plays = getattr(renderer, "num_plays", None)
+        if not isinstance(num_plays, int):
+            return False
+
+        try:
+            upto_animation_number = float(manim_config.upto_animation_number)
+        except (TypeError, ValueError):
+            return False
+        return num_plays > upto_animation_number
 
     def _resolve_section_type(
         self,

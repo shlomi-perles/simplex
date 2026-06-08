@@ -14,9 +14,9 @@ here.
   - `self.next_slide()` after a named main -> **sub-slide** of that main.
   - `loop=True` -> the `LOOP` variant; explicit `section_type=` always wins.
   - `wait_time_between_slides` defaults to `0.1`, applied before the native
-    Manim section boundary so the encoded segment keeps the final animation
-    frame. Set `slide_boundary_wait_time = 0` on a subclass to disable the
-    default.
+    Manim section boundary and again at scene teardown, so every encoded
+    segment keeps the final animation frame. Set `slide_boundary_wait_time = 0`
+    on a subclass to disable the default.
 - `OutlineScene` / `OutlinePart` -- reusable animated lecture outline
   scene. Progress dots are positioned through `Region.linspace(RIGHT, n)`
   defaults, not `arrange`, so edge margins and inter-dot gaps match the
