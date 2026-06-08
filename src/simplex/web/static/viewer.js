@@ -383,10 +383,21 @@
       var href = themedAsset(slidesPdfLink, "pdf", theme);
       if (href) slidesPdfLink.setAttribute("href", href);
     }
+    function slideBackgroundFor(theme) {
+      return deck.getAttribute("data-slide-background-" + normalizeThemeName(theme)) ||
+        deck.getAttribute("data-slide-background-" + defaultTheme) ||
+        deck.getAttribute("data-slide-background-default") ||
+        "";
+    }
+    function applySlideBackground(theme) {
+      var background = slideBackgroundFor(theme);
+      if (background) deck.style.setProperty("--deck-slide-bg", background);
+    }
     function applyThemeDom(themeEntry) {
       var theme = normalizeThemeName(themeEntry ? themeEntry.id : effectiveTheme());
       state.activeTheme = theme;
       deck.dataset.currentSlideTheme = theme;
+      applySlideBackground(theme);
       deck.classList.toggle("is-slide-theme-light", theme === "light" && themeEntry && themeEntry.strategy === "css_filter_fallback");
       deck.classList.toggle("is-true-slide-theme-light", theme === "light" && (!themeEntry || themeEntry.strategy === "rendered"));
       if (stage) {

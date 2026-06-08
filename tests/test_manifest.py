@@ -44,6 +44,7 @@ def test_manifest_counts_only_slide_cues() -> None:
                 label="Dark",
                 strategy="rendered",
                 duration=2.0,
+                background="#242424",
                 media=ThemeMedia(hls="media/dark/hls/master.m3u8", mp4="media/dark/lecture.mp4"),
             ),
         ),
@@ -87,9 +88,11 @@ def test_json_round_trip() -> None:
                 label="Dark",
                 strategy="rendered",
                 duration=1.0,
+                background="#242424",
                 media=ThemeMedia(mp4="media/dark/lecture.mp4"),
             ),
         ),
     )
     revived = DeckManifest.model_validate_json(manifest.to_public_json())
     assert revived == manifest
+    assert revived.themes[0].background == "#242424"

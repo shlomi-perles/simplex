@@ -75,8 +75,12 @@ def test_build_emits_timeline_manifest_and_deck_page(tmp_path: Path) -> None:
     assert manifest["schema_version"] == 2
     assert manifest["cues"][0]["id"] == "s1"
     assert manifest["themes"][0]["media"] == {}
+    assert manifest["themes"][0]["background"] == "#242424"
     assert "budget_warnings" in manifest
     assert "data-player-stage" in alpha_html
+    assert 'data-slide-background-dark="#242424"' in alpha_html
+    assert 'data-slide-background-light="#EEEAD8"' in alpha_html
+    assert "--deck-slide-bg: #242424" in alpha_html
     assert "data-player-manifest" in alpha_html
     assert "data-player-preview" in alpha_html
     assert "img.hidden = false" not in alpha_html
@@ -106,8 +110,11 @@ def test_no_render_build_reuses_existing_timeline_media(tmp_path: Path) -> None:
 
     manifest = json.loads((site_dir / "decks" / "alpha" / "simplex-manifest.json").read_text())
     dark = next(theme for theme in manifest["themes"] if theme["id"] == "dark")
+    light = next(theme for theme in manifest["themes"] if theme["id"] == "light")
     assert dark["media"]["hls"] == "media/dark/hls/master.m3u8"
     assert dark["media"]["mp4"] == "media/dark/lecture.mp4"
+    assert dark["background"] == "#242424"
+    assert light["background"] == "#EEEAD8"
     assert manifest["duration"] > 0
     assert manifest["cues"][1]["start_frame"] > 0
     assert list((site_dir / "decks" / "alpha" / "posters" / "dark").glob("*.jpg"))

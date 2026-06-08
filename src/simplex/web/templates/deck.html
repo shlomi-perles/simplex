@@ -60,10 +60,15 @@
   data-slide-theme-mode="{{ slide_theme_mode }}"
   data-default-slide-theme="{{ default_slide_theme }}"
   data-available-slide-themes="{{ available_slide_themes|join(',') }}"
+  data-slide-background-default="{{ default_slide_background }}"
+  {% for variant, background in slide_backgrounds.items() %}
+  data-slide-background-{{ variant }}="{{ background }}"
+  {% endfor %}
   data-default-slide-number="{% if deck.web.show_slide_number %}true{% else %}false{% endif %}"
   data-default-clock="{% if deck.web.show_clock %}true{% else %}false{% endif %}"
   data-default-stopwatch="{% if deck.web.show_stopwatch %}true{% else %}false{% endif %}"
   data-default-player-mode="{{ default_player_mode }}"
+  style="--deck-slide-bg: {{ default_slide_background }}"
 >
   <div class="deck-viewer">
     <div class="deck-viewer-frame" data-player-frame>
@@ -95,6 +100,9 @@
             }
             var grid = img.closest("[data-deck-slug]");
             if (grid) {
+              var bg = grid.getAttribute("data-slide-background-" + theme) ||
+                grid.getAttribute("data-slide-background-default");
+              if (bg) grid.style.setProperty("--deck-slide-bg", bg);
               grid.classList.toggle("is-true-slide-theme-light", theme === "light");
               grid.classList.toggle(
                 "is-slide-theme-light",

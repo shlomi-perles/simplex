@@ -15,7 +15,13 @@ from typing import Any, cast
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
-from simplex.deck.config import DeckConfig, PackagingConfig, SlideThemeSelection, SlideThemeVariant
+from simplex.deck.config import (
+    DeckConfig,
+    PackagingConfig,
+    ResolvedSlideThemes,
+    SlideThemeSelection,
+    SlideThemeVariant,
+)
 from simplex.deck.registry import Section, SectionedRegistry, discover
 from simplex.deck.section import SectionConfig
 from simplex.manifest import (
@@ -27,6 +33,7 @@ from simplex.manifest import (
 )
 from simplex.render import filenames, notes_pdf, pdf, pptx, runner, themes, thumbnail, timeline
 from simplex.render.timeline import PackagedTheme, RenderedUnit
+from simplex.theme.presets import get as get_theme
 from simplex.theme.web_css import render_web_css
 from simplex.web import notes, vendor
 from simplex.web.bibliography import Bibliography
@@ -281,6 +288,7 @@ def _package_existing_or_rendered(
     *,
     deck: DeckConfig,
     variant: SlideThemeVariant,
+    background: str,
     units: tuple[RenderedUnit, ...],
     cues: tuple[Any, ...],
     deck_out: Path,
@@ -305,6 +313,7 @@ def _package_existing_or_rendered(
             strategy="rendered",
             media=ThemeMedia(**theme_media),
             duration=timeline.media_duration(existing_lecture),
+            background=background,
         )
         if media_base_url:
             theme = timeline.prefix_media_urls(theme, media_base_url)
@@ -318,6 +327,7 @@ def _package_existing_or_rendered(
     packaged = timeline.package_theme(
         theme_id=variant,
         label=_theme_label(variant),
+        background=background,
         units=units,
         cues=tuple(cues),
         output_dir=media_dir,
@@ -338,6 +348,7 @@ def _package_existing_or_rendered(
 def _missing_theme_fallback(
     *,
     variant: SlideThemeVariant,
+    background: str,
     source: PackagedTheme,
     media_base_url: str,
 ) -> PackagedTheme:
@@ -345,6 +356,7 @@ def _missing_theme_fallback(
         theme_id=variant,
         label=_theme_label(variant),
         source=source.theme,
+        background=background,
     )
     if media_base_url:
         fallback = timeline.prefix_media_urls(fallback, media_base_url)
@@ -512,6 +524,14 @@ def _effective_packaging(deck: DeckConfig, site_cfg: SiteConfig) -> PackagingCon
     return site_cfg.packaging if deck.packaging == default else deck.packaging
 
 
+def _slide_background_for_variant(
+    slide_theme_config: ResolvedSlideThemes,
+    variant: SlideThemeVariant,
+) -> str:
+    theme = get_theme(slide_theme_config.theme_name(variant), variant=variant)
+    return theme.palette.background
+
+
 def _build_deck(
     deck: DeckConfig,
     *,
@@ -540,6 +560,10 @@ def _build_deck(
         if slide_theme_config.enabled
         else "dark"
     )
+    slide_backgrounds: dict[SlideThemeVariant, str] = {
+        "dark": _slide_background_for_variant(slide_theme_config, "dark"),
+        "light": _slide_background_for_variant(slide_theme_config, "light"),
+    }
 
     units_by_variant: dict[SlideThemeVariant, tuple[RenderedUnit, ...]] = {}
     packaged_by_variant: dict[SlideThemeVariant, PackagedTheme] = {}
@@ -574,6 +598,7 @@ def _build_deck(
         packaged_by_variant[variant] = _package_existing_or_rendered(
             deck=deck,
             variant=variant,
+            background=slide_backgrounds[variant],
             units=units,
             cues=cues,
             deck_out=deck_out,
@@ -589,6 +614,7 @@ def _build_deck(
             if variant not in packaged_by_variant:
                 packaged_by_variant[variant] = _missing_theme_fallback(
                     variant=variant,
+                    background=slide_backgrounds[variant],
                     source=packaged_by_variant[default_variant],
                     media_base_url=media_base_url,
                 )
@@ -596,6 +622,7 @@ def _build_deck(
     else:
         packaged_by_variant["light"] = _missing_theme_fallback(
             variant="light",
+            background=slide_backgrounds["light"],
             source=packaged_by_variant["dark"],
             media_base_url=media_base_url,
         )
@@ -685,6 +712,13 @@ def _build_deck(
         for variant, posters in theme_posters.items()
         if manifest.cues and manifest.cues[0].id in posters
     }
+    manifest_slide_backgrounds = {
+        theme.id: theme.background for theme in manifest.themes if theme.background
+    }
+    default_slide_background = manifest_slide_backgrounds.get(default_variant) or next(
+        iter(manifest_slide_backgrounds.values()),
+        "",
+    )
     slide_theme_mode = (
         "filter"
         if any(theme.strategy == "css_filter_fallback" for theme in manifest.themes)
@@ -716,6 +750,8 @@ def _build_deck(
         default_player_mode="presentation",
         player_manifest=manifest.model_dump(mode="json", exclude_none=True),
         initial_player_frames=initial_player_frames,
+        slide_backgrounds=manifest_slide_backgrounds,
+        default_slide_background=default_slide_background,
     )
     (deck_out / "index.html").write_text(page, encoding="utf-8")
     first_slide = slides[0] if slides else None

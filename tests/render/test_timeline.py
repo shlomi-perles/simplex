@@ -146,12 +146,19 @@ def test_css_filter_fallback_reuses_source_media() -> None:
         label="Dark",
         strategy="rendered",
         duration=2.0,
+        background="#242424",
         media=ThemeMedia(hls="media/dark/hls/master.m3u8", mp4="media/dark/lecture.mp4"),
     )
-    fallback = timeline.css_filter_fallback_theme(theme_id="light", label="Light", source=source)
+    fallback = timeline.css_filter_fallback_theme(
+        theme_id="light",
+        label="Light",
+        source=source,
+        background="#eee",
+    )
     assert fallback.strategy == "css_filter_fallback"
     assert fallback.source_theme == "dark"
     assert fallback.media == source.media
+    assert fallback.background == "#eee"
 
 
 def test_package_theme_prefers_pyav_hls_without_ffmpeg(

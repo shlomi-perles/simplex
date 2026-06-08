@@ -172,6 +172,7 @@ def package_theme(
     *,
     theme_id: str,
     label: str,
+    background: str | None = None,
     units: tuple[RenderedUnit, ...],
     cues: tuple[Cue, ...],
     output_dir: Path,
@@ -246,6 +247,7 @@ def package_theme(
         strategy="rendered",
         media=media,
         duration=_theme_duration(units, cues),
+        background=background,
     )
     return PackagedTheme(
         theme=theme,
@@ -261,6 +263,7 @@ def css_filter_fallback_theme(
     theme_id: str,
     label: str,
     source: ThemeTimeline,
+    background: str | None = None,
     css_filter: str = DEFAULT_CSS_FILTER,
 ) -> ThemeTimeline:
     return ThemeTimeline(
@@ -270,6 +273,7 @@ def css_filter_fallback_theme(
         source_theme=source.id,
         css_filter=css_filter,
         duration=source.duration,
+        background=background,
         media=source.media,
     )
 

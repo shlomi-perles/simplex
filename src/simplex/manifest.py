@@ -91,6 +91,7 @@ class ThemeTimeline(BaseModel):
     strategy: ThemeStrategy
     media: ThemeMedia
     duration: float = 0.0
+    background: str | None = None
     source_theme: str | None = None
     css_filter: str | None = None
 
