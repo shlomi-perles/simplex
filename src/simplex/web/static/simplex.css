@@ -1002,6 +1002,14 @@ body {
   border-bottom: 1px solid var(--notes-rule);
   padding-bottom: 0.45em;
 }
+.deck-notes .deck-notes-date {
+  margin: -0.2em 0 1.35em;
+  color: var(--notes-fg-dim);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
 .deck-notes h2 {
   font-size: 1.55rem;
   border-bottom: 1px solid var(--notes-rule);
@@ -1283,8 +1291,9 @@ body {
 .ref-stale { color: #b03030; }
 
 /* Article-style "drop cap" on the first paragraph after the lead H1. */
-.deck-notes > p:first-of-type::first-letter,
-.deck-notes > h1:first-of-type + p::first-letter {
+.deck-notes > p:first-of-type:not(.deck-notes-date)::first-letter,
+.deck-notes > h1:first-of-type + p:not(.deck-notes-date)::first-letter,
+.deck-notes > h1:first-of-type + .deck-notes-date + p::first-letter {
   font-family: var(--font-sans);
   font-weight: 900;
   font-size: 3.3em;
@@ -1363,7 +1372,7 @@ body {
   border-bottom: 0;
   padding-bottom: 0;
 }
-.bib-list {
+.deck-notes .bib-list {
   padding-left: 0;
   list-style: none;
 }

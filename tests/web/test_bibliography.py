@@ -170,3 +170,12 @@ def test_bibliography_html_uses_alpha_marker() -> None:
     assert '<span class="bib-marker">[Ada20]</span>' in html
     assert '<span class="bib-marker">[BC21]</span>' in html
     assert "counter(bib)" not in html
+
+
+def test_notes_css_keeps_bibliography_list_unbulleted() -> None:
+    css = (
+        Path(__file__).parents[2] / "src" / "simplex" / "web" / "static" / "simplex.css"
+    ).read_text(encoding="utf-8")
+
+    assert ".deck-notes .bib-list" in css
+    assert "list-style: none;" in css[css.index(".deck-notes .bib-list") :]

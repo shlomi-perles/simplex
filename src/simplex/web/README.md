@@ -23,6 +23,16 @@ notes pipeline (markdown + math + citations + Tufte sidenotes).
   -- discover -> render -> pdf -> reconcile -> thumbnail -> notes ->
   emit per-deck `slides.html` + page + per-section pages + home.
 
+## Notes and dates
+
+- Slide labels are generated from visible slide titles. A slide named
+  `Key Idea` is linked from notes with `[slide:key-idea]`.
+- Homepage card dates use explicit `date` from `deck.toml`, then Git history,
+  then filesystem fallbacks. `[web] show_notes_date = true` injects the same
+  resolved date below the first notes heading.
+- Bibliographies render as unbulleted lists with explicit alpha markers, for
+  example `[KB15]`.
+
 ## Don't
 
 - Don't bundle JS or load CDNs. Tailwind / KaTeX / RevealJS / Lato /

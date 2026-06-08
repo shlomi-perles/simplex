@@ -124,3 +124,46 @@ def test_theme_derives_missing_palette_fields_from_manim_palette() -> None:
     assert theme.palette.vertex == "#355561"
     assert theme.web_palette.background == "#ABCDEF"
     assert theme.web_palette.text_primary == "#3C313F"
+
+
+def test_palette_preserves_custom_fields() -> None:
+    from simplex.theme.tokens import Theme
+
+    theme = Theme(
+        name="custom",
+        palette={
+            "background": "#000000",
+            "font": "#FFFFFF",
+            "warning": "#FFAA00",
+        },
+    )
+
+    assert theme.palette.warning == "#FFAA00"  # type: ignore[attr-defined]
+
+
+def test_palette_dual_values_resolve_from_variant() -> None:
+    from simplex.theme.tokens import Theme
+
+    light = Theme(
+        name="lecture",
+        variant="light",
+        palette={
+            "background": {"light": "#FFFFFF", "dark": "#000000"},
+            "font": {"light": "#111111", "dark": "#EEEEEE"},
+            "warning": {"light": "#775500", "dark": "#FFD166"},
+        },
+    )
+    dark = Theme(
+        name="lecture",
+        variant="dark",
+        palette={
+            "background": {"light": "#FFFFFF", "dark": "#000000"},
+            "font": {"light": "#111111", "dark": "#EEEEEE"},
+            "warning": {"light": "#775500", "dark": "#FFD166"},
+        },
+    )
+
+    assert light.palette.background == "#FFFFFF"
+    assert light.palette.warning == "#775500"  # type: ignore[attr-defined]
+    assert dark.palette.background == "#000000"
+    assert dark.palette.warning == "#FFD166"  # type: ignore[attr-defined]

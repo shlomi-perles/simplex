@@ -19,6 +19,25 @@ Repo-local themes live in `simplex_themes/themes/*.json`. The file stem is the
 theme name; JSON can include `manim_palette`, partial/full semantic `palette`,
 `web_palette`, and `code_style`.
 
+`palette` is an open semantic model. Core fields (`background`, `font`,
+`accent`, `vertex`, `vertex_stroke`, `edge`, `weight`, `visited`, `label`,
+`distance`) drive built-in helpers, and custom fields are preserved for scene
+code through `get_active_theme().palette.<name>`.
+
+Palette values may be true-theme switches:
+
+```json
+{
+  "palette": {
+    "warning": { "light": "#775500", "dark": "#FFD166" }
+  }
+}
+```
+
+The switch resolves from the active render variant (`SIMPLEX_THEME_VARIANT`),
+not from the theme file name. Outside a true-theme render, dark is the default
+fallback.
+
 ## Don't
 
 - Don't mutate a `Theme` instance -- all models are frozen.

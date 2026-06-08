@@ -18,11 +18,13 @@ No render cache. Manim's per-animation cache + ``save_sections=True``
 """
 
 import contextlib
+import datetime as dt
 import hashlib
+import html as html_lib
 import shutil
 import subprocess
+import tomllib
 from dataclasses import dataclass
-from datetime import UTC, datetime, time
 from pathlib import Path
 from typing import Any, cast
 
@@ -66,6 +68,15 @@ class _DeckCardAssets:
     theme_thumbnails: dict[str, str]
     preview_gif: str | None
     theme_preview_gifs: dict[str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class _DeckDateInfo:
+    value: dt.date
+    timestamp: float
+    label: str
+    iso: str
+    source: str
 
 
 def _static_source_dir() -> Path:
@@ -186,6 +197,7 @@ def _build_variant_output(
         output_dir=output_dir,
         static_prefix=site_cfg.url("static"),
         theme_name=theme_name,
+        theme_variant=variant,
         watch=watch,
     )
     return _BuiltVariant(
@@ -221,10 +233,6 @@ def _slide_ref_labels(
             str(slide.scene),
             label_key(str(slide.scene)),
         }
-        override = deck.slides.get(display)
-        if override and override.notes_anchor:
-            candidates.add(override.notes_anchor)
-            candidates.add(label_key(override.notes_anchor))
         for candidate in candidates:
             key = label_key(candidate)
             if key:
@@ -235,6 +243,22 @@ def _slide_ref_labels(
 def _load_bibliography(deck_path: Path) -> Bibliography | None:
     refs = deck_path / "refs.bib"
     return Bibliography.load(refs) if refs.exists() else None
+
+
+def _with_notes_date(notes_html: str, info: _DeckDateInfo | None) -> str:
+    if info is None:
+        return notes_html
+    date_html = (
+        '<p class="deck-notes-date">'
+        f'<time datetime="{html_lib.escape(info.iso)}">{html_lib.escape(info.label)}</time>'
+        "</p>"
+    )
+    lower = notes_html.lower()
+    h1_end = lower.find("</h1>")
+    if h1_end == -1:
+        return f"{date_html}\n{notes_html}"
+    insert_at = h1_end + len("</h1>")
+    return f"{notes_html[:insert_at]}\n{date_html}{notes_html[insert_at:]}"
 
 
 def _theme_rel(
@@ -447,27 +471,246 @@ def _initial_player_frames(
     return out
 
 
+def _date_info_from_date(value: dt.date, *, source: str) -> _DeckDateInfo:
+    timestamp = dt.datetime.combine(value, dt.time.min, tzinfo=dt.UTC)
+    return _DeckDateInfo(
+        value=value,
+        timestamp=timestamp.timestamp(),
+        label=_format_deck_date(value),
+        iso=value.isoformat(),
+        source=source,
+    )
+
+
+def _date_info_from_datetime(value: dt.datetime, *, source: str) -> _DeckDateInfo:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=dt.UTC)
+    value = value.astimezone(dt.UTC)
+    day = value.date()
+    return _DeckDateInfo(
+        value=day,
+        timestamp=value.timestamp(),
+        label=_format_deck_date(day),
+        iso=day.isoformat(),
+        source=source,
+    )
+
+
+def _format_deck_date(value: dt.date) -> str:
+    return f"{value.strftime('%b')} {value.day}, {value.year}"
+
+
+def _deck_date_info(deck: DeckConfig) -> _DeckDateInfo | None:
+    """Resolve the public deck date shown in cards and optional notes."""
+    if deck.date is not None:
+        return _date_info_from_date(deck.date, source="deck.toml")
+
+    repo_root = _git_root(deck.path)
+    deck_toml = deck.path / "deck.toml"
+    if repo_root is not None:
+        if info := _git_first_added_date(repo_root, deck_toml):
+            return info
+        if info := _git_slide_structure_date(repo_root, deck_toml):
+            return info
+
+    if info := _filesystem_mtime_date(deck_toml, source="deck.toml-mtime"):
+        return info
+
+    if repo_root is not None and (info := _git_latest_python_date(repo_root, deck.path)):
+        return info
+    return _filesystem_latest_python_date(deck.path)
+
+
+def _git_root(path: Path) -> Path | None:
+    with contextlib.suppress(
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        OSError,
+    ):
+        output = _git(path, "rev-parse", "--show-toplevel")
+        if root := output.strip():
+            return Path(root).resolve()
+    return None
+
+
+def _git(cwd: Path, *args: str) -> str:
+    result = subprocess.run(  # noqa: S603 -- fixed local git metadata query.
+        ["git", "-C", str(cwd), *args],  # noqa: S607
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    return result.stdout
+
+
+def _git_relative(repo_root: Path, path: Path) -> str | None:
+    with contextlib.suppress(ValueError, OSError):
+        return path.resolve().relative_to(repo_root.resolve()).as_posix()
+    return None
+
+
+def _parse_git_datetime(value: str) -> dt.datetime | None:
+    with contextlib.suppress(ValueError):
+        return dt.datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    return None
+
+
+def _git_first_added_date(repo_root: Path, path: Path) -> _DeckDateInfo | None:
+    rel = _git_relative(repo_root, path)
+    if rel is None:
+        return None
+    with contextlib.suppress(
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        OSError,
+    ):
+        output = _git(
+            repo_root,
+            "log",
+            "--reverse",
+            "--diff-filter=A",
+            "--follow",
+            "--format=%aI",
+            "--",
+            rel,
+        )
+        for line in output.splitlines():
+            if dt := _parse_git_datetime(line):
+                return _date_info_from_datetime(dt, source="git-added")
+    return None
+
+
+def _git_slide_structure_date(repo_root: Path, deck_toml: Path) -> _DeckDateInfo | None:
+    rel = _git_relative(repo_root, deck_toml)
+    if rel is None:
+        return None
+    log = ""
+    with contextlib.suppress(
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        OSError,
+    ):
+        log = _git(repo_root, "log", "--reverse", "--format=%H%x00%aI", "--", rel)
+
+    previous_signature: tuple[object, ...] | None = None
+    latest: _DeckDateInfo | None = None
+    for line in log.splitlines():
+        if "\x00" not in line:
+            continue
+        commit, raw_dt = line.split("\x00", 1)
+        with contextlib.suppress(
+            FileNotFoundError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            OSError,
+        ):
+            content = _git(repo_root, "show", f"{commit}:{rel}")
+            signature = _slide_structure_signature(content)
+            dt = _parse_git_datetime(raw_dt)
+            if signature is not None and dt is not None and signature != previous_signature:
+                latest = _date_info_from_datetime(dt, source="git-slide-structure")
+                previous_signature = signature
+
+    current_text = ""
+    with contextlib.suppress(OSError, UnicodeDecodeError):
+        current_text = deck_toml.read_text(encoding="utf-8") if deck_toml.exists() else ""
+    current_signature = _slide_structure_signature(current_text)
+    if (
+        latest is not None
+        and current_signature is not None
+        and previous_signature is not None
+        and current_signature != previous_signature
+    ):
+        return _filesystem_mtime_date(deck_toml, source="deck.toml-mtime")
+    return latest
+
+
+def _slide_structure_signature(text: str) -> tuple[object, ...] | None:
+    with contextlib.suppress(tomllib.TOMLDecodeError):
+        data = tomllib.loads(text)
+        entrypoints = tuple(_entrypoint_signature(item) for item in data.get("entrypoints", ()))
+        scenes = tuple(str(item) for item in data.get("scenes", ()))
+        slide_order = tuple(str(item) for item in data.get("slide_order", ()))
+        slides_raw = data.get("slides")
+        order_overrides: list[tuple[str, object]] = []
+        if isinstance(slides_raw, dict):
+            for name, override in slides_raw.items():
+                if isinstance(override, dict) and "order_override" in override:
+                    order_overrides.append((str(name), override["order_override"]))
+        return (entrypoints, scenes, slide_order, tuple(sorted(order_overrides)))
+    return None
+
+
+def _entrypoint_signature(item: object) -> str:
+    if isinstance(item, str):
+        target, separator, _renderer = item.rpartition("@")
+        return target if separator else item
+    if isinstance(item, dict):
+        return str(item.get("target", ""))
+    return str(item)
+
+
+def _git_latest_python_date(repo_root: Path, deck_path: Path) -> _DeckDateInfo | None:
+    rels = [
+        rel
+        for path in sorted(deck_path.rglob("*.py"))
+        if (rel := _git_relative(repo_root, path)) is not None
+    ]
+    if not rels:
+        return None
+    with contextlib.suppress(
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        OSError,
+    ):
+        output = _git(repo_root, "log", "-1", "--format=%aI", "--", *rels)
+        if dt := _parse_git_datetime(output.strip()):
+            return _date_info_from_datetime(dt, source="git-python")
+    return None
+
+
+def _filesystem_mtime_date(path: Path, *, source: str) -> _DeckDateInfo | None:
+    with contextlib.suppress(OSError):
+        return _date_info_from_datetime(
+            dt.datetime.fromtimestamp(path.stat().st_mtime, dt.UTC),
+            source=source,
+        )
+    return None
+
+
+def _filesystem_latest_python_date(deck_path: Path) -> _DeckDateInfo | None:
+    candidates: list[Path] = []
+    with contextlib.suppress(OSError):
+        candidates = [path for path in deck_path.rglob("*.py") if path.is_file()]
+    if not candidates:
+        return None
+    latest = max(candidates, key=lambda path: path.stat().st_mtime)
+    return _filesystem_mtime_date(latest, source="python-mtime")
+
+
 def _deck_created_timestamp(deck: DeckConfig) -> float:
-    """Sort key for "latest" decks: explicit creation date, then file mtime."""
-    if deck.created_at is not None:
-        return datetime.combine(deck.created_at, time.min, tzinfo=UTC).timestamp()
-    toml = deck.path / "deck.toml"
-    with contextlib.suppress(OSError):
-        return toml.stat().st_mtime
-    return 0.0
+    info = _deck_date_info(deck)
+    return info.timestamp if info is not None else 0.0
 
 
-def _deck_created_label(deck: DeckConfig) -> str:
-    if deck.created_at is not None:
-        return deck.created_at.strftime("%b %d, %Y")
-    toml = deck.path / "deck.toml"
-    with contextlib.suppress(OSError):
-        return datetime.fromtimestamp(toml.stat().st_mtime, UTC).strftime("%b %d, %Y")
-    return ""
+def _latest_section(
+    registry: SectionedRegistry,
+    deck_date_infos: dict[str, _DeckDateInfo | None] | None = None,
+    *,
+    limit: int = 12,
+) -> Section | None:
+    def sort_key(deck: DeckConfig) -> float:
+        if deck_date_infos is not None:
+            info = deck_date_infos.get(deck.slug)
+            return info.timestamp if info is not None else 0.0
+        return _deck_created_timestamp(deck)
 
-
-def _latest_section(registry: SectionedRegistry, *, limit: int = 12) -> Section | None:
-    decks = sorted(registry.all_decks, key=_deck_created_timestamp, reverse=True)
+    decks = sorted(registry.all_decks, key=sort_key, reverse=True)
     if not decks:
         return None
     return Section(
@@ -488,6 +731,7 @@ def _build_deck(
     site_cfg: SiteConfig,
     env: Environment,
     render: bool,
+    deck_date_info: _DeckDateInfo | None = None,
     manim_args: tuple[str, ...] = (),
     scenes: tuple[str, ...] = (),
     theme_selection: SlideThemeSelection = "all",
@@ -603,6 +847,8 @@ def _build_deck(
             bibliography=bib,
             code_style=deck.resolved_notes_code_style(),
         )
+        if deck.web.show_notes_date:
+            notes_html = _with_notes_date(notes_html, deck_date_info)
         if render:
             with contextlib.suppress(
                 subprocess.SubprocessError,
@@ -615,6 +861,9 @@ def _build_deck(
                     output_dir=deck_out,
                     slide_refs=slide_refs,
                     bibliography=bib,
+                    note_date=deck_date_info.value
+                    if deck.web.show_notes_date and deck_date_info is not None
+                    else None,
                 )
 
     total_seconds = sum(m.duration_s for m in slides)
@@ -641,7 +890,8 @@ def _build_deck(
         notes_pdf_name=filenames.pdf_name(deck, "note"),
         notes_html=notes_html,
         palette_css=render_web_css(
-            deck.resolved_web_palette(page_theme_name), code_style=deck.resolved_notes_code_style()
+            deck.resolved_web_palette(page_theme_name, variant=default_slide_theme),
+            code_style=deck.resolved_notes_code_style(),
         ),
         slide_theme_mode=slide_theme_mode,
         available_slide_themes=available_slide_themes,
@@ -692,12 +942,13 @@ def _build_index(
     theme_thumbs: dict[str, dict[str, str]],
     preview_gifs: dict[str, str | None],
     theme_preview_gifs: dict[str, dict[str, str]],
+    deck_date_infos: dict[str, _DeckDateInfo | None],
     deck_dates: dict[str, str],
     palette_css: str,
 ) -> None:
     page = env.get_template("index.html").render(
         registry=registry,
-        latest_section=_latest_section(registry),
+        latest_section=_latest_section(registry, deck_date_infos),
         thumbs=thumbs,
         theme_thumbs=theme_thumbs,
         preview_gifs=preview_gifs,
@@ -741,7 +992,12 @@ def build(
     deck_theme_thumbs: dict[str, dict[str, str]] = {}
     deck_preview_gifs: dict[str, str | None] = {}
     deck_theme_preview_gifs: dict[str, dict[str, str]] = {}
-    deck_dates = {deck.slug: _deck_created_label(deck) for deck in registry.all_decks}
+    deck_date_infos = {deck.slug: _deck_date_info(deck) for deck in registry.all_decks}
+    deck_dates = {
+        slug: info.label
+        for slug, info in deck_date_infos.items()
+        if info is not None and info.label
+    }
     for section in registry.sections:
         for deck in section.decks:
             if only_set and deck.slug not in only_set:
@@ -752,6 +1008,7 @@ def build(
                 site_cfg=site_cfg,
                 env=env,
                 render=render,
+                deck_date_info=deck_date_infos.get(deck.slug),
                 manim_args=manim_args,
                 scenes=scenes,
                 theme_selection=theme_selection,
@@ -784,6 +1041,7 @@ def build(
         deck_theme_thumbs,
         deck_preview_gifs,
         deck_theme_preview_gifs,
+        deck_date_infos,
         deck_dates,
         site_palette_css,
     )

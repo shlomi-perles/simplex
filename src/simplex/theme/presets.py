@@ -1,11 +1,14 @@
 """Preset and project-local Simplex theme instances."""
 
 import json
+from typing import Literal
 
 from simplex.theme.palettes import MANIM_DEFAULT, web_palette_for
 from simplex.theme.styles.simplex_pycharm import SimplexPycharm
 from simplex.theme.styles.simplex_solarized_light import SimplexSolarizedLight
 from simplex.theme.tokens import LatexProfile, Theme, Typography
+
+type ThemeVariant = Literal["dark", "light"]
 
 _COMPACT_DISPLAY_PREAMBLE = (
     r"\setlength{\abovedisplayskip}{0pt}"
@@ -56,11 +59,11 @@ PRESETS: dict[str, Theme] = {
 }
 
 
-def get(name: str) -> Theme:
+def get(name: str, *, variant: ThemeVariant | None = None) -> Theme:
     """Return a built-in or repo-local custom theme by name."""
     if name in PRESETS:
         return PRESETS[name]
-    if theme := _load_custom_theme(name):
+    if theme := _load_custom_theme(name, variant=variant):
         return theme
     known = ", ".join(available_names())
     raise KeyError(f"unknown theme {name!r}; known: {known}")
@@ -77,7 +80,7 @@ def available_names() -> tuple[str, ...]:
     return tuple(sorted(names))
 
 
-def _load_custom_theme(name: str) -> Theme | None:
+def _load_custom_theme(name: str, *, variant: ThemeVariant | None = None) -> Theme | None:
     from simplex.theme.palettes import theme_styles_dir
 
     path = theme_styles_dir() / f"{name}.json"
@@ -88,4 +91,6 @@ def _load_custom_theme(name: str) -> Theme | None:
         raise ValueError(f"theme file {path} must contain a JSON object")
     values = dict(data)
     values["name"] = name
+    if variant is not None:
+        values["variant"] = variant
     return Theme(**values)

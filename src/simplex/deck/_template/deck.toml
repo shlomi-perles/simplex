@@ -1,17 +1,13 @@
-created_at = "__CREATED_AT__"
+date = "__CREATED_AT__"
 entrypoints = ["slides.intro:Intro", "slides.intro:KeyIdea"]
 order = 1000
 slug = "__SLUG__"
 summary = "Replace with a one-line description."
 tags = []
 title = "__TITLE__"
-voiceover = false
 
 [slide_themes]
 dark = "simplex_dark"
 default = "dark"
 enabled = true
 light = "simplex_light"
-
-[slides."Key Idea"]
-notes_anchor = "key-idea"

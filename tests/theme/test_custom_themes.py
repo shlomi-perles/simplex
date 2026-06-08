@@ -76,3 +76,32 @@ def test_available_theme_names_includes_custom_json(
     monkeypatch.setenv("SIMPLEX_PROJECT_ROOT", str(tmp_path))
 
     assert "my_theme" in presets.available_names()
+
+
+def test_custom_theme_dual_palette_values_use_requested_variant(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    theme_dir = tmp_path / "simplex_themes" / "themes"
+    theme_dir.mkdir(parents=True)
+    (theme_dir / "lecture.json").write_text(
+        json.dumps(
+            {
+                "palette": {
+                    "background": {"light": "#FFFFFF", "dark": "#000000"},
+                    "font": {"light": "#111111", "dark": "#EEEEEE"},
+                    "accent": {"light": "#0055AA", "dark": "#FFD166"},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SIMPLEX_PROJECT_ROOT", str(tmp_path))
+
+    light = presets.get("lecture", variant="light")
+    dark = presets.get("lecture", variant="dark")
+
+    assert light.palette.background == "#FFFFFF"
+    assert light.palette.accent == "#0055AA"
+    assert dark.palette.background == "#000000"
+    assert dark.palette.accent == "#FFD166"

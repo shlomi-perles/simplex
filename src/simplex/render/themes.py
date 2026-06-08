@@ -39,4 +39,9 @@ def variant_deck(
     variant: SlideThemeVariant,
 ) -> DeckConfig:
     """Return a copy of ``deck`` pinned to one concrete Manim theme."""
-    return deck.model_copy(update={"theme": config.theme_name(variant)})
+    return deck.model_copy(
+        update={
+            "theme": config.theme_name(variant),
+            "slide_theme_variant": variant,
+        }
+    )

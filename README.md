@@ -63,7 +63,7 @@ The output should include `simplex`.
 
 ## Configure Manim
 
-Enable the plugin in the `manim.cfg` next to your scenes or deck:
+Enable the plugin in a project-level `manim.cfg`:
 
 ```ini
 [CLI]
@@ -76,6 +76,12 @@ Manim imports `simplex.plugin` through the `manim.plugins` entry point. The
 plugin applies the active Simplex theme to Manim defaults, registers Pygments
 styles, sets the TeX template, sets the background color, and enables section
 JSON output.
+
+When rendering a Simplex deck, the runner looks for `manim.cfg` in the lecture
+project root and also in the deck directory. If both exist, Simplex passes
+Manim a temporary merged config: deck-local fields override matching global
+fields, and unrelated fields are preserved. Command-line Manim flags still win
+for one-off renders.
 
 ## Quick Start
 
@@ -156,7 +162,6 @@ uv run simplex serve
 ```text
 decks/hash-tables/
 |-- deck.toml
-|-- manim.cfg
 |-- notes.md
 |-- refs.bib
 |-- assets/
@@ -171,6 +176,7 @@ The important fields in `deck.toml` are:
 slug = "hash-tables"
 title = "Hash Tables"
 summary = "A one-line deck summary."
+date = "2026-05-19"
 entrypoints = ["slides.intro:Intro", "slides.intro:KeyIdea"]
 
 [slide_themes]
@@ -179,14 +185,31 @@ dark = "simplex_dark"
 light = "simplex_light"
 default = "dark"
 
-[slides."Key Idea"]
-notes_anchor = "key-idea"
+[web]
+show_notes_date = true
 ```
 
-Default Manim render settings live in the deck-local `manim.cfg`; one-off
-render overrides can be passed through `simplex render` or `simplex build`.
+Default Manim render settings live in the project-level `manim.cfg`.
+Deck-local `manim.cfg` files are optional overrides; matching deck-local
+fields override the global value for that deck, and unrelated fields are
+merged. One-off render overrides can be passed through `simplex render` or
+`simplex build`.
 `simplex build --no-render` rejects Manim render flags because there is no
 render subprocess to receive them.
+
+The `date` field is optional. When omitted, Simplex tries to show the first
+Git commit that added the deck. If that is unavailable, it falls back to the
+last time the deck's slide structure changed, then the last changed Python
+scene file. Set `[web] show_notes_date = true` to display the same resolved
+date under the first notes heading and in the generated notes PDF.
+
+Slide refs in `notes.md` are generated from the visible slide title. A slide
+titled `Key Idea` is referenced as `[slide:key-idea]`; no `deck.toml` anchor
+field is needed.
+
+`voiceover` is not a Simplex deck setting or a Manim core `manim.cfg` field.
+Use the separate `manim-voiceover` plugin from scene code when a deck needs
+narration.
 
 `[slide_themes] enabled = true` renders real dark and light slide videos,
 thumbnail images, and slide HTML into isolated `themes/dark/` and
@@ -283,6 +306,32 @@ Example `simplex_themes/themes/my_light.json`:
 `accent`, `vertex`, `vertex_stroke`, `edge`, `weight`, `visited`, `label`, and
 `distance`. Missing fields are derived from `manim_palette`; if
 `manim_palette` is omitted, missing fields derive from Manim defaults.
+Custom palette fields are preserved on `get_active_theme().palette`, so
+scene code can use project-specific semantic colors:
+
+```json
+{
+  "palette": {
+    "warning": "#FFD166",
+    "success": "#2A9D8F"
+  }
+}
+```
+
+Fields can also hold both true-theme values in one place:
+
+```json
+{
+  "palette": {
+    "warning": { "light": "#775500", "dark": "#FFD166" },
+    "background": { "light": "#F7F1DF", "dark": "#111827" }
+  }
+}
+```
+
+Simplex resolves those objects from the actual render role (`dark` or
+`light`), not from the theme file name. This allows `dark = "lecture"` and
+`light = "lecture"` to share one JSON file when that is clearer.
 
 `code_style` controls Manim slide `Code` objects for that theme. It accepts a
 Simplex style, a Pygments style name, or a custom style exported into

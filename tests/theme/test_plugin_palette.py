@@ -61,3 +61,34 @@ def test_activate_resolves_custom_theme_from_project_root(
     finally:
         monkeypatch.setenv("SIMPLEX_THEME", "simplex_dark")
         plugin.activate()
+
+
+def test_activate_passes_theme_variant_to_custom_theme(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    theme_dir = tmp_path / "simplex_themes" / "themes"
+    theme_dir.mkdir(parents=True)
+    (theme_dir / "lecture.json").write_text(
+        json.dumps(
+            {
+                "palette": {
+                    "background": {"light": "#FFFFFF", "dark": "#000000"},
+                    "font": {"light": "#111111", "dark": "#EEEEEE"},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    try:
+        monkeypatch.setenv("SIMPLEX_PROJECT_ROOT", str(tmp_path))
+        monkeypatch.setenv("SIMPLEX_THEME", "lecture")
+        monkeypatch.setenv("SIMPLEX_THEME_VARIANT", "light")
+        plugin.activate()
+
+        assert manim.config.background_color.to_hex().upper() == "#FFFFFF"
+    finally:
+        monkeypatch.setenv("SIMPLEX_THEME", "simplex_dark")
+        monkeypatch.delenv("SIMPLEX_THEME_VARIANT", raising=False)
+        plugin.activate()

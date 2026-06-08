@@ -11,8 +11,8 @@ The canonical scene list is a single ordered ``entrypoints`` array:
 
 Three nested override types tune per-deck or per-main-slide behaviour:
 
-- ``SlideOverride`` -- per-main-slide tweaks (thumbnail path/index, notes
-  anchor, order). Keyed by the main slide's ``name=`` in ``deck.slides``.
+- ``SlideOverride`` -- per-main-slide tweaks (thumbnail path/index, order).
+  Keyed by the main slide's ``name=`` in ``deck.slides``.
 - ``WebOverride`` -- per-deck portal + RevealJS palette overrides
   (``deck.web``). Every field is optional; ``resolved_web_palette()``
   merges with the active theme's defaults field-by-field.
@@ -22,9 +22,9 @@ dark/light decks should use ``[slide_themes]`` instead.
 """
 
 import ast
+import datetime as dt
 import re
 import tomllib
-from datetime import date
 from pathlib import Path
 from typing import Literal, NamedTuple, Self
 
@@ -82,7 +82,6 @@ class SlideOverride(BaseModel):
     model_config = ConfigDict(frozen=True)
     thumbnail: Path | None = None
     thumbnail_section_index: int = -2
-    notes_anchor: str | None = None
     order_override: float | None = None
 
 
@@ -119,6 +118,7 @@ class WebOverride(BaseModel):
     show_slide_number: bool = False
     show_clock: bool = False
     show_stopwatch: bool = False
+    show_notes_date: bool = False
     notes_code_style: str | None = None
 
     # Homepage/section carousel preview. ``carousel_gif`` points to a
@@ -206,12 +206,12 @@ class DeckConfig(BaseModel):
     summary: str = ""
     tags: tuple[str, ...] = ()
     theme: str = "simplex_dark"
+    slide_theme_variant: SlideThemeVariant | None = None
     scenes: tuple[str, ...] = ()
     entrypoints: tuple[SceneEntrypoint, ...] = ()
-    voiceover: bool = False
     category: str | None = None
     duration_minutes: int | None = None
-    created_at: date | None = None
+    date: dt.date | None = None
     order: int = 1000
     path: Path
     section_slug: str = "featured"
@@ -288,13 +288,18 @@ class DeckConfig(BaseModel):
             for (file_path, renderer), names in groups.items()
         )
 
-    def resolved_web_palette(self, theme_name: str | None = None) -> WebPalette:
+    def resolved_web_palette(
+        self,
+        theme_name: str | None = None,
+        *,
+        variant: SlideThemeVariant | None = None,
+    ) -> WebPalette:
         """Merge per-deck ``web`` overrides over the active theme's palette.
 
         Returns a fully-resolved ``WebPalette`` (every field set). Used by
         the web builder + RevealJS template injection.
         """
-        theme = get_theme(theme_name or self.theme)
+        theme = get_theme(theme_name or self.theme, variant=variant or self.slide_theme_variant)
         base = theme.web_palette
         web = self.web
         return WebPalette(
@@ -309,9 +314,14 @@ class DeckConfig(BaseModel):
             font_size_base=web.font_size_base or base.font_size_base,
         )
 
-    def resolved_code_style(self, theme_name: str | None = None) -> type[Style]:
+    def resolved_code_style(
+        self,
+        theme_name: str | None = None,
+        *,
+        variant: SlideThemeVariant | None = None,
+    ) -> type[Style]:
         """Return the Pygments style class for this deck's theme."""
-        theme = get_theme(theme_name or self.theme)
+        theme = get_theme(theme_name or self.theme, variant=variant or self.slide_theme_variant)
         style: type[Style] | None = getattr(theme, "code_style", None)
         if style is not None:
             return style

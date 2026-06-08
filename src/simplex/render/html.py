@@ -23,7 +23,7 @@ from pathlib import Path
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
-from simplex.deck.config import DeckConfig
+from simplex.deck.config import DeckConfig, SlideThemeVariant
 from simplex.manifest import DeckManifest, Subsection
 from simplex.theme.web_css import render_web_css
 
@@ -100,6 +100,7 @@ def render_html(
     output_dir: Path,
     static_prefix: str,
     theme_name: str | None = None,
+    theme_variant: SlideThemeVariant | None = None,
     watch: bool = False,
 ) -> Path:
     """Write ``output_dir/slides.html`` and copy its video segments.
@@ -110,8 +111,8 @@ def render_html(
     output_dir.mkdir(parents=True, exist_ok=True)
     main_views = _copy_segments(manifest, output_dir)
     palette_css = render_web_css(
-        deck.resolved_web_palette(theme_name),
-        code_style=deck.resolved_code_style(theme_name),
+        deck.resolved_web_palette(theme_name, variant=theme_variant),
+        code_style=deck.resolved_code_style(theme_name, variant=theme_variant),
     )
     deck_custom_css = ""
     if deck.web.custom_css_path is not None:

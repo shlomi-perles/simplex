@@ -2,7 +2,7 @@
 
 Registered via ``[project.entry-points."manim.plugins"] simplex =
 "simplex.plugin:activate"`` in ``pyproject.toml``. Each deck enables it by
-declaring ``plugins = simplex`` in its ``manim.cfg``.
+declaring ``plugins = simplex`` in project or deck ``manim.cfg``.
 
 Why a plugin (not env-var pre-init): ``Scene.__init__`` constructs the
 camera from ``manim.config.background_color`` during super-init, so
@@ -22,9 +22,9 @@ Theme selection priority:
 1. ``simplex.theme.context.get_active_theme()`` -- the in-process active
    theme (set by parent code that ``import simplex.plugin`` from the
    same interpreter).
-2. ``SIMPLEX_THEME`` environment variable -- the resolved Simplex theme name
-   propagated across the ``manim-slides render`` subprocess by
-   ``simplex.render.runner``.
+2. ``SIMPLEX_THEME`` / ``SIMPLEX_THEME_VARIANT`` environment variables -- the
+   resolved Simplex theme name and true dark/light role propagated across the
+   ``manim-slides render`` subprocess by ``simplex.render.runner``.
 3. ``SIMPLEX_DARK`` -- the package default.
 """
 
@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import os
 from contextlib import suppress
+from typing import Literal, cast
 
 
 def _resolve_theme():  # type: ignore[no-untyped-def]
@@ -46,8 +47,14 @@ def _resolve_theme():  # type: ignore[no-untyped-def]
         return active
     env_name = os.environ.get("SIMPLEX_THEME")
     if env_name:
+        raw_variant = os.environ.get("SIMPLEX_THEME_VARIANT")
+        variant: Literal["dark", "light"] | None = (
+            cast(Literal["dark", "light"], raw_variant)
+            if raw_variant in {"dark", "light"}
+            else None
+        )
         with suppress(KeyError):
-            return get_theme(env_name)
+            return get_theme(env_name, variant=variant)
     return SIMPLEX_DARK
 
 

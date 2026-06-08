@@ -69,6 +69,49 @@ def test_render_passes_save_sections(tmp_path: Path, captured: list[dict[str, An
     assert args[args.index("--media_dir") + 1] == str((tmp_path / "out").resolve())
 
 
+def test_render_merges_project_and_deck_manim_cfg(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = tmp_path / "project"
+    deck_dir = project / "decks" / "demo"
+    deck_dir.mkdir(parents=True)
+    (project / "manim.cfg").write_text(
+        "[CLI]\nplugins = simplex\nquality = low_quality\nseed = 7\n",
+        encoding="utf-8",
+    )
+    (deck_dir / "manim.cfg").write_text("[CLI]\nquality = high_quality\n", encoding="utf-8")
+    (deck_dir / "deck.toml").write_text(
+        'slug = "demo"\ntitle = "Demo"\nentrypoints = ["slides.scenes:Foo"]\n',
+        encoding="utf-8",
+    )
+    slides_pkg = deck_dir / "slides"
+    slides_pkg.mkdir()
+    (slides_pkg / "__init__.py").write_text("", encoding="utf-8")
+    (slides_pkg / "scenes.py").write_text("class Foo: ...\n", encoding="utf-8")
+    deck = DeckConfig.load(deck_dir)
+    merged_configs: list[str] = []
+
+    def fake_run(args: list[str], **kwargs: Any) -> Any:
+        cfg = Path(args[args.index("--config_file") + 1])
+        merged_configs.append(cfg.read_text(encoding="utf-8"))
+
+        class _Done:
+            returncode = 0
+
+        return _Done()
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+
+    runner.render(deck, output_dir=tmp_path / "out")
+
+    assert merged_configs
+    merged = merged_configs[0]
+    assert "plugins = simplex" in merged
+    assert "quality = high_quality" in merged
+    assert "seed = 7" in merged
+
+
 def test_runner_module_does_not_import_manim() -> None:
     subprocess.run(
         [
@@ -120,6 +163,15 @@ def test_render_forces_utf8_subprocess_env(tmp_path: Path, captured: list[dict[s
     assert env["PYTHONIOENCODING"] == "utf-8"
     assert env["PYTHONUTF8"] == "1"
     assert captured[0]["cwd"] == deck.path.resolve()
+
+
+def test_render_forwards_slide_theme_variant(
+    tmp_path: Path, captured: list[dict[str, Any]]
+) -> None:
+    deck = _deck(tmp_path).model_copy(update={"slide_theme_variant": "light"})
+    runner.render(deck, output_dir=tmp_path / "out")
+
+    assert captured[0]["env"]["SIMPLEX_THEME_VARIANT"] == "light"
 
 
 def test_render_drops_interpreter_steering_env_vars(

@@ -1,11 +1,14 @@
 """Invoke ``manim-slides render`` via subprocess.
 
-Each deck declares ``plugins = simplex`` in its deck-local ``manim.cfg``.
-The plugin entry-point applies theme defaults at ``import manim`` time,
-while Manim's own CLI/config parser owns render flags such as quality,
-caching, frame size, and preview options. Simplex forwards user Manim args
-unchanged and appends only the invariants needed for generated-site layout
-and section reconciliation.
+Projects usually keep shared Manim defaults in a repo-root ``manim.cfg``.
+A deck may add its own ``manim.cfg``; when both files exist Simplex gives
+Manim a temporary merged config where deck-local keys override matching
+global keys and unrelated sections/options are preserved. The plugin
+entry-point applies theme defaults at ``import manim`` time, while Manim's
+own CLI/config parser owns render flags such as quality, caching, frame size,
+and preview options. Simplex forwards user Manim args unchanged and appends
+only the invariants needed for generated-site layout and section
+reconciliation.
 
 The runner re-introduces the ``SIMPLEX_THEME`` env var purely to *select*
 which preset the plugin activates -- Python's ``ContextVar`` doesn't
@@ -16,17 +19,21 @@ declares.
 We still spawn a subprocess (not in-process) for three reasons: clean
 SIGINT, OOM isolation, and per-deck ``manim.config`` isolation.
 
-We run with ``cwd=deck.path`` so deck-local ``manim.cfg`` and relative scene
-assets behave like a normal Manim project. ``SIMPLEX_SLIDES_DIR`` points
-Simplex slide classes at ``<output_dir>/slides`` for manim-slides
-PresentationConfig output; manim's section + video output goes to
-``<output_dir>/videos/<src_stem>/<q>/...`` via forced ``--media_dir``.
+We run with ``cwd=deck.path`` so relative scene assets behave like a normal
+Manim project. ``SIMPLEX_SLIDES_DIR`` points Simplex slide classes at
+``<output_dir>/slides`` for manim-slides PresentationConfig output; manim's
+section + video output goes to ``<output_dir>/videos/<src_stem>/<q>/...`` via
+forced ``--media_dir``.
 """
 
+import configparser
+import contextlib
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 from simplex.deck.config import DeckConfig, ResolvedSceneGroup
@@ -96,6 +103,55 @@ def _hermetic_env() -> dict[str, str]:
     return {k: v for k, v in os.environ.items() if k not in _ENV_OVERRIDE_KEYS}
 
 
+def _project_root_for(deck: DeckConfig) -> Path:
+    """Return the lecture-project root for a deck path."""
+    resolved = deck.path.resolve()
+    for parent in resolved.parents:
+        if parent.name == "decks":
+            return parent.parent
+    return Path.cwd().resolve()
+
+
+def _has_custom_config_file(args: tuple[str, ...]) -> bool:
+    for index, arg in enumerate(args):
+        if arg == "--config_file":
+            return index + 1 < len(args)
+        if arg.startswith("--config_file="):
+            return True
+    return False
+
+
+@contextlib.contextmanager
+def _merged_manim_config(
+    deck: DeckConfig,
+    *,
+    project_root: Path,
+    manim_args: tuple[str, ...],
+) -> Generator[Path | None]:
+    """Yield a config file path that merges project and deck Manim config."""
+    if _has_custom_config_file(manim_args):
+        yield None
+        return
+
+    global_cfg = project_root / "manim.cfg"
+    local_cfg = deck.path / "manim.cfg"
+    existing = tuple(path for path in (global_cfg, local_cfg) if path.exists())
+    if not existing:
+        yield None
+        return
+    if len(existing) == 1:
+        yield existing[0]
+        return
+
+    parser = configparser.ConfigParser()
+    parser.read([str(global_cfg), str(local_cfg)], encoding="utf-8")
+    with tempfile.TemporaryDirectory(prefix="simplex-manim-cfg-") as tmp:
+        merged = Path(tmp) / "manim.cfg"
+        with merged.open("w", encoding="utf-8") as file:
+            parser.write(file)
+        yield merged
+
+
 def render(
     deck: DeckConfig,
     *,
@@ -124,20 +180,7 @@ def render(
     output_dir.mkdir(parents=True, exist_ok=True)
     media_dir = output_dir.resolve()
     slides_dir = media_dir / "slides"
-
-    base_args: list[str] = [
-        *_manim_slides_command(),
-        "render",
-        *manim_args,
-        "--media_dir",
-        str(media_dir),
-        "--save_sections",
-    ]
-    if write_last_frame:
-        # ``--save_last_frame`` conflicts with ``save_sections``: Manim tries
-        # to stitch section videos from image-only output. Rendering one
-        # animation keeps smoke checks cheap while still exercising the scene.
-        base_args.extend(["--from_animation_number", "0,0"])
+    project_root = _project_root_for(deck)
 
     # Carry the deck's theme name across the subprocess via env var; the
     # manim plugin in the child interpreter reads ``SIMPLEX_THEME`` to pick
@@ -147,21 +190,40 @@ def render(
         "PYTHONIOENCODING": "utf-8",
         "PYTHONUTF8": "1",
         "PYTHONWARNINGS": append_pythonwarnings_filter(os.environ.get("PYTHONWARNINGS")),
-        "SIMPLEX_PROJECT_ROOT": str(Path.cwd().resolve()),
+        "SIMPLEX_PROJECT_ROOT": str(project_root),
         "SIMPLEX_SLIDES_DIR": str(slides_dir.resolve()),
         "SIMPLEX_THEME": deck.theme,
     }
+    if deck.slide_theme_variant is not None:
+        env["SIMPLEX_THEME_VARIANT"] = deck.slide_theme_variant
 
-    for group in groups:
-        args = [
-            *base_args,
+    with _merged_manim_config(deck, project_root=project_root, manim_args=manim_args) as cfg:
+        config_args: list[str] = ["--config_file", str(cfg)] if cfg is not None else []
+        base_args: list[str] = [
+            *_manim_slides_command(),
+            "render",
+            *config_args,
+            *manim_args,
+            "--media_dir",
+            str(media_dir),
+            "--save_sections",
         ]
-        if group.renderer == "opengl":
-            args.extend(["--renderer=opengl", "--write_to_movie"])
-        args.extend(
-            [
-                str(group.source_file.resolve()),
-                *group.scene_names,
+        if write_last_frame:
+            # ``--save_last_frame`` conflicts with ``save_sections``: Manim tries
+            # to stitch section videos from image-only output. Rendering one
+            # animation keeps smoke checks cheap while still exercising the scene.
+            base_args.extend(["--from_animation_number", "0,0"])
+
+        for group in groups:
+            args = [
+                *base_args,
             ]
-        )
-        subprocess.run(args, check=True, cwd=deck.path.resolve(), env=env)
+            if group.renderer == "opengl":
+                args.extend(["--renderer=opengl", "--write_to_movie"])
+            args.extend(
+                [
+                    str(group.source_file.resolve()),
+                    *group.scene_names,
+                ]
+            )
+            subprocess.run(args, check=True, cwd=deck.path.resolve(), env=env)

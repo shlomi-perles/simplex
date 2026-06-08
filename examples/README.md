@@ -27,7 +27,8 @@ uv run manim-slides render examples/hello_slide.py HelloSlide
 uv run manim-slides present HelloSlide
 ```
 
-The plugin auto-activates via the `manim.plugins` entry-point as long as
-the deck's `manim.cfg` declares `plugins = simplex`. For these examples
-we keep a tiny `manim.cfg` next to them so they render with the Simplex
-theme out of the box.
+The plugin auto-activates via the `manim.plugins` entry-point as long as a
+Manim config declares `plugins = simplex`. The package repo has a root
+`manim.cfg` for decks, and this examples directory keeps its own small
+`manim.cfg` so standalone `uv run manim examples/...` commands also render
+with the Simplex theme out of the box.

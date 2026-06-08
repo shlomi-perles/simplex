@@ -182,6 +182,59 @@ def test_deck_downloads_are_grouped_under_pdf_icon(tmp_path: Path) -> None:
     assert ">ppt</span>" not in html
 
 
+def test_build_uses_explicit_deck_date_and_can_show_it_in_notes(tmp_path: Path) -> None:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir, "alpha", "Alpha", scenes=("S1",))
+    deck_toml = decks_dir / "alpha" / "deck.toml"
+    deck_toml.write_text(
+        deck_toml.read_text(encoding="utf-8")
+        + 'date = "2026-05-19"\n\n[web]\nshow_notes_date = true\n',
+        encoding="utf-8",
+    )
+
+    site_dir = tmp_path / "site"
+    build(
+        decks_dir=decks_dir,
+        site_dir=site_dir,
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+
+    index_html = (site_dir / "index.html").read_text(encoding="utf-8")
+    alpha_html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
+
+    assert "May 19, 2026" in index_html
+    assert '<p class="deck-notes-date"><time datetime="2026-05-19">May 19, 2026</time></p>' in (
+        alpha_html
+    )
+    assert alpha_html.index("<h1") < alpha_html.index("deck-notes-date")
+
+
+def test_build_auto_generates_slide_ref_anchor_from_title(tmp_path: Path) -> None:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir, "alpha", "Alpha", scenes=("Intro", "KeyIdea"))
+    (decks_dir / "alpha" / "notes.md").write_text(
+        "# Notes\n\nJump to [slide:key-idea].\n",
+        encoding="utf-8",
+    )
+
+    site_dir = tmp_path / "site"
+    build(
+        decks_dir=decks_dir,
+        site_dir=site_dir,
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+
+    html = (site_dir / "decks" / "alpha" / "index.html").read_text(encoding="utf-8")
+
+    assert 'class="slide-ref"' in html
+    assert 'data-slide="2"' in html
+    assert ">Key Idea</a>" in html
+
+
 def test_deck_downloads_carry_true_theme_pdf_hrefs(tmp_path: Path) -> None:
     decks_dir = tmp_path / "decks"
     decks_dir.mkdir()

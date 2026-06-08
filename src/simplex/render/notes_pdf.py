@@ -8,6 +8,7 @@ blocks survive the conversion instead of being treated as plain text.
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 import shutil
 import subprocess
@@ -70,6 +71,7 @@ def export(
     output_dir: Path,
     slide_refs: SlideRefMap | None = None,
     bibliography: Bibliography | None = None,
+    note_date: dt.date | None = None,
 ) -> Path:
     """Write ``<output_dir>/<title>-note.pdf`` from ``notes.md``.
 
@@ -86,7 +88,7 @@ def export(
     source = notes_path.read_text(encoding="utf-8")
     used_citations: list[str] = []
     body = _markdown_to_latex(source, used_citations, slide_refs or {})
-    document = _document(deck, body, bibliography, tuple(used_citations))
+    document = _document(deck, body, bibliography, tuple(used_citations), note_date)
 
     with tempfile.TemporaryDirectory(prefix="simplex-notes-") as tmp:
         work = Path(tmp)
@@ -121,9 +123,11 @@ def _document(
     body: str,
     bibliography: Bibliography | None,
     used_citations: tuple[str, ...],
+    note_date: dt.date | None,
 ) -> str:
     bib = _bibliography_latex(bibliography, used_citations)
     title = _escape_latex(deck.title)
+    date_text = _escape_latex(_format_note_date(note_date)) if note_date is not None else ""
     return rf"""\documentclass[11pt]{{article}}
 \usepackage[margin=1in]{{geometry}}
 \usepackage{{amsmath,amssymb,amsthm}}
@@ -156,13 +160,17 @@ def _document(
 \renewcommand{{\arraystretch}}{{1.2}}
 {_theorem_preamble()}
 \title{{{title}}}
-\date{{}}
+\date{{{date_text}}}
 \begin{{document}}
 \maketitle
 {body}
 {bib}
 \end{{document}}
 """
+
+
+def _format_note_date(value: dt.date) -> str:
+    return f"{value.strftime('%b')} {value.day}, {value.year}"
 
 
 def _theorem_preamble() -> str:

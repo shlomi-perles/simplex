@@ -1,7 +1,7 @@
 """Frozen Pydantic theme tokens."""
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pygments.style import Style
@@ -11,6 +11,9 @@ from simplex.theme.palettes import MANIM_DEFAULT, web_palette_for
 _DEFAULT_WEB_COLORS = web_palette_for(MANIM_DEFAULT)
 
 
+type ThemeVariant = Literal["dark", "light"]
+
+
 class Palette(BaseModel):
     """Semantic video colors.
 
@@ -18,7 +21,7 @@ class Palette(BaseModel):
     strokes use Manim's ``WHITE`` constant after the theme palette is applied.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="allow")
     background: str
     font: str
     accent: str
@@ -108,6 +111,7 @@ class WebPalette(BaseModel):
 class Theme(BaseModel):
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
     name: str
+    variant: ThemeVariant | None = None
     manim_palette: str | None = None
     palette: Palette
     typography: Typography = Field(default_factory=Typography)
@@ -129,9 +133,12 @@ class Theme(BaseModel):
             from simplex.theme.styles.simplex_pycharm import SimplexPycharm
 
             values["code_style"] = resolve_style(values["code_style"], default=SimplexPycharm)
+        variant = _theme_variant(values.get("variant"))
         palette_name = values.get("manim_palette")
         raw_palette = values.get("palette")
-        explicit_palette = _model_or_mapping(raw_palette)
+        explicit_palette = _resolve_variant_values(_model_or_mapping(raw_palette), variant)
+        if raw_palette is not None:
+            values["palette"] = explicit_palette
         missing_palette = raw_palette is None or not set(Palette.model_fields).issubset(
             explicit_palette
         )
@@ -144,7 +151,9 @@ class Theme(BaseModel):
             }
 
         raw_web = values.get("web_palette")
-        explicit_web = _model_or_mapping(raw_web)
+        explicit_web = _resolve_variant_values(_model_or_mapping(raw_web), variant)
+        if raw_web is not None:
+            values["web_palette"] = explicit_web
         if raw_web is None or isinstance(raw_web, dict | WebPalette):
             from simplex.theme.palettes import MANIM_DEFAULT, web_palette_for
 
@@ -177,3 +186,37 @@ def _model_or_mapping(value: object) -> dict[str, object]:
     if isinstance(value, Mapping):
         return dict(value)
     return {}
+
+
+def _theme_variant(value: object) -> ThemeVariant | None:
+    if value in {"dark", "light"}:
+        return value  # type: ignore[return-value]
+    return None
+
+
+def _resolve_variant_values(
+    values: dict[str, object],
+    variant: ThemeVariant | None,
+) -> dict[str, object]:
+    """Resolve ``{"light": ..., "dark": ...}`` palette values.
+
+    The true slide-theme role is the source of truth. When a theme is loaded
+    outside that context, dark is the conservative default because it matches
+    Simplex's package default.
+    """
+    if not values:
+        return values
+    selected = variant or "dark"
+    fallback = "light" if selected == "dark" else "dark"
+    resolved: dict[str, object] = {}
+    for key, value in values.items():
+        if isinstance(value, Mapping) and ("light" in value or "dark" in value):
+            if selected in value:
+                resolved[key] = value[selected]
+            elif fallback in value:
+                resolved[key] = value[fallback]
+            else:
+                resolved[key] = value
+            continue
+        resolved[key] = value
+    return resolved

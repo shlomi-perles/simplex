@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +63,7 @@ Cite \cite{KB15}. This line has a sidenote.^[A mobile note.]
         output_dir=tmp_path / "site" / "demo",
         slide_refs={"key-idea": (2, "Key Idea")},
         bibliography=bibliography,
+        note_date=date(2026, 5, 19),
     )
 
     assert pdf.name == "Demo Deck-note.pdf"
@@ -72,6 +74,7 @@ Cite \cite{KB15}. This line has a sidenote.^[A mobile note.]
     assert r"\definecolor{blue}{RGB}{12,97,197}" in tex
     assert r"\definecolor{green}{RGB}{0,128,40}" in tex
     assert "bookmarksopenlevel=1" in tex
+    assert r"\date{May 19, 2026}" in tex
     assert "citecolor=green" in tex
     assert "anchorcolor=blue" in tex
     assert r"\newtheorem{thm}{Theorem}" in tex

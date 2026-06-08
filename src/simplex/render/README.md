@@ -13,8 +13,8 @@ extraction, PDF / PowerPoint export, notes PDF export, HTML viewer emission.
 - `pptx.export(deck, output_dir)` -- in-process via
   `manim_slides.convert.PowerPoint`.
 - `notes_pdf.export(deck, notes_path, output_dir, slide_refs=None,
-  bibliography=None)` -- best-effort LaTeX PDF rendering for `notes.md`,
-  writing `<title>-note.pdf`. The exporter preserves `\label{}` /
+  bibliography=None, note_date=None)` -- best-effort LaTeX PDF rendering for
+  `notes.md`, writing `<title>-note.pdf`. The exporter preserves `\label{}` /
   `\autoref{}` and emits `amsthm` environments for theorem-style callouts.
 - `reconcile.build_manifest(deck, media_dir)` -> `DeckManifest`
   (a tuple of `MainSlide`, each with its own `subsections`).
@@ -30,6 +30,14 @@ per-animation hash cache, re-editing one animation re-encodes only that
 animation; sections of only-cached animations are stitched from disk. No
 separate Simplex render cache -- run `uv run simplex clean --deck <slug>`
 to force a clean re-render.
+
+## Manim config
+
+`runner.render` resolves a project-root `manim.cfg` and an optional deck-local
+`manim.cfg`. When both exist, it writes a temporary merged file and passes it
+to Manim with `--config_file`: deck-local fields override matching global
+fields, and unrelated sections/options are kept. Caller-provided Manim CLI
+flags still have Manim's normal highest precedence.
 
 ## Reconcile
 
