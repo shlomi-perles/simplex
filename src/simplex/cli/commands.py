@@ -10,7 +10,7 @@ import sys
 import threading
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Annotated, Literal, override
+from typing import Annotated, Any, Literal, cast, override
 
 import typer
 from rich.console import Console
@@ -529,7 +529,7 @@ def doctor() -> None:
     try:
         import av
 
-        av.format.ContainerFormat("hls", "w")
+        cast(Any, av).format.ContainerFormat("hls", "w")
         console.print(f"[green]ok[/green]   pyav HLS/CMAF -> PyAV {av.__version__}")
     except Exception as exc:
         console.print(f"[red]MISSING[/red] pyav HLS/CMAF -> {exc}")

@@ -8,6 +8,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import av
 import av.error
@@ -204,7 +205,8 @@ def _try_pyav(video: Path, dest: Path, *, width: int, seek_time: float) -> bool:
                 container.seek(int(max(0.0, seek_time) / float(stream.time_base)), stream=stream)
             chosen = None
             for frame in container.decode(stream):
-                if frame.time is None or frame.time >= seek_time - 0.05:
+                frame_time = cast(float | None, getattr(frame, "time", None))
+                if frame_time is None or frame_time >= seek_time - 0.05:
                     chosen = frame
                     break
             if chosen is None:
@@ -294,7 +296,8 @@ def _sample_gif_frames(
             rate = float(stream.average_rate or DEFAULT_GIF_FPS)
             stride = max(1, round(rate / DEFAULT_GIF_FPS))
             for i, frame in enumerate(container.decode(stream)):
-                if frame.time is not None and frame.time < start:
+                frame_time = cast(float | None, getattr(frame, "time", None))
+                if frame_time is not None and frame_time < start:
                     continue
                 if i % stride != 0:
                     continue

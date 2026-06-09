@@ -157,8 +157,11 @@ def test_render_variant_skips_unchanged_cached_units(
     def fail_render(*args: Any, **kwargs: Any) -> None:
         raise AssertionError("unchanged cached unit should not be rendered")
 
+    def load_cached_units(*args: Any, **kwargs: Any) -> tuple[RenderedUnit, ...]:
+        return (unit,)
+
     monkeypatch.setattr(builder.runner, "render", fail_render)
-    monkeypatch.setattr(builder.timeline, "load_units", lambda *args, **kwargs: (unit,))
+    monkeypatch.setattr(builder.timeline, "load_units", load_cached_units)
 
     _media_dir, units = builder._render_variant(
         deck,

@@ -78,7 +78,11 @@ def test_generate_cue_images_extracts_jpegs_without_ffmpeg(
     deck = _deck(tmp_path)
     video = tmp_path / "lecture.mp4"
     _write_solid_mp4(video, (200, 50, 50))
-    monkeypatch.setattr("simplex.render.thumbnail.shutil.which", lambda _name: None)
+
+    def no_ffmpeg(_name: str) -> None:
+        return None
+
+    monkeypatch.setattr("simplex.render.thumbnail.shutil.which", no_ffmpeg)
     site_deck_dir = tmp_path / "site" / "decks" / "demo"
 
     images = thumbnail.generate_cue_images(

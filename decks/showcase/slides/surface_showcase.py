@@ -99,7 +99,10 @@ class SurfaceColoring(ThreeDSlide):
         ).move_to(bar)
 
         new_bar.fix_in_frame()  # Keep the new bar fixed in the frame during the transformation
-        self.play(ReplacementTransform(bar, new_bar), surface.animate.set_colormap("viridis"))
+        self.play(
+            ReplacementTransform(bar, new_bar),
+            cast(Any, surface.animate.set_colormap("viridis")),
+        )
         self.next_slide()
 
         # ── Sub-slide 3: colorize_surface on a plain OpenGLSurface ─

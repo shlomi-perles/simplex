@@ -182,7 +182,11 @@ def test_package_theme_prefers_pyav_hls_without_ffmpeg(
         for i, video in enumerate(videos)
     )
     cues = timeline.rebase_cues((_unit("S0", "s0"), _unit("S1", "s1")))
-    monkeypatch.setattr(timeline.shutil, "which", lambda _name: None)
+
+    def no_ffmpeg(_name: str) -> None:
+        return None
+
+    monkeypatch.setattr(timeline.shutil, "which", no_ffmpeg)
 
     def fake_write_hls_pyav(
         _lecture: Path,
@@ -195,11 +199,10 @@ def test_package_theme_prefers_pyav_hls_without_ffmpeg(
         (hls_dir / "master.m3u8").write_text("#EXTM3U\n", encoding="utf-8")
         return True
 
-    monkeypatch.setattr(
-        timeline,
-        "_compose_with_pyav",
-        lambda _videos, lecture: lecture.write_bytes(b"lecture") > 0,
-    )
+    def compose_with_pyav(_videos: tuple[Path, ...], lecture: Path) -> bool:
+        return lecture.write_bytes(b"lecture") > 0
+
+    monkeypatch.setattr(timeline, "_compose_with_pyav", compose_with_pyav)
     monkeypatch.setattr(timeline, "_write_hls_pyav", fake_write_hls_pyav)
 
     packaged = timeline.package_theme(

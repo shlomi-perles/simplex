@@ -10,7 +10,7 @@ import subprocess
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import av
 import av.error
@@ -548,7 +548,7 @@ def _write_hls_pyav(
     segment_duration: int,
 ) -> bool:
     try:
-        av.format.ContainerFormat("hls", "w")
+        cast(Any, av).format.ContainerFormat("hls", "w")
     except (av.error.FFmpegError, ValueError):
         return False
 
@@ -598,8 +598,8 @@ def _write_hls_pyav(
 
 
 def _add_stream_from_template(
-    output: av.container.OutputContainer,
-    stream: av.stream.Stream,
+    output: Any,
+    stream: Any,
 ) -> Any:
     try:
         return output.add_stream(template=stream)

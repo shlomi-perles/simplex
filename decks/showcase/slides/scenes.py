@@ -12,7 +12,7 @@ Toggle the clock or counter from ``[web]`` in ``deck.toml``.
 
 import math
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from manim import (
@@ -210,7 +210,8 @@ class CodeHelpers(Slide):
 
         result = highlight_code_lines(bfs_code, lines=[1, 2, 3, 4, 5, 6])
         self.play(result.fade)
-        self.play(result.indicate)
+        if result.indicate is not None:
+            self.play(result.indicate)
         self.next_slide()
 
         brace, anim = code_explain(
@@ -369,11 +370,11 @@ class RegionAnchors(Slide):
         self.play(Write(self.canvas["showcase_title"]), *(Write(m) for m in markers))
         self.next_slide()
 
-        self.play(self.region.animate.shrink(left=2.5, right=2.5), Write(sidebar))
+        self.play(cast(Any, self.region.animate.shrink(left=2.5, right=2.5)), Write(sidebar))
         self.next_slide()
 
         full = Caption("region.reset() restores the full frame").move_to(sidebar)
-        self.play(self.region.animate.reset(), TransformMatchingShapes(sidebar, full))
+        self.play(cast(Any, self.region.animate.reset()), TransformMatchingShapes(sidebar, full))
         self.next_slide()
 
         # Region.split_regions divides the region into k equal sub-regions along
