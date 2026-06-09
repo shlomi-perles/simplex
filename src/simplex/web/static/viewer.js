@@ -534,6 +534,11 @@
         window.setTimeout(apply, delay);
       });
     }
+    function setVideoTime(time) {
+      if (!video || !finiteNumber(time)) return;
+      var target = Math.max(0, Number(time));
+      try { video.currentTime = target; } catch (_) {}
+    }
     function waitForDecodedFrame(seq, expectedTime) {
       return new Promise(function (resolve) {
         if (!video || seq !== state.loadingSeq) { resolve(false); return; }
@@ -716,6 +721,10 @@
           var next = cues[state.cueIndex + 1];
           if (next && next.kind === "slide") {
             setActiveCue(state.cueIndex + 1, { hash: false });
+            var nextStart = Number(next.start || 0);
+            if (time < nextStart - epsilon || time > nextStart + epsilon) {
+              setVideoTime(nextStart);
+            }
             return;
           }
           pauseAtCueEnd(cue, epsilon);

@@ -893,6 +893,64 @@ def test_presentation_mode_keeps_next_main_slide_after_subslide_clock_lag(
         assert result["currentTime"] >= result["expectedStart"] - 0.1
 
 
+def test_presentation_mode_rewinds_late_subslide_auto_advance_to_main_start(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_subslide_before_main_slide(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 8000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = document.querySelector('.deck-player-video.is-active');
+              const manifest = JSON.parse(document.querySelector('[data-player-manifest]').textContent);
+              const introFragment = manifest.cues.find((cue) => cue.id === 'intro-2');
+              const keyIdea = manifest.cues.find((cue) => cue.id === 'key-idea');
+              await waitFor(() => (
+                video.readyState >= 2 &&
+                (video.currentSrc || video.src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              document.querySelector('[data-control="next"]').click();
+              await waitFor(() => (
+                document.querySelector('[data-counter]').textContent.trim() === '1 / 2' &&
+                video.currentTime >= introFragment.start - 0.1
+              ));
+
+              video.pause();
+              video.currentTime = keyIdea.end + 0.2;
+              video.dispatchEvent(new Event('timeupdate'));
+              await sleep(200);
+
+              return {
+                counter: document.querySelector('[data-counter]').textContent.trim(),
+                activeTarget: document.querySelector('.deck-slide-card[aria-current="true"]').dataset.slideTarget,
+                currentTime: video.currentTime,
+                expectedStart: keyIdea.start,
+                expectedTarget: String(keyIdea.ordinal)
+              };
+            }
+            """
+        )
+
+        assert result["counter"] == "2 / 2"
+        assert result["activeTarget"] == result["expectedTarget"]
+        assert result["currentTime"] == pytest.approx(result["expectedStart"], abs=0.25)
+
+
 def test_presentation_mode_play_from_cue_end_restarts_current_cue(
     tmp_path: Path,
     browser_page: _BrowserPage,
@@ -939,16 +997,16 @@ def test_presentation_mode_play_from_cue_end_restarts_current_cue(
               await waitFor(() => !video.paused && video.currentTime <= keyIdea.start + 0.5);
               await sleep(150);
 
-                return {
-                  counter: document.querySelector('[data-counter]').textContent.trim(),
-                  activeTarget: document.querySelector('.deck-slide-card[aria-current="true"]').dataset.slideTarget,
-                  currentTime: video.currentTime,
-                  heldTime,
-                  paused: video.paused,
-                  expectedStart: keyIdea.start,
-                  expectedEnd: keyIdea.end,
-                  expectedTarget: String(keyIdea.ordinal)
-                };
+              return {
+                counter: document.querySelector('[data-counter]').textContent.trim(),
+                activeTarget: document.querySelector('.deck-slide-card[aria-current="true"]').dataset.slideTarget,
+                currentTime: video.currentTime,
+                heldTime,
+                paused: video.paused,
+                expectedStart: keyIdea.start,
+                expectedEnd: keyIdea.end,
+                expectedTarget: String(keyIdea.ordinal)
+              };
             }
             """
         )
