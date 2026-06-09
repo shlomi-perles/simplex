@@ -249,6 +249,7 @@
       stopwatchRunning: false,
       stopwatchTimer: 0,
       activeSlideOrdinal: 0,
+      endedCueIndex: -1,
     };
     var clockFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: "medium" });
 
@@ -314,6 +315,11 @@
     }
     function cueBoundaryGrace() {
       return Math.max(cueTimingEpsilon() * 4, 0.25);
+    }
+    function cueEndHoldTime(cue, epsilon) {
+      var start = Number(cue.start || 0);
+      var end = Number(cue.end || cue.start || 0);
+      return Math.max(start, end - epsilon);
     }
     function cueLocalProgress(cue) {
       if (!cue || !video) return 0;
@@ -448,7 +454,9 @@
       progressBar.style.transform = "scaleX(" + Math.max(0, Math.min(1, value)) + ")";
     }
     function setActiveCue(index, options) {
+      var previousCueIndex = state.cueIndex;
       state.cueIndex = Math.max(0, Math.min(index, cues.length - 1));
+      if (state.cueIndex !== previousCueIndex) state.endedCueIndex = -1;
       var cue = currentCue();
       var activeSlideOrdinal = slideOrdinalForCue(cue);
       var shouldCenter = state.activeSlideOrdinal !== activeSlideOrdinal ||
@@ -562,14 +570,13 @@
     }
     function pauseAtCueEnd(cue, epsilon) {
       state.pendingPlay = false;
-      video.pause();
-      setPlayState(false);
-      var start = Number(cue.start || 0);
-      var end = Number(cue.end || cue.start || 0);
-      var holdTime = Math.max(start, end - epsilon);
-      if (video.currentTime > holdTime + epsilon) {
+      state.endedCueIndex = state.cueIndex;
+      var holdTime = cueEndHoldTime(cue, epsilon);
+      if (video.currentTime > holdTime + epsilon / 2) {
         try { video.currentTime = holdTime; } catch (_) {}
       }
+      video.pause();
+      setPlayState(false);
     }
     function loadNative(media) {
       return new Promise(function (resolve, reject) {
@@ -656,6 +663,7 @@
       var seq = state.loadingSeq + 1;
       state.loadingSeq = seq;
       state.seeking = true;
+      state.endedCueIndex = -1;
       setActiveCue(index, { hash: options.hash });
       applyThemeDom(targetTheme);
       var poster = posterFor(cue, targetTheme ? targetTheme.id : defaultTheme);
@@ -696,6 +704,10 @@
         var end = Number(cue.end || cue.start || 0);
         var epsilon = cueTimingEpsilon();
         var boundaryGrace = cueBoundaryGrace();
+        if (time < start - boundaryGrace) {
+          try { video.currentTime = start; } catch (_) {}
+          return;
+        }
         if (cue.kind === "loop" && time >= end - epsilon) {
           try { video.currentTime = Number(cue.start || 0); } catch (_) {}
           return;
@@ -708,10 +720,6 @@
           }
           pauseAtCueEnd(cue, epsilon);
           return;
-        }
-        if (time < start - boundaryGrace || time > end + boundaryGrace) {
-          var presentationIdx = cueAtTime(time);
-          if (presentationIdx !== state.cueIndex) setActiveCue(presentationIdx, { hash: false });
         }
         return;
       }
@@ -753,6 +761,11 @@
     function toggleCurrentVideo() {
       if (!video || !video.currentSrc && !video.src) return;
       if (video.paused) {
+        if (state.mode === "presentation" && state.endedCueIndex === state.cueIndex) {
+          seekToCue(state.cueIndex, { play: true, localProgress: 0, hash: false, preserveFrame: true });
+          return;
+        }
+        state.endedCueIndex = -1;
         var p = video.play();
         if (p && typeof p.catch === "function") p.catch(function () {});
       } else {

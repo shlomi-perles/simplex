@@ -273,6 +273,88 @@ def _build_site_with_fragmented_main_slide(tmp_path: Path) -> Path:
     return site_dir
 
 
+def _build_site_with_subslide_before_main_slide(tmp_path: Path) -> Path:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir)
+    site_dir = tmp_path / "site"
+    intro_cues = (
+        SceneCue(
+            id="intro",
+            kind=CueKind.SLIDE,
+            title="Intro",
+            unit="slides:Intro",
+            start_frame=0,
+            end_frame=45,
+            start=0,
+            end=3,
+            auto_id=True,
+        ),
+        SceneCue(
+            id="intro-2",
+            kind=CueKind.FRAGMENT,
+            title="Intro",
+            unit="slides:Intro",
+            start_frame=45,
+            end_frame=90,
+            start=3,
+            end=6,
+            auto_id=True,
+        ),
+    )
+    key_idea_cues = (
+        SceneCue(
+            id="key-idea",
+            kind=CueKind.SLIDE,
+            title="Key Idea",
+            unit="slides:KeyIdea",
+            start_frame=0,
+            end_frame=45,
+            start=0,
+            end=3,
+            auto_id=True,
+        ),
+        SceneCue(
+            id="key-idea-2",
+            kind=CueKind.FRAGMENT,
+            title="Key Idea",
+            unit="slides:KeyIdea",
+            start_frame=45,
+            end_frame=90,
+            start=3,
+            end=6,
+            auto_id=True,
+        ),
+    )
+    for variant, color in {
+        "dark": (40, 80, 180),
+        "light": (210, 230, 245),
+    }.items():
+        _write_scene_cue_manifest(
+            site_dir,
+            variant=variant,
+            scene="Intro",
+            cues=intro_cues,
+            frames=90,
+        )
+        _write_scene_cue_manifest(
+            site_dir,
+            variant=variant,
+            scene="KeyIdea",
+            cues=key_idea_cues,
+            frames=90,
+        )
+        media_dir = site_dir / "decks" / "alpha" / "media" / variant
+        _write_solid_mp4(media_dir / "lecture.mp4", color=color, frames=120)
+    build(
+        decks_dir=decks_dir,
+        site_dir=site_dir,
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+    return site_dir
+
+
 def _open_deck(page: Page, base_url: str) -> None:
     page.goto(f"{base_url}/decks/alpha/")
     expect(page.locator("iframe.deck-iframe")).to_have_count(0)
@@ -749,6 +831,134 @@ def test_presentation_mode_pauses_at_subcue_after_current_main_slide(
         assert result["paused"] is True
         assert result["currentTime"] == pytest.approx(4.5, abs=0.25)
         assert result["hash"] == "#key-idea"
+
+
+def test_presentation_mode_keeps_next_main_slide_after_subslide_clock_lag(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_subslide_before_main_slide(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 8000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = document.querySelector('.deck-player-video.is-active');
+              const manifest = JSON.parse(document.querySelector('[data-player-manifest]').textContent);
+              const introFragment = manifest.cues.find((cue) => cue.id === 'intro-2');
+              const keyIdea = manifest.cues.find((cue) => cue.id === 'key-idea');
+              await waitFor(() => (
+                video.readyState >= 2 &&
+                (video.currentSrc || video.src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              document.querySelector('[data-control="next"]').click();
+              await waitFor(() => (
+                document.querySelector('[data-counter]').textContent.trim() === '1 / 2' &&
+                video.currentTime >= introFragment.start - 0.1
+              ));
+              document.querySelector('[data-control="next"]').click();
+              await waitFor(() => document.querySelector('[data-counter]').textContent.trim() === '2 / 2');
+
+              video.pause();
+              video.currentTime = keyIdea.start - 0.35;
+              video.dispatchEvent(new Event('timeupdate'));
+              await sleep(150);
+
+              return {
+                counter: document.querySelector('[data-counter]').textContent.trim(),
+                activeTarget: document.querySelector('.deck-slide-card[aria-current="true"]').dataset.slideTarget,
+                currentTime: video.currentTime,
+                expectedStart: keyIdea.start,
+                expectedTarget: String(keyIdea.ordinal)
+              };
+            }
+            """
+        )
+
+        assert result["counter"] == "2 / 2"
+        assert result["activeTarget"] == result["expectedTarget"]
+        assert result["currentTime"] >= result["expectedStart"] - 0.1
+
+
+def test_presentation_mode_play_from_cue_end_restarts_current_cue(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_subslide_before_main_slide(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 8000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = document.querySelector('.deck-player-video.is-active');
+              const manifest = JSON.parse(document.querySelector('[data-player-manifest]').textContent);
+              const introFragment = manifest.cues.find((cue) => cue.id === 'intro-2');
+              const keyIdea = manifest.cues.find((cue) => cue.id === 'key-idea');
+              await waitFor(() => (
+                video.readyState >= 2 &&
+                (video.currentSrc || video.src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              document.querySelector('[data-control="next"]').click();
+              await waitFor(() => video.currentTime >= introFragment.start - 0.1);
+              document.querySelector('[data-control="next"]').click();
+              await waitFor(() => document.querySelector('[data-counter]').textContent.trim() === '2 / 2');
+
+              video.currentTime = keyIdea.end - 0.12;
+              await waitFor(() => video.currentTime >= keyIdea.end - 0.16);
+              await video.play().catch(() => {});
+              await waitFor(() => video.paused && video.currentTime >= keyIdea.end - 0.25);
+              const heldTime = video.currentTime;
+
+              document.querySelector('[data-control="toggle-play"]').click();
+              await waitFor(() => !video.paused && video.currentTime <= keyIdea.start + 0.5);
+              await sleep(150);
+
+                return {
+                  counter: document.querySelector('[data-counter]').textContent.trim(),
+                  activeTarget: document.querySelector('.deck-slide-card[aria-current="true"]').dataset.slideTarget,
+                  currentTime: video.currentTime,
+                  heldTime,
+                  paused: video.paused,
+                  expectedStart: keyIdea.start,
+                  expectedEnd: keyIdea.end,
+                  expectedTarget: String(keyIdea.ordinal)
+                };
+            }
+            """
+        )
+
+        assert result["counter"] == "2 / 2"
+        assert result["activeTarget"] == result["expectedTarget"]
+        assert result["paused"] is False
+        assert result["heldTime"] >= result["expectedEnd"] - 0.25
+        assert result["currentTime"] >= result["expectedStart"]
+        assert result["currentTime"] < result["expectedStart"] + 0.75
 
 
 def test_watch_mode_continues_across_cues(
