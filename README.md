@@ -154,7 +154,7 @@ uv run simplex serve
 | `simplex build --disable_caching` | Forward Manim render flags to every deck render. |
 | `simplex build --no-render` | Rebuild portal HTML from existing render output. |
 | `simplex build --slide-theme dark` | Build only one true slide theme (`dark` or `light`) for faster tests. |
-| `simplex serve [--watch]` | Serve `site/` locally, optionally with live reload. |
+| `simplex serve [--watch]` | Serve `site/` locally, auto-picking the next free port if 8000 is busy. |
 | `simplex test --slide-theme dark` | Smoke-render decks by rendering only the first animation. |
 | `simplex theme-studio` | Generate and open the palette/code-style editor. |
 | `simplex clean` | Remove generated `site/` and `media/` output. |

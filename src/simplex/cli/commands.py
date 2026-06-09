@@ -2,7 +2,9 @@
 
 import asyncio
 import contextlib
+import errno
 import http.server
+import ipaddress
 import shutil
 import socketserver
 import subprocess
@@ -29,6 +31,9 @@ console = Console()
 _DECKS = Path("decks")
 _SITE = Path("site")
 _SLIDE_THEME_HELP = "True-theme variants to render: all, dark, or light."
+_DEFAULT_SERVE_HOST = "127.0.0.1"
+_DEFAULT_SERVE_PORT = 8000
+_SERVE_PORT_SCAN_LIMIT = 100
 _SlideThemeOption = Literal["all", "dark", "light"]
 _MANIM_ARGS_CONTEXT = {
     "allow_extra_args": True,
@@ -346,7 +351,21 @@ def test(
 
 @app.command()
 def serve(
-    port: Annotated[int, typer.Option(help="Port to serve on.")] = 8000,
+    port: Annotated[
+        int,
+        typer.Option(help="Preferred port to serve on. Use 0 to ask the OS for a free port."),
+    ] = _DEFAULT_SERVE_PORT,
+    host: Annotated[
+        str,
+        typer.Option(help="Host interface to bind."),
+    ] = _DEFAULT_SERVE_HOST,
+    strict_port: Annotated[
+        bool,
+        typer.Option(
+            "--strict-port/--auto-port",
+            help="Fail when the preferred port is busy instead of choosing the next free port.",
+        ),
+    ] = False,
     watch: Annotated[
         bool,
         typer.Option(
@@ -364,8 +383,11 @@ def serve(
         raise typer.BadParameter("site/ does not exist -- run `simplex build` first")
 
     handler_cls = _make_handler(_SITE)
-    server = _SimplexTCPServer(("", port), handler_cls)
-    console.print(f"Serving http://localhost:{port}")
+    server = _bind_server(host, port, handler_cls, strict_port=strict_port)
+    actual_port = int(server.server_address[1])
+    if port != 0 and actual_port != port:
+        console.print(f"[yellow]port {port} is busy; using {actual_port}[/yellow]")
+    console.print(f"Serving http://{_display_host(host)}:{actual_port}")
 
     server_thread: threading.Thread | None = None
     try:
@@ -385,8 +407,60 @@ def serve(
 
 
 class _SimplexTCPServer(socketserver.ThreadingTCPServer):
-    allow_reuse_address = True
+    allow_reuse_address = False
     daemon_threads = True
+
+
+def _display_host(host: str) -> str:
+    if not host:
+        return "localhost"
+    with contextlib.suppress(ValueError):
+        if ipaddress.ip_address(host).is_unspecified:
+            return "localhost"
+    return host
+
+
+def _serve_port_candidates(
+    port: int,
+    *,
+    strict_port: bool,
+    scan_limit: int = _SERVE_PORT_SCAN_LIMIT,
+) -> Iterable[int]:
+    if port < 0 or port > 65535:
+        raise typer.BadParameter("port must be between 0 and 65535")
+    if port == 0 or strict_port:
+        return (port,)
+    stop = min(65535, port + max(1, scan_limit) - 1)
+    return range(port, stop + 1)
+
+
+def _is_address_in_use(exc: OSError) -> bool:
+    busy_errnos = {errno.EADDRINUSE}
+    wsa_busy = getattr(errno, "WSAEADDRINUSE", None)
+    if wsa_busy is not None:
+        busy_errnos.add(wsa_busy)
+    return exc.errno in busy_errnos
+
+
+def _bind_server(
+    host: str,
+    port: int,
+    handler_cls: type[http.server.BaseHTTPRequestHandler],
+    *,
+    strict_port: bool,
+    scan_limit: int = _SERVE_PORT_SCAN_LIMIT,
+) -> _SimplexTCPServer:
+    last_error: OSError | None = None
+    for candidate in _serve_port_candidates(port, strict_port=strict_port, scan_limit=scan_limit):
+        try:
+            return _SimplexTCPServer((host, candidate), handler_cls)
+        except OSError as exc:
+            last_error = exc
+            if strict_port or port == 0 or not _is_address_in_use(exc):
+                break
+
+    detail = f": {last_error}" if last_error is not None else ""
+    raise typer.BadParameter(f"could not bind {host}:{port}{detail}")
 
 
 def _make_handler(site_dir: Path) -> type[http.server.BaseHTTPRequestHandler]:
