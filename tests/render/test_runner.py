@@ -59,7 +59,7 @@ def captured(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     return calls
 
 
-def test_render_invokes_python_manim_without_save_sections_and_internal_cache(
+def test_render_invokes_python_manim_with_default_cache_behavior(
     tmp_path: Path, captured: list[dict[str, Any]]
 ) -> None:
     deck = _deck(tmp_path)
@@ -68,7 +68,7 @@ def test_render_invokes_python_manim_without_save_sections_and_internal_cache(
     args = captured[0]["args"]
     assert args[:3] == [sys.executable, "-m", "manim"]
     assert "--save_sections" not in args
-    assert "--disable_caching" in args
+    assert "--disable_caching" not in args
     assert "--media_dir" in args
     assert args[-2:] == ["Foo", "Bar"]
 
@@ -118,6 +118,17 @@ def test_render_respects_user_cache_control_arg(
     args = captured[0]["args"]
     assert "--flush_cache" in args
     assert "--disable_caching" not in args
+
+
+def test_render_forwards_explicit_disable_caching_arg(
+    tmp_path: Path,
+    captured: list[dict[str, Any]],
+) -> None:
+    deck = _deck(tmp_path)
+    runner.render(deck, output_dir=tmp_path / "out", manim_args=("--disable_caching",))
+
+    args = captured[0]["args"]
+    assert "--disable_caching" in args
 
 
 def test_runner_module_does_not_import_manim() -> None:

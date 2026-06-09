@@ -67,10 +67,6 @@ def _has_custom_config_file(args: tuple[str, ...]) -> bool:
     return False
 
 
-def _has_cache_control_arg(args: tuple[str, ...]) -> bool:
-    return any(arg in {"--disable_caching", "--flush_cache"} for arg in args)
-
-
 @contextlib.contextmanager
 def _merged_manim_config(
     deck: DeckConfig,
@@ -147,8 +143,6 @@ def render(
             *config_args,
             *manim_args,
         ]
-        if not _has_cache_control_arg(manim_args):
-            base_args.append("--disable_caching")
         base_args.extend(["--media_dir", str(media_dir)])
         if write_last_frame:
             base_args.extend(["--from_animation_number", "0,0"])
