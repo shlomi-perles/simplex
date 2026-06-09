@@ -248,6 +248,7 @@
       stopwatchStartedAt: 0,
       stopwatchRunning: false,
       stopwatchTimer: 0,
+      activeSlideOrdinal: 0,
     };
     var clockFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: "medium" });
 
@@ -307,6 +308,12 @@
         if (time < Number(cues[i].end || 0) - 0.02) break;
       }
       return current;
+    }
+    function cueTimingEpsilon() {
+      return Math.max(1 / Math.max(1, Number(manifest.fps || 60)), 0.03);
+    }
+    function cueBoundaryGrace() {
+      return Math.max(cueTimingEpsilon() * 4, 0.25);
     }
     function cueLocalProgress(cue) {
       if (!cue || !video) return 0;
@@ -443,14 +450,18 @@
     function setActiveCue(index, options) {
       state.cueIndex = Math.max(0, Math.min(index, cues.length - 1));
       var cue = currentCue();
+      var activeSlideOrdinal = slideOrdinalForCue(cue);
+      var shouldCenter = state.activeSlideOrdinal !== activeSlideOrdinal ||
+        Boolean(options && options.center === true);
+      state.activeSlideOrdinal = activeSlideOrdinal;
       renderCounter();
       renderProgress();
       slideButtons.forEach(function (btn) {
         var target = parseInt(btn.dataset.slideTarget, 10);
-        var activeSlide = slideCues[slideOrdinalForCue(cue) - 1];
+        var activeSlide = slideCues[activeSlideOrdinal - 1];
         if (cue && activeSlide && target === activeSlide.ordinal) {
           btn.setAttribute("aria-current", "true");
-          centerActiveCard(btn);
+          if (shouldCenter) centerActiveCard(btn);
         } else {
           btn.removeAttribute("aria-current");
         }
@@ -548,6 +559,17 @@
         }
         onReady();
       });
+    }
+    function pauseAtCueEnd(cue, epsilon) {
+      state.pendingPlay = false;
+      video.pause();
+      setPlayState(false);
+      var start = Number(cue.start || 0);
+      var end = Number(cue.end || cue.start || 0);
+      var holdTime = Math.max(start, end - epsilon);
+      if (video.currentTime > holdTime + epsilon) {
+        try { video.currentTime = holdTime; } catch (_) {}
+      }
     }
     function loadNative(media) {
       return new Promise(function (resolve, reject) {
@@ -672,7 +694,8 @@
       if (state.mode === "presentation") {
         var start = Number(cue.start || 0);
         var end = Number(cue.end || cue.start || 0);
-        var epsilon = Math.max(1 / Math.max(1, Number(manifest.fps || 60)), 0.03);
+        var epsilon = cueTimingEpsilon();
+        var boundaryGrace = cueBoundaryGrace();
         if (cue.kind === "loop" && time >= end - epsilon) {
           try { video.currentTime = Number(cue.start || 0); } catch (_) {}
           return;
@@ -683,12 +706,10 @@
             setActiveCue(state.cueIndex + 1, { hash: false });
             return;
           }
-          state.pendingPlay = false;
-          video.pause();
-          setPlayState(false);
+          pauseAtCueEnd(cue, epsilon);
           return;
         }
-        if (time < start - 0.08 || time > end + 0.25) {
+        if (time < start - boundaryGrace || time > end + boundaryGrace) {
           var presentationIdx = cueAtTime(time);
           if (presentationIdx !== state.cueIndex) setActiveCue(presentationIdx, { hash: false });
         }

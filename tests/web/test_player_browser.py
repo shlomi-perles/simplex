@@ -18,6 +18,8 @@ import numpy as np
 import pytest
 from playwright.sync_api import Browser, BrowserContext, Error, Page, expect, sync_playwright
 
+from simplex.manifest import SceneCue, SceneCueManifest
+from simplex.section import CueKind
 from simplex.web.builder import build
 from simplex.web.range_server import RangeRequestHandlerMixin
 from simplex.web.site_config import SiteConfig
@@ -164,6 +166,104 @@ def _build_site_with_real_timeline_video(tmp_path: Path) -> Path:
     }.items():
         media_dir = site_dir / "decks" / "alpha" / "media" / variant
         _write_solid_mp4(media_dir / "lecture.mp4", color=color, frames=60)
+    build(
+        decks_dir=decks_dir,
+        site_dir=site_dir,
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+    return site_dir
+
+
+def _write_scene_cue_manifest(
+    site_dir: Path,
+    *,
+    variant: str,
+    scene: str,
+    cues: tuple[SceneCue, ...],
+    frames: int,
+) -> None:
+    SceneCueManifest(
+        scene=scene,
+        unit=f"slides:{scene}",
+        fps=15,
+        duration=frames / 15,
+        duration_frames=frames,
+        cues=cues,
+    ).write(
+        site_dir.parent
+        / ".simplex_cache"
+        / "decks"
+        / "alpha"
+        / variant
+        / "intermediate"
+        / "simplex-cues"
+        / f"{scene}.json"
+    )
+
+
+def _build_site_with_fragmented_main_slide(tmp_path: Path) -> Path:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir)
+    site_dir = tmp_path / "site"
+    intro_cues = (
+        SceneCue(
+            id="intro",
+            kind=CueKind.SLIDE,
+            title="Intro",
+            unit="slides:Intro",
+            start_frame=0,
+            end_frame=45,
+            start=0,
+            end=3,
+            auto_id=True,
+        ),
+    )
+    key_idea_cues = (
+        SceneCue(
+            id="key-idea",
+            kind=CueKind.SLIDE,
+            title="Key Idea",
+            unit="slides:KeyIdea",
+            start_frame=0,
+            end_frame=45,
+            start=0,
+            end=3,
+            auto_id=True,
+        ),
+        SceneCue(
+            id="key-idea-2",
+            kind=CueKind.FRAGMENT,
+            title="Key Idea",
+            unit="slides:KeyIdea",
+            start_frame=45,
+            end_frame=90,
+            start=3,
+            end=6,
+            auto_id=True,
+        ),
+    )
+    for variant, color in {
+        "dark": (40, 80, 180),
+        "light": (210, 230, 245),
+    }.items():
+        _write_scene_cue_manifest(
+            site_dir,
+            variant=variant,
+            scene="Intro",
+            cues=intro_cues,
+            frames=45,
+        )
+        _write_scene_cue_manifest(
+            site_dir,
+            variant=variant,
+            scene="KeyIdea",
+            cues=key_idea_cues,
+            frames=90,
+        )
+        media_dir = site_dir / "decks" / "alpha" / "media" / variant
+        _write_solid_mp4(media_dir / "lecture.mp4", color=color, frames=90)
     build(
         decks_dir=decks_dir,
         site_dir=site_dir,
@@ -542,6 +642,113 @@ def test_presentation_mode_auto_advances_to_next_main_slide(
         assert result["paused"] is False
         assert result["counter"] == "2 / 2"
         assert result["currentTime"] >= 2.0
+
+
+def test_presentation_mode_keeps_active_main_slide_during_boundary_jitter(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_real_timeline_video(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 8000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = document.querySelector('.deck-player-video.is-active');
+              const manifest = JSON.parse(document.querySelector('[data-player-manifest]').textContent);
+              const secondSlide = manifest.cues.find((cue) => cue.kind === 'slide' && cue.ordinal === 2);
+              await waitFor(() => (
+                video.readyState >= 2 &&
+                (video.currentSrc || video.src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              document.querySelector('[data-control="next"]').click();
+              await waitFor(() => document.querySelector('[data-counter]').textContent.trim() === '2 / 2');
+              video.pause();
+              video.currentTime = Math.max(0, secondSlide.start - 0.15);
+              video.dispatchEvent(new Event('timeupdate'));
+              await sleep(100);
+              return {
+                counter: document.querySelector('[data-counter]').textContent.trim(),
+                activeTarget: document.querySelector('.deck-slide-card[aria-current="true"]').dataset.slideTarget,
+                hash: window.location.hash
+              };
+            }
+            """
+        )
+
+        assert result["counter"] == "2 / 2"
+        assert result["activeTarget"] == "2"
+        assert result["hash"] == "#key-idea"
+
+
+def test_presentation_mode_pauses_at_subcue_after_current_main_slide(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_fragmented_main_slide(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        _open_deck(page, base_url)
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 8000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = document.querySelector('.deck-player-video.is-active');
+              const manifest = JSON.parse(document.querySelector('[data-player-manifest]').textContent);
+              const secondSlide = manifest.cues.find((cue) => cue.id === 'key-idea');
+              await waitFor(() => (
+                video.readyState >= 2 &&
+                (video.currentSrc || video.src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              document.querySelector('[data-control="next"]').click();
+              await waitFor(() => (
+                document.querySelector('[data-counter]').textContent.trim() === '2 / 2' &&
+                video.currentTime >= secondSlide.start - 0.1
+              ));
+              video.currentTime = secondSlide.end - 0.12;
+              await waitFor(() => video.currentTime >= secondSlide.end - 0.16);
+              await video.play().catch(() => {});
+              await waitFor(() => video.paused && video.currentTime >= secondSlide.end - 0.25);
+              return {
+                counter: document.querySelector('[data-counter]').textContent.trim(),
+                activeTarget: document.querySelector('.deck-slide-card[aria-current="true"]').dataset.slideTarget,
+                currentTime: video.currentTime,
+                paused: video.paused,
+                hash: window.location.hash
+              };
+            }
+            """
+        )
+
+        assert result["counter"] == "2 / 2"
+        assert result["activeTarget"] == "2"
+        assert result["paused"] is True
+        assert result["currentTime"] == pytest.approx(4.5, abs=0.25)
+        assert result["hash"] == "#key-idea"
 
 
 def test_watch_mode_continues_across_cues(
