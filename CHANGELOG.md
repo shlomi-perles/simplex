@@ -4,6 +4,52 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.13.0...manim-simplex-v0.14.0) (2026-06-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **engine:** color_tex was renamed to color_substrings.
+* **mobjects:** Edge now subclasses Manim Line directly; an optional weight label is the only child submobject.
+
+### Features
+
+* add algorithm pseudocode code blocks ([cebbed6](https://github.com/shlomi-perles/simplex/commit/cebbed612a0f5b0ce6e4e1e2538f97a485b0105c))
+* **mobjects:** make edges line-native ([8980ec9](https://github.com/shlomi-perles/simplex/commit/8980ec9b8c6c7347addaa631578cafa0e6ddb8dc))
+* **render:** package decks as timeline media ([18bc60e](https://github.com/shlomi-perles/simplex/commit/18bc60ef0b762e3d18174f252e1baaf67634e798))
+* **slides:** add timeline cue authoring ([87dd528](https://github.com/shlomi-perles/simplex/commit/87dd5283c0eef32f325a2e2d59813d5124ce60ea))
+* support global deck config and palette variants ([16eb9d7](https://github.com/shlomi-perles/simplex/commit/16eb9d77163e754a65951257329a94b14a53299c))
+* **web:** replace reveal playback with timeline player ([be0b65c](https://github.com/shlomi-perles/simplex/commit/be0b65cd9e20487a6ab2f7bc127a0eb2ca8c8d9b))
+
+
+### Bug Fixes
+
+* **cli:** emit stable no-render manim flag error ([ec51efc](https://github.com/shlomi-perles/simplex/commit/ec51efcf54fcc503b1515e73c9403761b346d553))
+* **manim:** stop forcing section output ([a9ee582](https://github.com/shlomi-perles/simplex/commit/a9ee582fd23ca1ecb99309835285d71e1fbc51e2))
+* **mobjects:** preserve paper stack layout on pick ([5cf33f1](https://github.com/shlomi-perles/simplex/commit/5cf33f144bcf5adfd972869b8d2712b41a14ef83))
+* **mobjects:** use opengl surface for sphere renders ([34b0537](https://github.com/shlomi-perles/simplex/commit/34b053748927ea5e73457cbd3e291b286170e9e5))
+* **render:** avoid flaky manim-slides reverse videos ([2272fec](https://github.com/shlomi-perles/simplex/commit/2272fec57e6fd7ee811b13f9d9c193c874c4f864))
+* **render:** pass manim flags through render and build ([164b18b](https://github.com/shlomi-perles/simplex/commit/164b18b5c2cef6ebd841f43dc0b8b6cfdbe5d500))
+* scope algorithm2e template setup ([4c6d29e](https://github.com/shlomi-perles/simplex/commit/4c6d29e8a72b60462dd804839e82e534b54dbea5))
+* **showcase:** preserve logo footer on clear ([1a56015](https://github.com/shlomi-perles/simplex/commit/1a56015e9c2a18bb13753601104c20269b6c87cb))
+* **slides:** pad final slide segment at teardown ([a0890c5](https://github.com/shlomi-perles/simplex/commit/a0890c542bdb72c122b2b602aaa85ded3edce4f2))
+* **theme:** centralize manim palette defaults ([486e394](https://github.com/shlomi-perles/simplex/commit/486e394a945fe8f4038bfb78d8bdff4530594605))
+* **theme:** reserve edge styling for Edge ([0777ecb](https://github.com/shlomi-perles/simplex/commit/0777ecbbb82b0611143050cbfa41ed3c04f0a107))
+* **theme:** restore latex preamble for simplex_light theme ([63d4f7d](https://github.com/shlomi-perles/simplex/commit/63d4f7d1995bc6b17ed2d2cbfc512df4c2c594e1))
+* **types:** align manim typing contracts ([e16009e](https://github.com/shlomi-perles/simplex/commit/e16009e48cc40d41b6087f260acf4117a3715f1a))
+* **types:** satisfy strict CI type checks ([b865213](https://github.com/shlomi-perles/simplex/commit/b8652131f60714fe6acf529f2f34e2d5a6480f36))
+* **web:** match player load background to slide theme ([be3cd94](https://github.com/shlomi-perles/simplex/commit/be3cd940c4652a7e6a6e48d01ea08c6585f3485b))
+
+
+### Documentation
+
+* **examples:** update decks for timeline playback ([5fbe808](https://github.com/shlomi-perles/simplex/commit/5fbe8089d1220e07a1dc6d202367688a56608c55))
+
+
+### Code Refactoring
+
+* **engine:** tighten Manim helper typing ([ff9dd55](https://github.com/shlomi-perles/simplex/commit/ff9dd55daee76339fac2cb8f49a6d78e74747b1b))
+
 ## [0.13.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.12.1...manim-simplex-v0.13.0) (2026-06-02)
 
 
