@@ -78,7 +78,7 @@ def load_units(deck: DeckConfig, *, media_dir: Path) -> tuple[RenderedUnit, ...]
         else:
             fps = cue_manifest.fps or DEFAULT_FPS
             duration = max(cue_manifest.duration, video_duration)
-            cues = cue_manifest.cues
+            cues = _normalize_scene_cues(cue_manifest.cues)
         duration_frames = max(
             _frames(duration, fps),
             max((cue.end_frame for cue in cues), default=0),
@@ -356,6 +356,25 @@ def _implicit_scene_cue(scene: str, source_file: Path, *, fps: int, duration: fl
         start=0.0,
         end=duration,
         auto_id=True,
+    )
+
+
+def _normalize_scene_cues(cues: tuple[SceneCue, ...]) -> tuple[SceneCue, ...]:
+    """Assign leading unmarked media to the first cue.
+
+    Legacy ``next_slide`` scenes often place their first marker after the
+    opening animation. The render output contains those frames, so playback
+    should treat them as the first main cue instead of leaving an unaddressed
+    pre-roll that hash navigation skips.
+    """
+    if not cues:
+        return cues
+    first = cues[0]
+    if first.start_frame <= 0 and first.start <= 0:
+        return cues
+    return (
+        first.model_copy(update={"start_frame": 0, "start": 0.0}),
+        *cues[1:],
     )
 
 

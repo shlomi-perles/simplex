@@ -98,6 +98,24 @@ def test_next_slide_alias_records_simplex_cues_only() -> None:
     ]
 
 
+def test_first_next_slide_after_animation_backfills_first_cue() -> None:
+    scene = _FakeScene()
+    scene.setup()
+
+    scene.time = 2.0
+    scene.next_slide()
+    scene.time = 4.0
+    scene.next_slide()
+    scene.tear_down()
+
+    assert [(cue.id, cue.kind, cue.start) for cue in scene._simplex_cues] == [
+        ("fake-scene", CueKind.SLIDE, 0.0),
+        ("fake-scene-2", CueKind.FRAGMENT, pytest.approx(2.1)),
+    ]
+    assert scene._simplex_cues[0].end == pytest.approx(2.1)
+    assert scene._simplex_cues[1].end == pytest.approx(4.1)
+
+
 def test_setup_chrome_noops_without_header_or_footer() -> None:
     scene = _FakeScene()
     scene.setup()

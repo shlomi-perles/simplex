@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from simplex.deck.config import DeckConfig
-from simplex.manifest import SceneCue, ThemeMedia, ThemeTimeline
+from simplex.manifest import SceneCue, SceneCueManifest, ThemeMedia, ThemeTimeline
 from simplex.render import timeline
 from simplex.render.timeline import RenderedUnit
 from simplex.section import CueKind
@@ -61,6 +61,36 @@ def test_load_units_synthesizes_implicit_cue_without_render_output(tmp_path: Pat
     assert len(units) == 1
     assert units[0].cues[0].id == "intro"
     assert units[0].cues[0].kind is CueKind.SLIDE
+
+
+def test_load_units_assigns_leading_uncued_frames_to_first_cue(tmp_path: Path) -> None:
+    media_dir = tmp_path / "media"
+    manifest_dir = media_dir / "simplex-cues"
+    cue = SceneCue(
+        id="intro",
+        kind=CueKind.SLIDE,
+        title="Intro",
+        unit="slides.intro:Intro",
+        start_frame=30,
+        end_frame=60,
+        start=0.5,
+        end=1.0,
+        auto_id=True,
+    )
+    SceneCueManifest(
+        scene="Intro",
+        unit="slides.intro:Intro",
+        fps=60,
+        duration=1.0,
+        duration_frames=60,
+        cues=(cue,),
+    ).write(manifest_dir / "Intro.json")
+
+    units = timeline.load_units(_deck(tmp_path), media_dir=media_dir)
+
+    assert units[0].cues[0].start_frame == 0
+    assert units[0].cues[0].start == 0.0
+    assert units[0].cues[0].end_frame == 60
 
 
 def test_rebase_cues_offsets_frames() -> None:

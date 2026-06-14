@@ -189,6 +189,11 @@ class _SimplexSceneMixin:
         ``next_section`` or manim-slides.
         """
         kind = self._kind_from_legacy_next_slide(name, section_type, loop)
+        if self._should_backfill_first_legacy_marker():
+            self._open_cue(kind, None, title=name, notes=None, start=0.0)
+            self._close_current_cue(pad=True)
+            self._open_cue(CueKind.FRAGMENT, None, title=None, notes=None)
+            return
         marker = {
             CueKind.SLIDE: self.slide,
             CueKind.FRAGMENT: self.fragment,
@@ -207,6 +212,7 @@ class _SimplexSceneMixin:
         *,
         title: str | None,
         notes: str | None,
+        start: float | None = None,
     ) -> None:
         self._close_current_cue(pad=True)
         resolved_title = title or self._default_title(kind)
@@ -220,14 +226,15 @@ class _SimplexSceneMixin:
         if kind.is_slide:
             self._simplex_current_main_id = resolved_id
             self._simplex_current_main_cue_number = 1
+        start_time = float(cast(Any, self).time) if start is None else float(start)
         self._simplex_current = _OpenCue(
             id=resolved_id,
             auto_id=auto,
             kind=kind,
             title=resolved_title,
             unit=_scene_unit(self),
-            start=float(cast(Any, self).time),
-            start_frame=self._frame_number(float(cast(Any, self).time)),
+            start=start_time,
+            start_frame=self._frame_number(start_time),
             notes=notes,
         )
 
@@ -243,6 +250,9 @@ class _SimplexSceneMixin:
             end_frame = current.start_frame
         if end < current.start:
             end = current.start
+        if end_frame == current.start_frame and end <= current.start + 1e-6:
+            self._simplex_current = None
+            return
         self._simplex_cues.append(
             SceneCue(
                 id=current.id,
@@ -258,6 +268,12 @@ class _SimplexSceneMixin:
             )
         )
         self._simplex_current = None
+
+    def _should_backfill_first_legacy_marker(self) -> bool:
+        """Treat first post-animation ``next_slide`` as the end of slide one."""
+        if self._simplex_cues or self._simplex_current is not None:
+            return False
+        return float(cast(Any, self).time) > 1e-6
 
     def _should_pad_current_cue(self, current: _OpenCue) -> bool:
         wait_time = float(self.cue_boundary_wait_time)
