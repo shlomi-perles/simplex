@@ -545,6 +545,8 @@
         var done = false;
         var timer = window.setTimeout(function () { finish(false); }, 3600);
         var target = finiteNumber(expectedTime) ? Number(expectedTime) : null;
+        var tolerance = Math.max(1 / Math.max(1, Number(manifest.fps || 60)), 0.04);
+        var upperTolerance = Math.max(tolerance * 2, 0.25);
         function cleanup() {
           video.removeEventListener("seeked", onReady);
           video.removeEventListener("loadeddata", onReady);
@@ -560,7 +562,7 @@
         }
         function onReady() {
           var reachedTarget = target === null ||
-            video.currentTime >= target - Math.max(1 / Math.max(1, Number(manifest.fps || 60)), 0.04);
+            (video.currentTime >= target - tolerance && video.currentTime <= target + upperTolerance);
           if (video.readyState >= 2 && reachedTarget) finish(true);
         }
         video.addEventListener("seeked", onReady);
@@ -682,8 +684,9 @@
           return false;
         }
         seekVideoTo(time, seq);
-        return waitForDecodedFrame(seq, time).then(function () {
+        return waitForDecodedFrame(seq, time).then(function (decoded) {
           if (seq !== state.loadingSeq) return false;
+          if (!decoded) setVideoTime(time);
           state.seeking = false;
           hidePreview();
           hideFreeze();

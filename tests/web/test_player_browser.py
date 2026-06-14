@@ -355,6 +355,111 @@ def _build_site_with_subslide_before_main_slide(tmp_path: Path) -> Path:
     return site_dir
 
 
+def _write_cached_scene_video(
+    site_dir: Path,
+    *,
+    variant: str,
+    scene: str,
+    frames: int,
+    color: tuple[int, int, int],
+) -> None:
+    media_dir = (
+        site_dir.parent
+        / ".simplex_cache"
+        / "decks"
+        / "alpha"
+        / variant
+        / "intermediate"
+        / "videos"
+        / "slides"
+        / "480p15"
+    )
+    _write_solid_mp4(media_dir / f"{scene}.mp4", color=color, frames=frames)
+
+
+def _build_site_with_misaligned_main_cue_start(tmp_path: Path) -> Path:
+    decks_dir = tmp_path / "decks"
+    decks_dir.mkdir()
+    _write_deck(decks_dir)
+    site_dir = tmp_path / "site"
+    intro_cues = (
+        SceneCue(
+            id="intro",
+            kind=CueKind.SLIDE,
+            title="Intro",
+            unit="slides:Intro",
+            start_frame=0,
+            end_frame=155,
+            start=0,
+            end=155 / 15,
+            auto_id=True,
+        ),
+    )
+    key_idea_cues = (
+        SceneCue(
+            id="key-idea",
+            kind=CueKind.SLIDE,
+            title="Key Idea",
+            unit="slides:KeyIdea",
+            start_frame=30,
+            end_frame=61,
+            start=30 / 15,
+            end=61 / 15,
+            auto_id=True,
+        ),
+        SceneCue(
+            id="key-idea-2",
+            kind=CueKind.FRAGMENT,
+            title="Key Idea",
+            unit="slides:KeyIdea",
+            start_frame=61,
+            end_frame=92,
+            start=61 / 15,
+            end=92 / 15,
+            auto_id=True,
+        ),
+    )
+    for variant, colors in {
+        "dark": ((40, 80, 180), (80, 140, 60)),
+        "light": ((210, 230, 245), (225, 235, 180)),
+    }.items():
+        _write_scene_cue_manifest(
+            site_dir,
+            variant=variant,
+            scene="Intro",
+            cues=intro_cues,
+            frames=155,
+        )
+        _write_scene_cue_manifest(
+            site_dir,
+            variant=variant,
+            scene="KeyIdea",
+            cues=key_idea_cues,
+            frames=120,
+        )
+        _write_cached_scene_video(
+            site_dir,
+            variant=variant,
+            scene="Intro",
+            frames=155,
+            color=colors[0],
+        )
+        _write_cached_scene_video(
+            site_dir,
+            variant=variant,
+            scene="KeyIdea",
+            frames=120,
+            color=colors[1],
+        )
+    build(
+        decks_dir=decks_dir,
+        site_dir=site_dir,
+        render=False,
+        site_cfg=SiteConfig(brand="Simplex"),
+    )
+    return site_dir
+
+
 def _open_deck(page: Page, base_url: str) -> None:
     page.goto(f"{base_url}/decks/alpha/")
     expect(page.locator("iframe.deck-iframe")).to_have_count(0)
@@ -949,6 +1054,60 @@ def test_presentation_mode_rewinds_late_subslide_auto_advance_to_main_start(
         assert result["counter"] == "2 / 2"
         assert result["activeTarget"] == result["expectedTarget"]
         assert result["currentTime"] == pytest.approx(result["expectedStart"], abs=0.25)
+
+
+def test_hash_navigation_lands_on_main_cue_before_its_fragment(
+    tmp_path: Path,
+    browser_page: _BrowserPage,
+) -> None:
+    site_dir = _build_site_with_misaligned_main_cue_start(tmp_path)
+
+    with _serve_directory(site_dir) as base_url:
+        page = browser_page.page
+        page.goto(f"{base_url}/decks/alpha/#key-idea")
+        expect(page.locator("iframe.deck-iframe")).to_have_count(0)
+        expect(page.locator("[data-player-stage]")).to_be_visible()
+
+        result = page.evaluate(
+            """
+            async () => {
+              const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+              const waitFor = async (predicate, timeout = 8000) => {
+                const start = performance.now();
+                while (performance.now() - start < timeout) {
+                  if (predicate()) return true;
+                  await sleep(25);
+                }
+                return false;
+              };
+              const video = document.querySelector('.deck-player-video.is-active');
+              const manifest = JSON.parse(document.querySelector('[data-player-manifest]').textContent);
+              const keyIdea = manifest.cues.find((cue) => cue.id === 'key-idea');
+              const keyIdeaFragment = manifest.cues.find((cue) => cue.id === 'key-idea-2');
+              await waitFor(() => (
+                video &&
+                video.readyState >= 2 &&
+                (video.currentSrc || video.src) &&
+                document.querySelector('[data-player-preview]').hidden
+              ));
+              return {
+                counter: document.querySelector('[data-counter]').textContent.trim(),
+                activeTarget: document.querySelector('.deck-slide-card[aria-current="true"]').dataset.slideTarget,
+                currentTime: video.currentTime,
+                expectedStart: keyIdea.start,
+                fragmentStart: keyIdeaFragment.start,
+                expectedTarget: String(keyIdea.ordinal),
+                hash: window.location.hash
+              };
+            }
+            """
+        )
+
+        assert result["counter"] == "2 / 2"
+        assert result["activeTarget"] == result["expectedTarget"]
+        assert result["hash"] == "#key-idea"
+        assert result["currentTime"] >= result["expectedStart"] - 0.1
+        assert result["currentTime"] < result["fragmentStart"] - 0.1
 
 
 def test_presentation_mode_play_from_cue_end_restarts_current_cue(
