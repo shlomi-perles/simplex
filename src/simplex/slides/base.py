@@ -190,9 +190,7 @@ class _SimplexSceneMixin:
         """
         kind = self._kind_from_legacy_next_slide(name, section_type, loop)
         if self._should_backfill_first_legacy_marker():
-            self._open_cue(kind, None, title=name, notes=None, start=0.0)
-            self._close_current_cue(pad=True)
-            self._open_cue(CueKind.FRAGMENT, None, title=None, notes=None)
+            self._backfill_first_legacy_marker(kind, title=name)
             return
         marker = {
             CueKind.SLIDE: self.slide,
@@ -274,6 +272,11 @@ class _SimplexSceneMixin:
         if self._simplex_cues or self._simplex_current is not None:
             return False
         return float(cast(Any, self).time) > 1e-6
+
+    def _backfill_first_legacy_marker(self, kind: CueKind, *, title: str | None) -> None:
+        self._open_cue(kind, None, title=title, notes=None, start=0.0)
+        self._close_current_cue(pad=True)
+        self._open_cue(CueKind.FRAGMENT, None, title=None, notes=None)
 
     def _should_pad_current_cue(self, current: _OpenCue) -> bool:
         wait_time = float(self.cue_boundary_wait_time)

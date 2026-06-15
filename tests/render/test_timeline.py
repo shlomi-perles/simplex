@@ -63,10 +63,10 @@ def test_load_units_synthesizes_implicit_cue_without_render_output(tmp_path: Pat
     assert units[0].cues[0].kind is CueKind.SLIDE
 
 
-def test_load_units_assigns_leading_uncued_frames_to_first_cue(tmp_path: Path) -> None:
+def test_load_units_splits_legacy_leading_auto_cue(tmp_path: Path) -> None:
     media_dir = tmp_path / "media"
     manifest_dir = media_dir / "simplex-cues"
-    cue = SceneCue(
+    first = SceneCue(
         id="intro",
         kind=CueKind.SLIDE,
         title="Intro",
@@ -76,6 +76,49 @@ def test_load_units_assigns_leading_uncued_frames_to_first_cue(tmp_path: Path) -
         start=0.5,
         end=1.0,
         auto_id=True,
+    )
+    second = SceneCue(
+        id="intro-2",
+        kind=CueKind.FRAGMENT,
+        title="Intro Detail 1",
+        unit="slides.intro:Intro",
+        start_frame=60,
+        end_frame=90,
+        start=1.0,
+        end=1.5,
+        auto_id=True,
+    )
+    SceneCueManifest(
+        scene="Intro",
+        unit="slides.intro:Intro",
+        fps=60,
+        duration=1.5,
+        duration_frames=90,
+        cues=(first, second),
+    ).write(manifest_dir / "Intro.json")
+
+    units = timeline.load_units(_deck(tmp_path), media_dir=media_dir)
+
+    assert [(cue.id, cue.kind, cue.start_frame, cue.end_frame) for cue in units[0].cues] == [
+        ("intro", CueKind.SLIDE, 0, 30),
+        ("intro-2", CueKind.FRAGMENT, 30, 60),
+        ("intro-3", CueKind.FRAGMENT, 60, 90),
+    ]
+
+
+def test_load_units_preserves_explicit_leading_cue_start(tmp_path: Path) -> None:
+    media_dir = tmp_path / "media"
+    manifest_dir = media_dir / "simplex-cues"
+    cue = SceneCue(
+        id="intro-after-preroll",
+        kind=CueKind.SLIDE,
+        title="Intro",
+        unit="slides.intro:Intro",
+        start_frame=30,
+        end_frame=60,
+        start=0.5,
+        end=1.0,
+        auto_id=False,
     )
     SceneCueManifest(
         scene="Intro",
@@ -88,9 +131,7 @@ def test_load_units_assigns_leading_uncued_frames_to_first_cue(tmp_path: Path) -
 
     units = timeline.load_units(_deck(tmp_path), media_dir=media_dir)
 
-    assert units[0].cues[0].start_frame == 0
-    assert units[0].cues[0].start == 0.0
-    assert units[0].cues[0].end_frame == 60
+    assert units[0].cues == (cue,)
 
 
 def test_rebase_cues_offsets_frames() -> None:

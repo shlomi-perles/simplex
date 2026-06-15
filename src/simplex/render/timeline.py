@@ -360,22 +360,75 @@ def _implicit_scene_cue(scene: str, source_file: Path, *, fps: int, duration: fl
 
 
 def _normalize_scene_cues(cues: tuple[SceneCue, ...]) -> tuple[SceneCue, ...]:
-    """Assign leading unmarked media to the first cue.
+    """Migrate stale auto ``next_slide`` cue manifests.
 
-    Legacy ``next_slide`` scenes often place their first marker after the
-    opening animation. The render output contains those frames, so playback
-    should treat them as the first main cue instead of leaving an unaddressed
-    pre-roll that hash navigation skips.
+    Older Simplex builds recorded the first legacy ``next_slide()`` marker as
+    the start of the first cue. In that authoring style the marker is actually
+    the first pause, so leading media belongs to the main cue and the old first
+    cue becomes the first fragment. Explicit cue ids keep their authored start.
     """
     if not cues:
         return cues
     first = cues[0]
     if first.start_frame <= 0 and first.start <= 0:
         return cues
-    return (
-        first.model_copy(update={"start_frame": 0, "start": 0.0}),
-        *cues[1:],
+    if not first.auto_id or not first.kind.is_slide:
+        return cues
+    leading = first.model_copy(
+        update={
+            "start_frame": 0,
+            "end_frame": first.start_frame,
+            "start": 0.0,
+            "end": first.start,
+        }
     )
+    shifted = _shift_legacy_first_fragment(first, base_id=leading.id, number=2)
+    if shifted is None:
+        return (leading, *cues[1:])
+    return (
+        leading,
+        shifted,
+        *_shift_following_legacy_subcues(cues[1:], base_id=leading.id),
+    )
+
+
+def _shift_legacy_first_fragment(
+    cue: SceneCue,
+    *,
+    base_id: str,
+    number: int,
+) -> SceneCue | None:
+    if cue.end_frame <= cue.start_frame and cue.end <= cue.start:
+        return None
+    return cue.model_copy(
+        update={
+            "id": f"{base_id}-{number}",
+            "kind": CueKind.FRAGMENT,
+            "title": f"{cue.title} Detail 1",
+        }
+    )
+
+
+def _shift_auto_subcue(cue: SceneCue, *, base_id: str, number: int) -> SceneCue:
+    if not cue.auto_id or cue.kind.is_slide:
+        return cue
+    return cue.model_copy(update={"id": f"{base_id}-{number}"})
+
+
+def _shift_following_legacy_subcues(
+    cues: tuple[SceneCue, ...],
+    *,
+    base_id: str,
+) -> tuple[SceneCue, ...]:
+    shifted: list[SceneCue] = []
+    number = 3
+    for index, cue in enumerate(cues):
+        if cue.kind.is_slide:
+            shifted.extend(cues[index:])
+            break
+        shifted.append(_shift_auto_subcue(cue, base_id=base_id, number=number))
+        number += 1
+    return tuple(shifted)
 
 
 def _frames(seconds: float, fps: int) -> int:
