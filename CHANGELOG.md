@@ -4,6 +4,18 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.15.0...manim-simplex-v0.16.0) (2026-06-15)
+
+
+### Features
+
+* **cli:** prompt for init repo visibility ([fb78e74](https://github.com/shlomi-perles/simplex/commit/fb78e740530709c8bef321c25ef783a94d87d725))
+
+
+### Bug Fixes
+
+* **cli:** report conflicting init visibility flags ([795e01a](https://github.com/shlomi-perles/simplex/commit/795e01a01b456efbd118b51b7569b8d69ac188ae))
+
 ## [0.15.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.14.0...manim-simplex-v0.15.0) (2026-06-15)
 
 
