@@ -86,7 +86,8 @@ def init(
     gh_path = shutil.which("gh")
     if gh_path is not None:
         if public and private:
-            raise typer.BadParameter("choose either --public or --private, not both")
+            console.print("[red]choose either --public or --private, not both[/red]")
+            raise typer.Exit(2)
         repo_name = typer.prompt(
             f"GitHub repo to create (default: {target_dir.name})",
             default=target_dir.name,
