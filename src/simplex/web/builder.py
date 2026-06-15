@@ -31,7 +31,7 @@ from simplex.manifest import (
     ThemeMedia,
     ThemeTimeline,
 )
-from simplex.render import filenames, notes_pdf, pdf, pptx, runner, themes, thumbnail, timeline
+from simplex.render import filenames, notes_pdf, pdf, runner, themes, thumbnail, timeline
 from simplex.render.timeline import PackagedTheme, RenderedUnit
 from simplex.theme.presets import get as get_theme
 from simplex.theme.web_css import render_web_css
@@ -496,6 +496,35 @@ def _has_notes_pdf(deck: DeckConfig, deck_dir: Path) -> bool:
     return (deck_dir / filenames.pdf_name(deck, "note")).exists()
 
 
+def _export_slide_pdfs(
+    deck: DeckConfig,
+    manifest: DeckManifest,
+    *,
+    deck_out: Path,
+    default_variant: SlideThemeVariant,
+    theme_posters: dict[str, dict[str, str]],
+) -> dict[str, str]:
+    export_dir = deck_out / "exports"
+    legacy_pdf = export_dir / filenames.pdf_name(deck, "slides")
+    with contextlib.suppress(FileNotFoundError):
+        legacy_pdf.unlink()
+
+    hrefs: dict[str, str] = {}
+    for theme in manifest.themes:
+        slides_pdf = pdf.export(
+            deck,
+            manifest,
+            output_dir=deck_out,
+            variant=theme.id,
+            posters=theme_posters.get(theme.id, {}),
+            css_filter=theme.css_filter if theme.strategy == "css_filter_fallback" else None,
+        )
+        hrefs[theme.id] = slides_pdf.relative_to(deck_out).as_posix()
+
+    default_pdf = hrefs.get(default_variant) or next(iter(hrefs.values()), "")
+    return {"default": default_pdf, **hrefs} if default_pdf else hrefs
+
+
 def _deck_media_base_url(deck: DeckConfig, site_cfg: SiteConfig) -> str:
     return deck.hosting.media_base_url or site_cfg.hosting.media_base_url
 
@@ -681,13 +710,17 @@ def _build_deck(
         deck_date_info=deck_date_info,
     )
 
-    slides_pdf = pdf.export(deck, manifest, output_dir=deck_out)
-    slides_pptx = pptx.export(deck, manifest, output_dir=deck_out)
+    slide_pdf_hrefs = _export_slide_pdfs(
+        deck,
+        manifest,
+        deck_out=deck_out,
+        default_variant=default_variant,
+        theme_posters=theme_posters,
+    )
     manifest = manifest.model_copy(
         update={
             "exports": ManifestExports(
-                pdf=slides_pdf.relative_to(deck_out).as_posix(),
-                pptx=slides_pptx.relative_to(deck_out).as_posix(),
+                pdf=slide_pdf_hrefs.get("default"),
                 notes_pdf=filenames.pdf_name(deck, "note")
                 if _has_notes_pdf(deck, deck_out)
                 else None,
@@ -734,10 +767,10 @@ def _build_deck(
         total_duration_min=int(manifest.duration // 60)
         if manifest.duration > 0
         else deck.duration_minutes,
-        has_pdf=True,
+        has_pdf=bool(slide_pdf_hrefs),
         has_notes_pdf=_has_notes_pdf(deck, deck_out),
         slides_pdf_href=manifest.exports.pdf or "",
-        slides_pdf_hrefs={"default": manifest.exports.pdf or ""},
+        slides_pdf_hrefs=slide_pdf_hrefs,
         notes_pdf_name=filenames.pdf_name(deck, "note"),
         notes_html=notes_html,
         palette_css=render_web_css(

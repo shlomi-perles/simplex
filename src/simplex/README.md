@@ -9,8 +9,8 @@ It contains both halves of the product:
   authoring helpers for Manim scenes and slide decks.
 - `simplex.manifest` and `simplex.section` -- shared slide metadata schema.
 - `simplex.deck` -- deck config, discovery, and scaffolding.
-- `simplex.render` -- render orchestration, reconciliation, thumbnails, PDF,
-  PPTX, and HTML export.
+- `simplex.render` -- render orchestration, reconciliation, thumbnails, slide
+  PDFs, notes PDF, and HTML export.
 - `simplex.web` -- portal builder, notes renderer, templates, static assets,
   citations, refs, and live reload support.
 - `simplex.cli.commands:app` -- the Typer app behind the `simplex` command.

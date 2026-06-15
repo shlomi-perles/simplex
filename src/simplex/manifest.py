@@ -112,7 +112,6 @@ class ManifestExports(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     pdf: str | None = None
-    pptx: str | None = None
     notes_pdf: str | None = None
 
 

@@ -87,8 +87,12 @@ def test_build_emits_timeline_manifest_and_deck_page(tmp_path: Path) -> None:
     assert "shaka/shaka-player.compiled.js" in alpha_html
     assert "iframe" not in alpha_html
     assert not (site_dir / "decks" / "alpha" / "slides.html").exists()
-    assert (site_dir / "decks" / "alpha" / "exports" / "Alpha-slides.pdf").exists()
-    assert (site_dir / "decks" / "alpha" / "exports" / "alpha.pptx").exists()
+    assert manifest["exports"] == {"pdf": "exports/Alpha-slides-dark.pdf"}
+    assert (site_dir / "decks" / "alpha" / "exports" / "Alpha-slides-dark.pdf").exists()
+    assert (site_dir / "decks" / "alpha" / "exports" / "Alpha-slides-light.pdf").exists()
+    assert not (site_dir / "decks" / "alpha" / "exports" / "Alpha-slides.pdf").exists()
+    assert 'data-pdf-dark="exports/Alpha-slides-dark.pdf"' in alpha_html
+    assert 'data-pdf-light="exports/Alpha-slides-light.pdf"' in alpha_html
     assert 'class="slide-ref"' in alpha_html
 
 

@@ -135,7 +135,7 @@ uv run simplex serve
 | `simplex.theme` | `Theme`, `Palette`, `Typography`, `Spacing`, `Motion`, `LatexProfile`, `WebPalette`, `active_theme`, `get_active_theme`, `presets`, `resolve_palette`, `available_palette_names`, `render_web_css`. |
 | `simplex.manifest` | `DeckManifest`, `Cue`, `ThemeTimeline`, and the schema v2 playback contract. |
 | `simplex.deck` | `DeckConfig`, `discover`, `scaffold`, section metadata, bundled deck template. |
-| `simplex.render` | Manim runner, timeline composition, HLS/MP4 packaging, cue images, PDF, PPTX, notes PDF, filenames. |
+| `simplex.render` | Manim runner, timeline composition, HLS/MP4 packaging, cue images, slide PDFs, notes PDF, filenames. |
 | `simplex.web` | Portal builder, notes renderer, citations, refs, templates, static assets, live reload. |
 | `simplex.cli` | Typer application installed as the `simplex` command. |
 

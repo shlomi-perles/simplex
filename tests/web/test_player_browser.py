@@ -624,11 +624,17 @@ def test_slides_pdf_href_follows_slide_theme(
         _open_deck(page, base_url)
 
         slides_pdf = page.locator("[data-slides-pdf-link]")
-        expect(slides_pdf).to_have_attribute("href", re.compile(r"exports/Alpha-slides\.pdf"))
+        expect(slides_pdf).to_have_attribute(
+            "href",
+            re.compile(r"exports/Alpha-slides-dark\.pdf"),
+        )
 
         page.locator("[data-settings-toggle]").click()
         page.locator('[data-setting="slide-theme"]').click()
-        expect(slides_pdf).to_have_attribute("href", re.compile(r"exports/Alpha-slides\.pdf"))
+        expect(slides_pdf).to_have_attribute(
+            "href",
+            re.compile(r"exports/Alpha-slides-light\.pdf"),
+        )
 
 
 def test_direct_player_has_tap_zones_and_progress_bar(

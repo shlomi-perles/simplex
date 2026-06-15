@@ -12,8 +12,8 @@ Timeline-native rendering and packaging.
   per theme, then emit HLS/CMAF plus a progressive MP4 fallback.
 - `thumbnail.generate_cue_images(...)` extracts cue posters and thumbnails
   from the composed lecture timeline.
-- `pdf.export(...)` and `pptx.export(...)` rebuild exports from cue poster
-  frames, so exports follow the same manifest as the web player.
+- `pdf.export(...)` rebuilds slide PDF exports from cue poster frames, so
+  downloads follow the same theme assets as the web player.
 - `notes_pdf.export(...)` keeps rendering `notes.md` to a notes PDF.
 
 ## Policy

@@ -33,7 +33,7 @@ from simplex.section import CueKind
 
 DEFAULT_FPS = 60
 DEFAULT_SEGMENT_DURATION = 4
-DEFAULT_CSS_FILTER = "invert(1) hue-rotate(180deg)"
+DEFAULT_CSS_FILTER = "invert(1) hue-rotate(180deg) saturate(0.9) contrast(0.96) brightness(1.08)"
 
 
 @dataclass(frozen=True, slots=True)
