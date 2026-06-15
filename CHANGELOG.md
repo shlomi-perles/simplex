@@ -4,6 +4,29 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.14.0...manim-simplex-v0.15.0) (2026-06-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* PPTX export support and the exports.pptx manifest field were removed.
+
+### Features
+
+* **cli:** auto-select free serve port ([39eea98](https://github.com/shlomi-perles/simplex/commit/39eea983632135810d38a127099e0b6fc5a41713))
+* make slide PDFs theme-aware ([0c58299](https://github.com/shlomi-perles/simplex/commit/0c582995ac724e3e7e0e13d5c7d70660dafb9c56))
+
+
+### Bug Fixes
+
+* **playback:** include leading scene frames in first cue ([dc9a152](https://github.com/shlomi-perles/simplex/commit/dc9a1524d326af39a7c65cf414336d3de24db7f8))
+* **playback:** split legacy leading cue caches ([384e0b2](https://github.com/shlomi-perles/simplex/commit/384e0b285f34c2dddf8adb48d42135d1db5616b5))
+* **player:** keep presentation cues authoritative ([4044c44](https://github.com/shlomi-perles/simplex/commit/4044c444bbeedcbdeb145826d992dd24a7aed054))
+* **player:** require accurate cue seek landing ([ad50aa0](https://github.com/shlomi-perles/simplex/commit/ad50aa0451fb2009855272d5600fc23ec351ee82))
+* **player:** stabilize presentation cue boundaries ([45235b3](https://github.com/shlomi-perles/simplex/commit/45235b3e7e2cd754e05091170834be98bd670170))
+* **player:** start next main slide after subslide ([deadcdc](https://github.com/shlomi-perles/simplex/commit/deadcdc60f0c129f5f501eb5df54487a4cc97080))
+* **render:** preserve Manim cache defaults ([18753b1](https://github.com/shlomi-perles/simplex/commit/18753b17bca655b2a19871fa4fa33d33be99724c))
+
 ## [0.14.0](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.13.0...manim-simplex-v0.14.0) (2026-06-09)
 
 
