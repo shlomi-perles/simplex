@@ -63,6 +63,14 @@ def init(
             help="Directory to create. Default: prompt + git clone the template.",
         ),
     ] = None,
+    public: Annotated[
+        bool,
+        typer.Option("--public", help="Create the GitHub repository as public."),
+    ] = False,
+    private: Annotated[
+        bool,
+        typer.Option("--private", help="Create the GitHub repository as private."),
+    ] = False,
 ) -> None:
     """Scaffold a new lectures repo from ``shlomi-perles/simplex-lectures-template``.
 
@@ -77,10 +85,13 @@ def init(
 
     gh_path = shutil.which("gh")
     if gh_path is not None:
+        if public and private:
+            raise typer.BadParameter("choose either --public or --private, not both")
         repo_name = typer.prompt(
             f"GitHub repo to create (default: {target_dir.name})",
             default=target_dir.name,
         )
+        visibility_flag = _init_visibility_flag(public=public, private=private)
         subprocess.run(
             [
                 gh_path,
@@ -90,7 +101,7 @@ def init(
                 "--template",
                 template_repo,
                 "--clone",
-                "--private",
+                visibility_flag,
             ],
             check=True,
         )
@@ -109,6 +120,18 @@ def init(
         f"[green]Cloned[/green] template into {target_dir}. "
         "Run `git init && git add . && git commit -m initial` inside it next."
     )
+
+
+def _init_visibility_flag(*, public: bool, private: bool) -> str:
+    if public:
+        return "--public"
+    if private:
+        return "--private"
+
+    visibility = str(typer.prompt("GitHub repo visibility", default="public")).strip().lower()
+    if visibility not in {"public", "private"}:
+        raise typer.BadParameter("visibility must be public or private")
+    return f"--{visibility}"
 
 
 def _runner_render(

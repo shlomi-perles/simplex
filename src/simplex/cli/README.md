@@ -5,7 +5,7 @@ Typer-based command surface exposed as `simplex` via `[project.scripts]`.
 ## Public surface
 
 - `app` -- Typer application (entry point: `simplex.cli.commands:app`)
-- Commands: `new`, `render`, `build`, `serve`, `clean`, `doctor`
+- Commands: `new`, `init`, `render`, `build`, `serve`, `clean`, `doctor`
 
 ## Don't
 

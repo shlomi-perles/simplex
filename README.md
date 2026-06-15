@@ -145,7 +145,7 @@ uv run simplex serve
 | --- | --- |
 | `simplex new <slug>` | Create `decks/<slug>/` from the bundled template. |
 | `simplex new <section>/<slug>` | Create a deck inside a named section. |
-| `simplex init [dir]` | Create a lectures repo from the GitHub template. |
+| `simplex init [dir] [--public\|--private]` | Create a lectures repo from the GitHub template. |
 | `simplex render <slug>` | Render one deck into `site/decks/<slug>/`. |
 | `simplex render <slug>::<Scene>` | Render one scene from a deck. |
 | `simplex render <slug> --slide-theme light` | Render only one true slide theme for a deck. |
