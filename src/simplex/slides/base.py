@@ -183,7 +183,7 @@ class _SimplexSceneMixin:
         loop: bool = False,
         **_kwargs: Any,
     ) -> None:
-        """Thin transitional alias for local examples that still call ``next_slide``.
+        """Thin transitional alias for older decks that still call ``next_slide``.
 
         The method records Simplex cues only; it never calls Manim
         ``next_section`` or manim-slides.

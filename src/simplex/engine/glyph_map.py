@@ -100,7 +100,7 @@ class TransformByGlyphMap(AnimationGroup):
     falls back to ``show_indices`` mode: stacks both mobjects and overlays
     coloured index labels so you can read off the right indices.
 
-    See the showcase deck for runnable examples.
+    See the lecture template for runnable examples.
     """
 
     def __init__(  # pyright: ignore[reportInconsistentConstructor]

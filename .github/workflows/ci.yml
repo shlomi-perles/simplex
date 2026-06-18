@@ -45,5 +45,7 @@ jobs:
       run: uv run --locked manim plugins -l | tee /dev/stderr | grep -q '^\s*•\s*simplex\b'
     - name: CLI smoke
       run: uv run --locked simplex --help
-    - name: Render smoke (showcase, first animation only)
-      run: uv run --locked simplex test --only showcase --skip-renderer opengl
+    - name: Render smoke (scaffolded deck, first animation only)
+      run: |
+        uv run --locked simplex new smoke-render
+        uv run --locked simplex test --only smoke-render --slide-theme dark

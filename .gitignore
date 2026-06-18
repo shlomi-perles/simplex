@@ -21,10 +21,10 @@ dist/
 
 # Manim output
 media/
+# Local package-repo smoke decks. Lecture projects track their own decks.
+/decks/
 # manim-slides output (rooted, so tests/slides/ stays tracked)
 /slides/
-decks/**/slides/*.json
-decks/**/slides/files/
 
 # Generated site
 site/

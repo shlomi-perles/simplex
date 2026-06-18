@@ -25,8 +25,8 @@ Pytest suites for the `manim-simplex` package.
 
 ## Don't
 
-- Don't add full visual renders to unit tests. Render-smoke lives in CI via
-  `simplex test --only showcase`.
+- Don't add full visual renders to unit tests. Render-smoke lives in CI via a
+  temporary deck created with `simplex new`.
 - Don't import `manim` in `conftest.py`; keep collection fast.
 - Don't call `apply_theme_defaults` -- it mutates global Manim state.
 - Don't add browser tests for static markup that a normal HTML assertion can

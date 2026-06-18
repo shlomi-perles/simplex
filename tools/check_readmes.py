@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-ROOTS: tuple[Path, ...] = (Path("src/simplex"), Path("decks"), Path("tests"))
+ROOTS: tuple[Path, ...] = (Path("src/simplex"), Path("tests"))
 LIMIT: int = 100
 
 # Runtime-generated directories under `web/static/` (populated by
@@ -27,10 +27,6 @@ def main() -> int:
 
         if not (root / "README.md").exists():
             failures.append(f"{root}: missing README.md")
-
-        # Exclude all subdirectories under 'decks'
-        if root.name == "decks":
-            continue
 
         for sub in sorted(p for p in root.rglob("*") if p.is_dir()):
             rel_parts = sub.relative_to(root).parts

@@ -400,7 +400,8 @@ Run smoke tests locally:
 uv run python -c "import simplex.plugin; simplex.plugin.activate(); print('ok')"
 uv run manim plugins -l
 uv run simplex --help
-uv run simplex test --only showcase
+uv run simplex new smoke-render
+uv run simplex test --only smoke-render --slide-theme dark
 ```
 
 ## Release
