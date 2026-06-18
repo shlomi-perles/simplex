@@ -34,11 +34,13 @@ and navigate by seeking to cue timestamps instead of swapping per-slide videos.
 - Cairo, Pango, and a TeX distribution when rendering TeX. FFmpeg is optional
   as a packaging fallback. See the
   Manim installation guide: https://docs.manim.community/en/stable/installation.html
+- JetBrains Mono as an installed system font for the built-in code theme.
 
 Typical system packages:
 
 ```bash
 sudo apt-get install texlive-latex-extra texlive-fonts-recommended texlive-science \
+                     ffmpeg fontconfig fonts-jetbrains-mono \
                      libcairo2-dev libpango1.0-dev
 ```
 
