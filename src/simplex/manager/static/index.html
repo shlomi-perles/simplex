@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simplex Manager</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main class="shell">
+    <aside class="rail">
+      <div class="brand">
+        <div class="brand-mark">S</div>
+        <div>
+          <h1>Simplex</h1>
+          <p id="repo-label">Manager</p>
+        </div>
+      </div>
+      <label class="search">
+        <i data-lucide="search"></i>
+        <input id="deck-search" type="search" placeholder="Search decks">
+      </label>
+      <div id="deck-list" class="deck-list"></div>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="section-label">Deck</p>
+          <h2 id="deck-title">Loading...</h2>
+          <p id="deck-summary"></p>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn" id="refresh" type="button" title="Refresh"><i data-lucide="refresh-cw"></i></button>
+          <a class="icon-btn" id="open-deck-page" title="Open deck page" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i></a>
+        </div>
+      </header>
+
+      <div class="main-grid">
+        <div class="deck-column">
+          <section class="panel editor-panel">
+            <div class="panel-head">
+              <div>
+                <h3>Entrypoints</h3>
+                <p>Drag to reorder. Hide removes from <code>entrypoints</code>.</p>
+              </div>
+              <button id="save-order" type="button"><i data-lucide="save"></i><span>Save</span></button>
+            </div>
+            <div id="entrypoints" class="entrypoints"></div>
+            <details class="available-wrap">
+              <summary><i data-lucide="plus-circle"></i> Available scenes</summary>
+              <div id="available" class="available"></div>
+            </details>
+          </section>
+
+          <details class="panel defaults-panel">
+            <summary class="panel-head">
+              <div>
+                <h3>Deck Defaults</h3>
+                <p>Empty values use defaults and are omitted from <code>deck.toml</code>.</p>
+              </div>
+              <button id="save-defaults" type="button"><i data-lucide="save"></i><span>Save</span></button>
+            </summary>
+            <div id="defaults-editor" class="defaults-editor"></div>
+          </details>
+        </div>
+
+        <aside class="panel action-panel">
+          <div class="panel-head compact">
+            <h3>Run</h3>
+          </div>
+          <label class="field">
+            <span>Quality</span>
+            <select id="quality"></select>
+          </label>
+          <label class="field">
+            <span>Slide theme</span>
+            <select id="slide-theme">
+              <option value="all">All</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+          <div class="toggle-row">
+            <button class="seg active" id="cache-on" data-cache="on" type="button"><i data-lucide="database"></i><span>Cache</span></button>
+            <button class="seg" id="cache-off" data-cache="off" type="button"><i data-lucide="database-zap"></i><span>Off</span></button>
+            <button class="seg" id="cache-flush" data-cache="flush" type="button"><i data-lucide="eraser"></i><span>Flush</span></button>
+          </div>
+          <label class="check-row">
+            <input id="open-after" type="checkbox">
+            <span>Open after render</span>
+          </label>
+          <div class="run-buttons">
+            <button id="render-selected" type="button"><i data-lucide="play"></i><span>Render Scene</span></button>
+            <button id="render-deck" type="button"><i data-lucide="clapperboard"></i><span>Render Deck</span></button>
+            <button id="build-selected" type="button"><i data-lucide="package"></i><span>Build Deck</span></button>
+            <button id="build-no-render" type="button"><i data-lucide="file-code-2"></i><span>Build HTML</span></button>
+          </div>
+          <div class="status-box" id="rendered-status"></div>
+        </aside>
+      </div>
+    </section>
+
+    <aside class="jobs">
+      <div class="panel-head compact">
+        <h3>Jobs</h3>
+        <div class="job-head-actions">
+          <span id="job-state">Idle</span>
+          <button class="icon-only" id="clear-jobs" type="button" title="Clear completed jobs"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+      <div id="jobs-list" class="jobs-list"></div>
+      <div id="job-preview" class="job-preview"></div>
+      <pre id="job-log" class="job-log"></pre>
+    </aside>
+  </main>
+
+  <script src="/vendor/lucide/lucide.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

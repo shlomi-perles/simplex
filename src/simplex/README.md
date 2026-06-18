@@ -13,6 +13,8 @@ It contains both halves of the product:
   PDFs, notes PDF, and HTML export.
 - `simplex.web` -- portal builder, notes renderer, templates, static assets,
   citations, refs, and live reload support.
+- `simplex.manager` -- local browser UI for deck entrypoints, deck defaults,
+  render/build jobs, command previews, logs, and output opening.
 - `simplex.cli.commands:app` -- the Typer app behind the `simplex` command.
 
 ## Package Boundary
@@ -32,5 +34,7 @@ eagerly import Manim.
 - Don't import Manim from CLI/web parent paths just to interpret render
   settings. Keep defaults in project/deck `manim.cfg` files and pass one-off
   overrides through Manim's own CLI parser.
+- Don't add manager-only deck schema. The manager edits the same
+  `deck.toml` conventions used by the CLI.
 - Don't bypass the plugin entry point by setting `manim.config` from scenes.
   The plugin runs once at import time; that is the correct integration point.

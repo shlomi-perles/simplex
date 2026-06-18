@@ -43,6 +43,8 @@ def _filter_groups(
 
 
 def _manim_command() -> list[str]:
+    if os.environ.get("SIMPLEX_MANAGER_FORCE_ANSI") == "1":
+        return [sys.executable, "-m", "simplex.manager.run_manim"]
     return [sys.executable, "-m", "manim"]
 
 

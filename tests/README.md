@@ -19,6 +19,8 @@ Pytest suites for the `manim-simplex` package.
 - `tests/deck/` -- deck config, section config, discovery, and scaffolding.
 - `tests/render/` -- runner command construction, timeline rebasing,
   packaging helpers, cue images, exports.
+- `tests/manager/` -- deck manager TOML editing, scene discovery, Manim
+  option forwarding, job naming, output opening, and ANSI wrapper behavior.
 - `tests/web/` -- notes rendering, citations, equations, site config, portal
   builder, and browser-level generated player checks.
 - `tests/cli/` -- Typer command surface and thin orchestration behavior.

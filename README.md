@@ -14,7 +14,7 @@ namespace, `simplex`, with:
 - theme tokens, mobjects, layout regions, slide bases, and animation helpers;
 - a timeline manifest schema and render/package pipeline;
 - the `simplex` CLI for deck scaffolding, rendering, site building, serving,
-  testing, and diagnostics;
+  local deck management, testing, and diagnostics;
 - a static lecture portal with notes, citations, math rendering, thumbnails,
   Shaka-backed HLS playback, MP4 fallback, and GitHub Pages-friendly output.
 
@@ -137,6 +137,7 @@ uv run simplex serve
 | `simplex.deck` | `DeckConfig`, `discover`, `scaffold`, section metadata, bundled deck template. |
 | `simplex.render` | Manim runner, timeline composition, HLS/MP4 packaging, cue images, slide PDFs, notes PDF, filenames. |
 | `simplex.web` | Portal builder, notes renderer, citations, refs, templates, static assets, live reload. |
+| `simplex.manager` | Local browser UI for deck discovery, entrypoint editing, rendering, building, and job logs. |
 | `simplex.cli` | Typer application installed as the `simplex` command. |
 
 ## CLI
@@ -146,6 +147,7 @@ uv run simplex serve
 | `simplex new <slug>` | Create `decks/<slug>/` from the bundled template. |
 | `simplex new <section>/<slug>` | Create a deck inside a named section. |
 | `simplex init [dir] [--public\|--private]` | Create a lectures repo from the GitHub template. |
+| `simplex manager` | Open the local deck manager web UI. |
 | `simplex render <slug>` | Render one deck into `site/decks/<slug>/`. |
 | `simplex render <slug>::<Scene>` | Render one scene from a deck. |
 | `simplex render <slug> --slide-theme light` | Render only one true slide theme for a deck. |
@@ -159,6 +161,33 @@ uv run simplex serve
 | `simplex theme-studio` | Generate and open the palette/code-style editor. |
 | `simplex clean` | Remove generated `site/` and `media/` output. |
 | `simplex doctor` | Check required binaries, PyAV packaging, and optional fallbacks. |
+
+## Manager
+
+`simplex manager` starts a local browser UI for lecture repos. It scans
+`decks/*/deck.toml`, shows configured entrypoints and available scene classes,
+and edits the existing TOML shape:
+
+```toml
+entrypoints = ["slides.intro:Intro", "slides.surface:SurfaceColoring@opengl"]
+```
+
+Reordering slides rewrites that string list in order. Removing an entrypoint
+removes the string from `entrypoints`; scanned scenes can be added back with
+one click. OpenGL remains the `@opengl` suffix convention, and renderer badges
+come from the same deck parsing and source detection used by the CLI.
+
+The manager can render the selected slide, render a full deck, or build
+selected decks with or without rendering. Quality choices come from
+`manim.constants.QUALITIES`, "project default" passes no quality flag, cache on
+passes no cache flag, cache off passes `--disable_caching`, and flush cache
+passes `--flush_cache`. Open-after-render opens the specific rendered scene
+output for scene jobs and the generated deck/site page for deck and build jobs.
+
+The job drawer keeps command previews, live ANSI-colored logs, elapsed time,
+status, stop/open controls, and output links for the current manager process.
+The browser remembers the last render controls locally so reopening the manager
+does not reset normal workflow settings.
 
 ## Deck Layout
 

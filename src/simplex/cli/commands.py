@@ -1,10 +1,11 @@
-"""Simplex CLI -- new | init | render | build | serve | test | clean | doctor."""
+"""Simplex CLI -- new | init | manager | render | build | serve | test | clean | doctor."""
 
 import asyncio
 import contextlib
 import errno
 import http.server
 import ipaddress
+import os
 import shutil
 import socketserver
 import subprocess
@@ -26,13 +27,22 @@ from simplex.web.range_server import RangeRequestHandlerMixin
 from simplex.web.site_config import SiteConfig
 
 app = typer.Typer(help="Simplex -- timeline-native Manim lecture player and static portal.")
-console = Console()
+
+
+def _console() -> Console:
+    if os.environ.get("SIMPLEX_MANAGER_FORCE_ANSI") == "1":
+        return Console(force_terminal=True, color_system="truecolor", legacy_windows=False)
+    return Console()
+
+
+console = _console()
 
 _DECKS = Path("decks")
 _SITE = Path("site")
 _SLIDE_THEME_HELP = "True-theme variants to render: all, dark, or light."
 _DEFAULT_SERVE_HOST = "127.0.0.1"
 _DEFAULT_SERVE_PORT = 8000
+_DEFAULT_MANAGER_PORT = 8070
 _SERVE_PORT_SCAN_LIMIT = 100
 _SlideThemeOption = Literal["all", "dark", "light"]
 _MANIM_ARGS_CONTEXT = {
@@ -133,6 +143,43 @@ def _init_visibility_flag(*, public: bool, private: bool) -> str:
     if visibility not in {"public", "private"}:
         raise typer.BadParameter("visibility must be public or private")
     return f"--{visibility}"
+
+
+@app.command()
+def manager(
+    port: Annotated[
+        int,
+        typer.Option(help="Preferred port to serve the manager on. Use 0 for any free port."),
+    ] = _DEFAULT_MANAGER_PORT,
+    host: Annotated[
+        str,
+        typer.Option(help="Host interface to bind."),
+    ] = _DEFAULT_SERVE_HOST,
+    strict_port: Annotated[
+        bool,
+        typer.Option(
+            "--strict-port/--auto-port",
+            help="Fail when the preferred port is busy instead of choosing the next free port.",
+        ),
+    ] = False,
+    open_browser: Annotated[
+        bool,
+        typer.Option("--open/--no-open", help="Open the manager in the default browser."),
+    ] = True,
+) -> None:
+    """Open the local Simplex deck manager."""
+    from simplex.manager.server import serve as serve_manager
+
+    try:
+        serve_manager(
+            repo_root=Path.cwd(),
+            host=host,
+            port=port,
+            strict_port=strict_port,
+            open_browser=open_browser,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
 
 def _runner_render(

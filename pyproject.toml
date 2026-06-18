@@ -103,6 +103,7 @@ typeCheckingMode = "strict"
 artifacts = [
   "src/simplex/theme/palette_data/**/*",
   "src/simplex/theme/studio_template.html",
+  "src/simplex/manager/static/**/*",
   "src/simplex/web/static/fonts/**/*",
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",
@@ -124,6 +125,7 @@ artifacts = [
   "src/simplex/deck/_template/**/.gitkeep",
   "src/simplex/theme/palette_data/**/*",
   "src/simplex/theme/studio_template.html",
+  "src/simplex/manager/static/**/*",
   "src/simplex/web/static/fonts/**/*",
   "src/simplex/web/static/htmx.min.js",
   "src/simplex/web/static/katex/**/*",
