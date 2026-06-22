@@ -89,6 +89,22 @@ def test_code_theme_tokens_match_builtin_styles() -> None:
     )
 
 
+def test_typography_defaults_track_manim_defaults() -> None:
+    from inspect import signature
+
+    from manim import DEFAULT_FONT_SIZE, Code, Text
+
+    from simplex.theme.tokens import Typography
+
+    text_font_default = signature(Text).parameters["font"].default
+
+    typography = Typography()
+
+    assert typography.body == DEFAULT_FONT_SIZE
+    assert typography.font_family == text_font_default
+    assert typography.mono_family == Code.default_paragraph_config["font"]
+
+
 def test_code_style_defaults_to_simplex_pycharm() -> None:
     from simplex.theme.tokens import Palette, Theme
 

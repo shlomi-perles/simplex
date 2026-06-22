@@ -1,7 +1,11 @@
 """Frozen Pydantic theme tokens."""
 
+import ast
 from collections.abc import Mapping
-from typing import Any, Literal
+from functools import cache
+from importlib.metadata import PackageNotFoundError, distribution
+from pathlib import Path
+from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pygments.style import Style
@@ -9,6 +13,112 @@ from pygments.style import Style
 from simplex.theme.palettes import MANIM_DEFAULT, web_palette_for
 
 _DEFAULT_WEB_COLORS = web_palette_for(MANIM_DEFAULT)
+_MANIM_CONSTANTS = "manim/constants.py"
+_MANIM_TEXT_MOBJECT = "manim/mobject/text/text_mobject.py"
+_MANIM_CODE_MOBJECT = "manim/mobject/text/code_mobject.py"
+
+
+# Do not import Manim here: Manim imports Simplex while discovering plugins.
+# Read installed Manim source metadata to avoid that activation cycle.
+@cache
+def _manim_source_tree(relative_path: str) -> ast.Module:
+    try:
+        source_path = Path(str(distribution("manim").locate_file(relative_path)))
+    except PackageNotFoundError as exc:
+        raise RuntimeError("Simplex requires Manim to resolve typography defaults.") from exc
+    return ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+
+
+def _literal(value: ast.expr, context: str) -> object:
+    try:
+        return ast.literal_eval(value)
+    except (SyntaxError, ValueError) as exc:
+        raise RuntimeError(f"Could not read Manim default for {context}.") from exc
+
+
+def _manim_constant(name: str) -> object:
+    for node in _manim_source_tree(_MANIM_CONSTANTS).body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and target.id == name:
+                return _literal(node.value, name)
+    raise RuntimeError(f"Manim constant {name!r} was not found.")
+
+
+def _manim_init_default(relative_path: str, class_name: str, parameter: str) -> object:
+    for node in _manim_source_tree(relative_path).body:
+        if not isinstance(node, ast.ClassDef) or node.name != class_name:
+            continue
+        for member in node.body:
+            if not isinstance(member, ast.FunctionDef) or member.name != "__init__":
+                continue
+            positional = [*member.args.posonlyargs, *member.args.args]
+            defaulted = positional[len(positional) - len(member.args.defaults) :]
+            for arg, default in zip(defaulted, member.args.defaults, strict=True):
+                if arg.arg == parameter:
+                    return _literal(default, f"{class_name}.{parameter}")
+            for arg, kw_default in zip(
+                member.args.kwonlyargs,
+                member.args.kw_defaults,
+                strict=True,
+            ):
+                if arg.arg == parameter and kw_default is not None:
+                    return _literal(kw_default, f"{class_name}.{parameter}")
+    raise RuntimeError(f"Manim default {class_name}.{parameter} was not found.")
+
+
+def _manim_class_attr(relative_path: str, class_name: str, attr_name: str) -> object:
+    for node in _manim_source_tree(relative_path).body:
+        if not isinstance(node, ast.ClassDef) or node.name != class_name:
+            continue
+        for member in node.body:
+            if (
+                isinstance(member, ast.AnnAssign)
+                and isinstance(member.target, ast.Name)
+                and member.target.id == attr_name
+                and member.value is not None
+            ):
+                return _literal(member.value, f"{class_name}.{attr_name}")
+            if not isinstance(member, ast.Assign):
+                continue
+            for target in member.targets:
+                if isinstance(target, ast.Name) and target.id == attr_name:
+                    return _literal(member.value, f"{class_name}.{attr_name}")
+    raise RuntimeError(f"Manim class attribute {class_name}.{attr_name} was not found.")
+
+
+def _manim_default_font_size() -> int:
+    font_size = _manim_constant("DEFAULT_FONT_SIZE")
+    if not isinstance(font_size, int):
+        raise RuntimeError("Manim DEFAULT_FONT_SIZE must be an integer.")
+    return font_size
+
+
+def _manim_text_font_default() -> str:
+    font = _manim_init_default(_MANIM_TEXT_MOBJECT, "Text", "font")
+    if not isinstance(font, str):
+        raise RuntimeError("Manim Text.font default must be a string.")
+    return font
+
+
+def _manim_code_font_default() -> str:
+    paragraph_config = _manim_class_attr(
+        _MANIM_CODE_MOBJECT,
+        "Code",
+        "default_paragraph_config",
+    )
+    if not isinstance(paragraph_config, dict) or not isinstance(
+        font := paragraph_config.get("font"),
+        str,
+    ):
+        raise RuntimeError("Manim Code.default_paragraph_config['font'] must be a string.")
+    return font
+
+
+_MANIM_DEFAULT_FONT_SIZE: Final[int] = _manim_default_font_size()
+_MANIM_DEFAULT_FONT_FAMILY: Final[str] = _manim_text_font_default()
+_MANIM_DEFAULT_MONO_FAMILY: Final[str] = _manim_code_font_default()
 
 
 type ThemeVariant = Literal["dark", "light"]
@@ -36,9 +146,9 @@ class Palette(BaseModel):
 
 class Typography(BaseModel):
     model_config = ConfigDict(frozen=True)
-    font_family: str = "sans-serif"
-    mono_family: str = "monospace"
-    body: int = 30
+    font_family: str = _MANIM_DEFAULT_FONT_FAMILY
+    mono_family: str = _MANIM_DEFAULT_MONO_FAMILY
+    body: int = _MANIM_DEFAULT_FONT_SIZE
     h1: int = 60
     h2: int = 48
     caption: int = 20
