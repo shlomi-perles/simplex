@@ -4,6 +4,13 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.3](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.17.2...manim-simplex-v0.17.3) (2026-06-23)
+
+
+### Bug Fixes
+
+* **theme:** preserve Simplex preset typography scale ([3d1d905](https://github.com/shlomi-perles/simplex/commit/3d1d9051e400854f95e1ea65da3f88c26c03015d))
+
 ## [0.17.2](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.17.1...manim-simplex-v0.17.2) (2026-06-23)
 
 
