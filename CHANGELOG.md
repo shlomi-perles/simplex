@@ -4,6 +4,13 @@ All notable changes to `manim-simplex` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.2](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.17.1...manim-simplex-v0.17.2) (2026-06-23)
+
+
+### Bug Fixes
+
+* **engine:** expose TexPage line parts ([997f96c](https://github.com/shlomi-perles/simplex/commit/997f96caa17ce76bb2ac3c5cfa99d0ef7e2150d1))
+
 ## [0.17.1](https://github.com/shlomi-perles/simplex/compare/manim-simplex-v0.17.0...manim-simplex-v0.17.1) (2026-06-22)
 
 
