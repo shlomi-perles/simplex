@@ -92,26 +92,58 @@ def _display_math_spacing_commands(spacing: DisplayMathSpacing | None) -> str:
     )
 
 
-def _split_display_math(parts: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[int, ...]]:
+def _append_line_part(
+    rendered: list[str],
+    line_indices: list[int],
+    text: str,
+    *,
+    include_empty_lines: bool,
+) -> None:
+    if not text:
+        return
+    if include_empty_lines or text.strip():
+        line_indices.append(len(rendered))
+        rendered.append(text)
+
+
+def _split_display_math(
+    parts: tuple[str, ...],
+    *,
+    include_empty_lines: bool = False,
+) -> tuple[tuple[str, ...], tuple[int, ...], tuple[int, ...]]:
     rendered: list[str] = []
     equation_indices: list[int] = []
+    line_indices: list[int] = []
 
     for part in parts:
         cursor = 0
         for match in _DISPLAY_MATH_RE.finditer(part):
-            before = part[cursor : match.start()]
-            if before.strip():
-                rendered.append(before)
+            _append_line_part(
+                rendered,
+                line_indices,
+                part[cursor : match.start()],
+                include_empty_lines=include_empty_lines,
+            )
             equation_indices.append(len(rendered))
             rendered.append(match.group(0))
             cursor = match.end()
-        tail = part[cursor:]
-        if tail.strip():
-            rendered.append(tail)
+        _append_line_part(
+            rendered,
+            line_indices,
+            part[cursor:],
+            include_empty_lines=include_empty_lines,
+        )
 
     if not rendered:
         rendered.append("")
-    return tuple(rendered), tuple(equation_indices)
+    return tuple(rendered), tuple(equation_indices), tuple(line_indices)
+
+
+def _unsplit_tex_parts(parts: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[int, ...]]:
+    rendered = tuple(part for part in parts if part)
+    if not rendered:
+        return ("",), ()
+    return rendered, tuple(range(len(rendered)))
 
 
 def _resolve_page_width(page_width: PageWidth | None) -> float:
@@ -169,14 +201,18 @@ class TexPage(Tex):
         TexPage("...", page_width=my_region, buff=0.4)
 
     Display math blocks delimited by ``\\[...\\]`` are split into their own
-    Tex parts, so ``page.equation(0)`` returns the first displayed equation.
-    ``math_spacing`` accepts one pt value for all display skips, a four-value
-    tuple, or a mapping keyed by LaTeX display skip length names.
+    Tex parts, so ``page.equation(0)`` returns the first displayed equation
+    and ``page.line(0)`` returns the first non-equation chunk. Set
+    ``include_empty_lines=True`` to keep blank/newline-only chunks between
+    equations addressable too. ``math_spacing`` accepts one pt value for all
+    display skips, a four-value tuple, or a mapping keyed by LaTeX display
+    skip length names.
     """
 
     page_width: ClassVar[PageWidth | None] = None
     buff: ClassVar[float] = LARGE_BUFF
     split_display_math: ClassVar[bool] = True
+    include_empty_lines: ClassVar[bool] = False
     math_spacing: ClassVar[DisplayMathSpacing | None] = None
 
     def __init__(
@@ -186,6 +222,7 @@ class TexPage(Tex):
         buff: float | None = None,
         math_spacing: DisplayMathSpacing | None = None,
         split_display_math: bool | None = None,
+        include_empty_lines: bool | None = None,
         **kwargs: Any,
     ) -> None:
         if "width_cm" in kwargs:
@@ -206,9 +243,17 @@ class TexPage(Tex):
         kwargs.setdefault("tex_environment", _minipage_env(width_cm))
 
         should_split = self.split_display_math if split_display_math is None else split_display_math
-        rendered_parts, equation_indices = (
-            _split_display_math(parts) if should_split else (tuple(parts), ())
+        should_include_empty_lines = (
+            self.include_empty_lines if include_empty_lines is None else include_empty_lines
         )
+        if should_split:
+            rendered_parts, equation_indices, line_indices = _split_display_math(
+                parts,
+                include_empty_lines=should_include_empty_lines,
+            )
+        else:
+            rendered_parts, line_indices = _unsplit_tex_parts(parts)
+            equation_indices = ()
 
         spacing = self.math_spacing if math_spacing is None else math_spacing
         spacing_commands = _display_math_spacing_commands(spacing)
@@ -220,10 +265,20 @@ class TexPage(Tex):
         self.page_buff = resolved_buff
         self.minipage_width_cm = width_cm
         self.equation_part_indices = equation_indices
+        self.line_part_indices = line_indices
         self.part_roles = tuple(
             "equation" if index in equation_indices else "text"
             for index in range(len(rendered_parts))
         )
+
+    @property
+    def lines(self) -> tuple[VMobject, ...]:
+        """Non-equation Tex parts between display equations."""
+        return tuple(_require_vmobject(self[index]) for index in self.line_part_indices)
+
+    def line(self, index: int) -> VMobject:
+        """Return the ``index``-th non-equation Tex part."""
+        return self.lines[index]
 
     @property
     def equations(self) -> tuple[VMobject, ...]:

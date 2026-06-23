@@ -89,9 +89,36 @@ def test_tex_page_splits_display_equations_for_direct_access() -> None:
         mob = TexPage(r"before \[x=1\] middle \[y=2\] after")
 
     assert mob.equation_part_indices == (1, 3)
+    assert mob.line_part_indices == (0, 2, 4)
     assert mob.part_roles == ("text", "equation", "text", "equation", "text")
+    assert mob.line(0) is mob[0]
+    assert mob.line(1) is mob[2]
+    assert mob.line(2) is mob[4]
     assert mob.equation(0) is mob[1]
     assert mob.equation(1) is mob[3]
+
+
+def test_tex_page_skips_empty_lines_between_display_equations_by_default() -> None:
+    with active_theme(presets.SIMPLEX_DARK):
+        mob = TexPage("\\[x=1\\]\n\n\\[y=2\\]")
+
+    assert mob.equation_part_indices == (0, 1)
+    assert mob.line_part_indices == ()
+    assert mob.part_roles == ("equation", "equation")
+
+
+def test_tex_page_can_keep_empty_lines_between_display_equations() -> None:
+    with active_theme(presets.SIMPLEX_DARK):
+        mob = TexPage(
+            "intro\n\\[x=1\\]\n\n\\[y=2\\]\noutro",
+            include_empty_lines=True,
+        )
+
+    assert mob.equation_part_indices == (1, 3)
+    assert mob.line_part_indices == (0, 2, 4)
+    assert mob.part_roles == ("text", "equation", "text", "equation", "text")
+    assert mob.tex_strings[2] == "\n\n"
+    assert mob.line(1) is mob[2]
 
 
 def test_plain_tex_picks_up_body_font_size_after_apply_defaults() -> None:
