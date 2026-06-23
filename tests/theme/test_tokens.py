@@ -89,6 +89,11 @@ def test_code_theme_tokens_match_builtin_styles() -> None:
     )
 
 
+def test_builtin_theme_body_size_preserves_showcase_scale() -> None:
+    assert presets.SIMPLEX_DARK.typography.body == 30
+    assert presets.SIMPLEX_LIGHT.typography.body == 30
+
+
 def test_typography_defaults_track_manim_defaults() -> None:
     from inspect import signature
 

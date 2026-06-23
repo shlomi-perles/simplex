@@ -31,7 +31,7 @@ SIMPLEX_DARK: Theme = Theme(
         "visited": "#00FF00",
         "distance": "#FF8000",
     },
-    typography=Typography(mono_family="JetBrains Mono"),
+    typography=Typography(body=30, mono_family="JetBrains Mono"),
     latex=LatexProfile(preamble=_COMPACT_DISPLAY_PREAMBLE),
     web_palette={
         "background": "#2b2b2b",
@@ -48,7 +48,7 @@ SIMPLEX_DARK: Theme = Theme(
 SIMPLEX_LIGHT: Theme = Theme(
     name="simplex_light",
     manim_palette="simplex_light",
-    typography=Typography(mono_family="JetBrains Mono"),
+    typography=Typography(body=30, mono_family="JetBrains Mono"),
     latex=LatexProfile(preamble=_COMPACT_DISPLAY_PREAMBLE),
     code_style=SimplexSolarizedLight,
 )
